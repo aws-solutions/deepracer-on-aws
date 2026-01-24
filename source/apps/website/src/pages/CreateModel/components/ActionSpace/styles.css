@@ -1,0 +1,198 @@
+/*
+Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+SPDX-License-Identifier: Apache-2.0
+*/
+
+.fieldUnit {
+  margin-left: -15px;
+  margin-top: 27px;
+}
+
+.action_space_svg {
+  position: absolute;
+}
+
+.dynamicSectorGraph {
+  text-align: center;
+  margin-top: 5rem;
+}
+
+g#action_space_arrows_group {
+  transform-box: fill-box;
+  transform-origin: center left;
+}
+
+.interactiveGraphImgContainer {
+  padding: 2px 5px 20px 5px;
+  border-width: 1px;
+  border-style: solid;
+  border-color: #969696;
+}
+
+.interactiveGraphContainer {
+  position: relative;
+  display: grid;
+}
+
+div#discrete_control {
+  display: grid;
+}
+
+.modify_graph_hint {
+  display: flex;
+  align-items: center;
+  margin-left: 20px;
+  text-align: left;
+}
+
+.graphHelpText {
+  padding-left: 5px;
+}
+
+.table_header {
+  display: flex;
+  align-items: center;
+}
+
+.remove_button_container {
+  margin-left: auto;
+}
+
+.remove_button_container button {
+  background-color: transparent !important;
+  border-style: none !important;
+  border-width: 0px !important;
+  padding: 0px !important;
+}
+
+.input_row {
+  display: flex;
+  align-items: center;
+}
+
+.selectedRowWhiteText {
+  color: white;
+}
+
+#PLCHLDR_action_space_type div {
+  cursor: default;
+}
+
+#radio_group_title {
+  margin-bottom: 5px;
+}
+
+#PLCHLDR_action_space_type {
+  display: flex;
+  margin-bottom: 10px;
+}
+
+#continuous_action_space_description {
+  padding: 1rem;
+}
+
+#speed_info_title {
+  margin-top: 30px;
+}
+
+#reset_button_container {
+  margin-top: 20px;
+}
+
+#angle_info_title {
+  padding-top: 0;
+}
+
+#discrete_default_input_wrapper {
+  padding-bottom: 10px;
+}
+
+.discrete_default_input_group {
+  display: flex;
+}
+
+#PLCHLDR_num_speed_level {
+  padding-right: 30px;
+  width: 200px;
+}
+
+#PLCHLDR_steering_level {
+  padding-right: 30px;
+  width: 200px;
+}
+
+#advanced_config_alert_wrapper {
+  margin-top: 10px;
+}
+
+#clone_model_alert_wrapper {
+  margin-bottom: 15px;
+}
+
+.toggle_wrapper {
+  margin-left: auto;
+}
+
+.advanced_config_table_header {
+  text-align: center;
+}
+
+.action_space_table_wrapper {
+  margin-right: 2px;
+  padding-bottom: 30px;
+}
+
+.discrete_graph_wrapper {
+  margin-left: 2px;
+  text-align: center;
+}
+
+#steering_angle_table_hint {
+  z-index: 1;
+  margin-left: -10px;
+  margin-right: -10px;
+  text-align: center;
+  font-weight: normal;
+}
+
+.table_input_wrapper {
+  max-width: 80px;
+}
+
+#add_action_button_wrapper {
+  margin-top: 20px;
+  margin-left: 15px;
+}
+
+#add_action_hint {
+  padding-top: 8px;
+}
+
+#speed_table_hint {
+  z-index: 1;
+  margin-left: -10px;
+  margin-right: -10px;
+  text-align: center;
+  font-weight: normal;
+}
+
+.discrete_graph_info {
+  display: grid;
+}
+
+.discrete_selected_action_label {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+#action_space_description_image {
+  width: 100%;
+  max-width: 324px;
+}
+
+.action_space_description_image_wrapper {
+  height: 100%;
+  display: flex;
+  align-items: center;
+}

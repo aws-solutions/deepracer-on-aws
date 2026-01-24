@@ -1,0 +1,59 @@
+{
+  "name": "model",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/model/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "generate": {
+      "cache": true,
+      "description": "Generates api model, client, and server",
+      "executor": "nx:run-commands",
+      "inputs": ["{projectRoot}/src/**/*", "{projectRoot}/smithy-build-gradle.json"],
+      "outputs": ["{projectRoot}/build/**/*"],
+      "options": {
+        "command": "./gradlew clean build",
+        "cwd": "libs/model"
+      }
+    },
+    "clean": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "rm -rf build",
+        "cwd": "libs/model"
+      }
+    },
+    "copy:client": {
+      "cache": true,
+      "executor": "nx:run-commands",
+      "inputs": ["{projectRoot}/src/**/*", "{projectRoot}/smithy-build-gradle.json"],
+      "outputs": ["{workspaceRoot}/libs/typescript-client/src/**/*"],
+      "options": {
+        "command": "cp -r src '../../../../../../typescript-client'",
+        "cwd": "libs/model/build/smithyprojections/model/source/typescript-codegen"
+      },
+      "dependsOn": ["generate"]
+    },
+    "copy:server-client": {
+      "cache": true,
+      "executor": "nx:run-commands",
+      "inputs": ["{projectRoot}/src/**/*", "{projectRoot}/smithy-build-gradle.json"],
+      "outputs": ["{workspaceRoot}/libs/typescript-server-client/src/**/*"],
+      "options": {
+        "command": "cp -r src '../../../../../../typescript-server-client'",
+        "cwd": "libs/model/build/smithyprojections/model/source/typescript-ssdk-codegen"
+      },
+      "dependsOn": ["generate"]
+    },
+    "build": {
+      "cache": true,
+      "description": "Build model and both typescript clients",
+      "executor": "nx:run-commands",
+      "inputs": ["{projectRoot}/src/**/*", "{projectRoot}/smithy-build-gradle.json"],
+      "options": {
+        "commands": []
+      },
+      "dependsOn": ["copy:client", "copy:server-client"]
+    }
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "evaluateCriteria": {
+    "description": "Choose the track you want to use to evaluate your model",
+    "header": "Evaluate criteria",
+    "trackItemsCount": "({{count}})",
+    "textFilter": { "placeHolder": "Find track" },
+    "numberOfLaps": {
+      "header": "Choose number of laps to evaluate your model",
+      "lapCount": "{{count}} laps"
+    }
+  },
+  "header": "Evaluate model",
+  "raceType": {
+    "header": "Race type",
+    "nameInput": {
+      "label": "Evaluation name",
+      "description": "Add a descriptive name for the evaluation you are performing on your model.",
+      "footer": "The evaluation name can have up to 64 characters."
+    },
+    "objectAvoidance": {
+      "numberOfObjects": {
+        "description": "Increasing objects on tracks may increase the time for models to converge, but resulting models are more robust.",
+        "label": "Number of objects on a track"
+      },
+      "objectLocationType": {
+        "fixedLocationLabel": "Fixed location",
+        "fixedLocationDescription": "Objects are placed in fixed locations across two lanes along the track. The objects' positions do not change from episode to episode. Training tends to converge faster when obstables are in fixed locations. But such models might overfit and may not generalize well to real-world tracks",
+        "label": "Choose your criteria for how DeepRacer learns to avoid object",
+        "randomizedLocationLabel": "Randomized location",
+        "randomizedLocationDescription": "Objects are randomly distributed across two lanes along the track at the beginning of each episode. Training usually takes longer to converge for models to avoid obstacles in random locations that change from episode to episode. However, the trained models are more robust and generalize better to real-world tracks."
+      },
+      "objectPositionImageAlt": "Object positions image",
+      "obstacle": {
+        "gap": "Location of obstacle must be at least 0.13 less than the next obstacle.",
+        "insideLane": "Inside lane",
+        "label": "Obstacle {{count}}",
+        "lanePlacement": "Lane placement",
+        "outsideLane": "Outside lane",
+        "trackPercentage": "Location between start and finish"
+      }
+    },
+    "tiles": {
+      "label": "Choose a race Type",
+      "timeTrialLabel": "Time trial",
+      "timeTrialDescription": "Race against the clock",
+      "objectAvoidanceLabel": "Object avoidance",
+      "objectAvoidanceDescription": "Complete the fastest lap, skillfully avoiding objects on the track."
+    }
+  },
+  "cancelButton": "Cancel",
+  "startButton": "Start evaluation"
+}

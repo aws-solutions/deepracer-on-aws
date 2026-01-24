@@ -1,0 +1,23 @@
+{
+  "app": "npx tsx bin/deepRacerIndy.ts",
+  "context": {
+    "PUBLIC_ECR_REGISTRY": "public.ecr.aws/aws-solutions",
+    "MODEL_VALIDATION_REPO_NAME": "deepracer-on-aws-model-validation",
+    "REWARD_VALIDATION_REPO_NAME": "deepracer-on-aws-reward-function-validation",
+    "SIMAPP_REPO_NAME": "deepracer-on-aws-simapp"
+  },
+  "watch": {
+    "include": ["**"],
+    "exclude": [
+      "README.md",
+      "cdk*.json",
+      "**/*.d.ts",
+      "**/*.js",
+      "tsconfig.json",
+      "package*.json",
+      "yarn.lock",
+      "node_modules",
+      "test"
+    ]
+  }
+}

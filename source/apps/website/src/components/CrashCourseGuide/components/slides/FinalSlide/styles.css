@@ -1,0 +1,38 @@
+/*
+Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+SPDX-License-Identifier: Apache-2.0
+*/
+
+.finalSlideContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0px 32px 0px 32px;
+  height: 500px;
+}
+
+.logo {
+  width: 250px;
+}
+
+.finalSlideOptionsContainer {
+  display: flex;
+  flex-direction: row;
+}
+
+.finalSlideOptionsChild {
+  display: flex;
+  flex-direction: column;
+  justify-items: center;
+  align-items: center;
+  padding: 8px;
+}
+
+.finalSlideOptionsImage {
+  width: 96px;
+}
+
+.finalSlideOptionsChild p {
+  text-align: center;
+}

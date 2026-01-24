@@ -1,0 +1,26 @@
+/*
+Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+SPDX-License-Identifier: Apache-2.0
+*/
+
+.openLeaderboard {
+  background: rgba(205, 12, 210, 0.8);
+  color: #fbfbfb;
+  padding: 2px 6px;
+  display: inline-flex;
+  flex-direction: vertical;
+  justify-content: center;
+  align-items: center;
+  border-radius: 3px;
+}
+
+.otherLeaderboard {
+  background: rgba(65, 77, 92, 0.8);
+  color: #fbfbfb;
+  padding: 0 6px;
+  display: inline-flex;
+  flex-direction: vertical;
+  justify-content: center;
+  align-items: center;
+  border-radius: 3px;
+}

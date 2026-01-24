@@ -1,0 +1,17 @@
+/*
+Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+SPDX-License-Identifier: Apache-2.0
+*/
+
+.progressBarContainer {
+  background-color: var(--color-background-progress-bar-layout-default-38loDV, #eaeded);
+  width: 192px;
+  border-radius: 32px;
+  margin: 4px 0px 4px 0px;
+}
+
+.progressBarChild {
+  height: 12px;
+  border-radius: 32px;
+  background-color: var(--color-background-notification-blue-Y4F8hz, #0073bb);
+}

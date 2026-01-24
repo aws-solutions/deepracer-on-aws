@@ -1,0 +1,48 @@
+{
+  "name": "@deepracer-indy/typescript-client",
+  "description": "@deepracer-indy/typescript-client client",
+  "version": "1.0.0",
+  "main": "./src/index.ts",
+  "module": "./src/index.ts",
+  "type": "module",
+  "sideEffects": false,
+  "dependencies": {
+    "tslib": "^2.6.2",
+    "@aws-crypto/sha256-browser": "5.2.0",
+    "@aws-crypto/sha256-js": "5.2.0",
+    "@aws-sdk/core": "3.624.0",
+    "@aws-sdk/middleware-host-header": "3.620.0",
+    "@aws-sdk/middleware-logger": "3.609.0",
+    "@aws-sdk/middleware-recursion-detection": "3.620.0",
+    "@aws-sdk/middleware-user-agent": "3.620.0",
+    "@aws-sdk/types": "3.609.0",
+    "@aws-sdk/util-user-agent-browser": "3.609.0",
+    "@aws-sdk/util-user-agent-node": "3.614.0",
+    "@smithy/config-resolver": "^3.0.5",
+    "@smithy/core": "^2.3.2",
+    "@smithy/fetch-http-handler": "^3.2.4",
+    "@smithy/hash-node": "^3.0.3",
+    "@smithy/invalid-dependency": "^3.0.3",
+    "@smithy/middleware-content-length": "^3.0.5",
+    "@smithy/middleware-serde": "^3.0.3",
+    "@smithy/middleware-stack": "^3.0.3",
+    "@smithy/node-config-provider": "^3.1.4",
+    "@smithy/node-http-handler": "^3.1.4",
+    "@smithy/smithy-client": "^3.1.12",
+    "@smithy/url-parser": "^3.0.3",
+    "@smithy/util-base64": "^3.0.0",
+    "@smithy/util-body-length-browser": "^3.0.0",
+    "@smithy/util-body-length-node": "^3.0.0",
+    "@smithy/util-defaults-mode-browser": "^3.0.14",
+    "@smithy/util-defaults-mode-node": "^3.0.14",
+    "@smithy/util-middleware": "^3.0.3",
+    "@smithy/util-retry": "^3.0.3",
+    "@smithy/util-utf8": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "browser": {
+    "typescript-client/runtimeConfig": "typescript-client/runtimeConfig.browser"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "name": "@deepracer-indy/typescript-server-client",
+  "description": "DeepRacer Indy TypeScript server client",
+  "version": "1.0.0",
+  "main": "./src/index.ts",
+  "module": "./src/index.ts",
+  "type": "module",
+  "sideEffects": false,
+  "dependencies": {
+    "tslib": "^2.6.2",
+    "@aws-crypto/sha256-browser": "5.2.0",
+    "@aws-crypto/sha256-js": "5.2.0",
+    "@aws-sdk/core": "3.624.0",
+    "@aws-sdk/types": "3.609.0",
+    "@aws-smithy/server-common": "1.0.0-alpha.10",
+    "@smithy/config-resolver": "^3.0.5",
+    "@smithy/fetch-http-handler": "^3.2.4",
+    "@smithy/hash-node": "^3.0.3",
+    "@smithy/invalid-dependency": "^3.0.3",
+    "@smithy/middleware-content-length": "^3.0.5",
+    "@smithy/middleware-serde": "^3.0.3",
+    "@smithy/middleware-stack": "^3.0.3",
+    "@smithy/node-http-handler": "^3.1.4",
+    "@smithy/smithy-client": "^3.1.12",
+    "@smithy/url-parser": "^3.0.3",
+    "@smithy/util-base64": "^3.0.0",
+    "@smithy/util-body-length-browser": "^3.0.0",
+    "@smithy/util-body-length-node": "^3.0.0",
+    "@smithy/util-defaults-mode-browser": "^3.0.14",
+    "@smithy/util-defaults-mode-node": "^3.0.14",
+    "@smithy/util-utf8": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

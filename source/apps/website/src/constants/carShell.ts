@@ -1,0 +1,61 @@
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
+
+import { CarColor, CarShell } from '@deepracer-indy/typescript-client';
+
+export const carShellAvailableColors: { [Car in CarShell]: CarColor[] } = {
+  [CarShell.DEEPRACER]: [
+    CarColor.BLACK,
+    CarColor.BLUE,
+    CarColor.GREY,
+    CarColor.ORANGE,
+    CarColor.PURPLE,
+    CarColor.RED,
+    CarColor.WHITE,
+  ],
+  [CarShell.AGATHA]: [CarColor.GREY],
+  [CarShell.AMAZON_EDV]: [CarColor.PURPLE, CarColor.WHITE],
+  [CarShell.BAJA_TRUCK]: [CarColor.ORANGE, CarColor.TEAL],
+  [CarShell.BANANA]: [CarColor.BLACK],
+  [CarShell.BIKE]: [CarColor.BLUE, CarColor.RED],
+  [CarShell.BUGGY]: [CarColor.PURPLE, CarColor.WHITE],
+  [CarShell.CLOWN]: [CarColor.YELLOW],
+  [CarShell.COMPACT]: [CarColor.PURPLE, CarColor.RED],
+  [CarShell.DOG_VAN]: [CarColor.BROWN],
+  [CarShell.DRAGON]: [CarColor.BROWN],
+  [CarShell.DUNE_BUGGY]: [CarColor.GOLDEN, CarColor.RED],
+  [CarShell.F1]: [CarColor.RED],
+  [CarShell.F1_NUDIE]: [CarColor.PURPLE, CarColor.WHITE],
+  [CarShell.FAMILY_WAGON]: [CarColor.GREEN, CarColor.PURPLE],
+  [CarShell.GT]: [CarColor.PURPLE, CarColor.RED],
+  [CarShell.HOT_ROD]: [CarColor.ORANGE, CarColor.PURPLE],
+  [CarShell.KART]: [CarColor.RED],
+  [CarShell.LORRY]: [CarColor.PURPLE],
+  [CarShell.LUNAR_ROVER]: [CarColor.BROWN, CarColor.GOLDEN],
+  [CarShell.MARS_ROVER]: [CarColor.WHITE],
+  [CarShell.MONSTER_TRUCK]: [CarColor.PURPLE],
+  [CarShell.NELL]: [CarColor.BLACK, CarColor.RED, CarColor.YELLOW],
+  [CarShell.RETRO_FUTURISTIC]: [CarColor.PURPLE],
+  [CarShell.ROGUE_ROD]: [CarColor.ORANGE],
+  [CarShell.SNAIL]: [CarColor.PINK],
+  [CarShell.TRON]: [CarColor.GOLDENPINK, CarColor.PURPLE],
+  [CarShell.WAGON]: [CarColor.BLUE, CarColor.PINK],
+};
+
+export const ShellColorHexValue: { [Color in CarColor]: string } = {
+  [CarColor.BLACK]: '#272727',
+  [CarColor.BLUE]: '#0099CC',
+  [CarColor.BROWN]: '#964B00',
+  [CarColor.GOLDEN]: '#FFB81C',
+  [CarColor.GOLDENPINK]: '#E6C7C2',
+  [CarColor.GREEN]: '#2ECC40',
+  [CarColor.GREY]: '#AAAAAA',
+  [CarColor.ORANGE]: '#FFA500',
+  [CarColor.PINK]: '#FFC0CB',
+  [CarColor.PURPLE]: '#B10DC9',
+  [CarColor.RED]: '#FF0000',
+  [CarColor.SKY_BLUE]: '#7FDBFF',
+  [CarColor.TEAL]: '#008080',
+  [CarColor.WHITE]: '#FFFFFF',
+  [CarColor.YELLOW]: '#FFDC00',
+};

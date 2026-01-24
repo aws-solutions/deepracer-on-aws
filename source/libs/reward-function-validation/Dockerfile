@@ -1,0 +1,13 @@
+# Fetch the base image from public ECR repository
+FROM public.ecr.aws/lambda/python:3.12
+
+# Set up the program in the image
+COPY ./routes ${LAMBDA_TASK_ROOT}/routes
+COPY lib/reward_func_validator ${LAMBDA_TASK_ROOT}
+
+RUN pip install --upgrade pip
+# Here we get all python packages.
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Pass the name of the function handler as an argument to the runtime
+CMD [ "lambda_function.lambda_handler" ]

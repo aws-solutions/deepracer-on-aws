@@ -1,0 +1,141 @@
+/*
+Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+SPDX-License-Identifier: Apache-2.0
+*/
+
+.trainingSlideContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0px 8px 0px 8px;
+}
+
+.trainingSlideContent {
+  flex-grow: 0;
+  flex-basis: 50%;
+  padding: 0px 32px 0px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 500px;
+}
+
+.trainingSlideGraphic {
+  flex-grow: 0;
+  flex-basis: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 500px;
+}
+
+.axisT {
+  stroke: currentColor;
+  stroke-width: 1;
+}
+
+.axisTextT {
+  fill: currentColor;
+}
+
+.rewardLine {
+  stroke: #a165ff;
+  stroke-width: 2;
+  fill: none;
+}
+
+.centreLine {
+  stroke-width: 2;
+  stroke: #ec7211;
+  stroke-dasharray: 20 10;
+}
+
+.trackBoundary {
+  stroke: #bbb;
+  stroke-width: 4;
+}
+
+.carSquare {
+  fill: #00c773;
+  opacity: 0;
+  transition: opacity 300ms linear;
+}
+
+.carSquare.ohnoes {
+  fill: #ff5066;
+}
+
+.carSquare.visible {
+  opacity: 1;
+}
+
+.scoreText {
+  fill: #fff;
+  transition:
+    opacity 200ms linear,
+    transform 200ms ease;
+  opacity: 0;
+  font-size: 16px;
+  transform: scale(0.5);
+}
+
+/* Safari-only hack */
+@media not all and (min-resolution: 0.001dpcm) {
+  @supports (-webkit-appearance: none) and (stroke-color: transparent) {
+    .scoreText {
+      /* Apparently Safari just sets the initial transform value and fails to update it */
+      transform: scale(1);
+    }
+  }
+}
+
+.scoreTextVisible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.gridSquare {
+  fill-opacity: 1;
+  stroke: none;
+  stroke-width: 2;
+  paint-order: fill;
+  stroke-opacity: 0.2;
+  transition: fill 300ms linear;
+}
+
+.gridSquare.highlight {
+  stroke-opacity: 1;
+  fill: #888;
+  stroke: currentColor;
+  transition-delay: 0ms !important;
+  transition-duration: 0ms !important;
+}
+
+.center {
+  fill: #ec7211;
+}
+
+.center.colourify {
+  fill: #ec7211;
+}
+
+.center.colourify.highlight {
+  fill: #f5b887;
+}
+
+.outer.colourify {
+  fill: #a165ff;
+}
+
+.start,
+.start.colourify {
+  fill: #00c773;
+}
+
+.finish,
+.finish.colourify {
+  fill: url(#checker);
+  fill-opacity: 1;
+}

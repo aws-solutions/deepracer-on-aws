@@ -1,0 +1,13 @@
+{
+  "enterRace": "Enter race",
+  "chooseModel": "Choose model",
+  "selection": "Selection and submissions",
+  "chooseAModel": "Choose a model",
+  "cancel": "Cancel",
+  "description": "Submit your model to participate in the virtual race. Your time and rank will be displayed on the race leaderboard alongside other competitors.",
+  "raceDoesNotExist": "Leaderboard doesn't exist",
+  "createModel": "Create model",
+  "noEligibleModels": "Currently you do not have any eligible models. Please train at least one model.",
+  "noSelectedModels": "Currently you do not have any model chosen. Please choose a model to submit to the race.",
+  "retrievingModels": "Retrieving models. Please wait."
+}

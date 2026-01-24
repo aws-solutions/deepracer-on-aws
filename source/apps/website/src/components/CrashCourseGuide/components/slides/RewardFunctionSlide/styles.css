@@ -1,0 +1,289 @@
+/*
+Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+SPDX-License-Identifier: Apache-2.0
+*/
+
+.rewardFunctionSlideContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0px 8px 0px 8px;
+}
+
+.rewardFunctionSlideContent {
+  flex-grow: 0;
+  flex-basis: 50%;
+  padding: 0px 32px 0px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 500px;
+}
+
+.rewardFunctionSlideGraphic {
+  flex-grow: 0;
+  flex-basis: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 500px;
+}
+
+.rewardFunctionSlideContent table {
+  margin: 0 0;
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.rewardFunctionSlideContent th {
+  font-weight: normal;
+  font-size: 0.8em;
+  text-align: left;
+}
+
+.rewardFunctionSlideContent th code {
+  background: none;
+  padding: 0;
+  box-shadow: none;
+}
+
+.rewardFunctionSlideContent th,
+.rewardFunctionSlideContent td {
+  padding: 0px;
+}
+
+.rewardFunctionSlideContent td {
+  padding-right: 0.6em;
+}
+
+.rewardFunctionSlideContent tr:nth-child(even) {
+  background: rgba(100, 128, 156, 0.15);
+}
+
+.carBit {
+  fill: #fff;
+  stroke: #a165ff;
+}
+
+.smal {
+  stroke-width: 0.5;
+}
+
+.wheel {
+  fill: #bbb;
+  stroke: #555;
+}
+
+.tread {
+  fill: url(#wheels);
+}
+
+.car {
+  fill: #fff;
+  stroke: #a165ff;
+}
+
+.speedText {
+  font-size: 12px;
+}
+
+.speedTextms {
+  font-size: 8px;
+}
+
+.marker circle {
+  transition:
+    transform 300ms ease,
+    opacity 200ms linear;
+  opacity: 0;
+  transform: scale(0.2);
+  fill: #a165ff;
+  stroke: #000;
+}
+
+.marker.visible circle {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.marker text {
+  transition:
+    transform 300ms ease,
+    opacity 200ms linear;
+  stroke: #000;
+  fill: #fff;
+  stroke-opacity: 0.7;
+  stroke-width: 3;
+  opacity: 0;
+  transform: translate(0, 10px);
+  stroke-linejoin: round;
+}
+
+/* Safari-only hack */
+@media not all and (min-resolution: 0.001dpcm) {
+  @supports (-webkit-appearance: none) and (stroke-color: transparent) {
+    .marker text {
+      transform: translate(0, 0);
+    }
+  }
+}
+
+.marker text + text {
+  stroke: none;
+}
+
+.marker.visible text {
+  opacity: 1;
+  transform: translate(0, 0);
+}
+
+.arcLine {
+  stroke: #a165ff;
+  stroke-width: 2;
+  fill: none;
+  stroke-linecap: round;
+  stroke-dasharray: 100 100;
+  stroke-dashoffset: 100;
+  transition:
+    stroke-dashoffset 300ms ease,
+    opacity 0ms 300ms linear;
+  opacity: 0;
+}
+
+.arc.visible .arcLine {
+  stroke-dashoffset: 0;
+  opacity: 1;
+  transition-delay: 0ms;
+}
+
+.arcSweep {
+  stroke: none;
+  fill: #a165ff;
+  fill-opacity: 0.5;
+  transition: opacity 150ms linear;
+  opacity: 0;
+}
+
+.arc.visible .arcSweep {
+  opacity: 1;
+  transition-delay: 50ms;
+}
+
+.horizontalMeasure .arrow {
+  stroke: #a165ff;
+  fill: #a165ff;
+  transition: opacity 50ms linear;
+  opacity: 0;
+}
+
+.horizontalMeasure.visible .arrow {
+  opacity: 1;
+  transition-delay: 200ms;
+}
+
+.horizontalMeasure .line {
+  stroke: #a165ff;
+  stroke-width: 4;
+  stroke-linecap: round;
+  fill: none;
+  stroke-dasharray: 150 150;
+  stroke-dashoffset: 150;
+  transition:
+    stroke-dashoffset 300ms ease,
+    opacity 0ms 300ms linear;
+  opacity: 0;
+}
+
+.horizontalMeasure.visible .line {
+  stroke-dashoffset: 0;
+  transition-delay: 0ms;
+  opacity: 1;
+}
+
+.carOnTrack {
+  opacity: 0;
+  transition: opacity 300ms linear;
+}
+
+.carOnTrack.visible {
+  opacity: 1;
+}
+
+.outline {
+  stroke: #bbb;
+  stroke-width: 32;
+  fill: none;
+  stroke-linejoin: round;
+}
+
+.roadPath {
+  stroke: #123;
+  stroke-width: 28;
+  fill: none;
+  stroke-linejoin: round;
+}
+
+.centre {
+  stroke-width: 2;
+  stroke: #ec7211;
+  stroke-dasharray: 5 5;
+  fill: none;
+  stroke-linejoin: round;
+}
+
+.axis {
+  stroke: currentColor;
+  stroke-width: 0.5;
+  stroke-dasharray: 300 300;
+  stroke-dashoffset: 320;
+  transition: stroke-dashoffset 1000ms ease;
+}
+
+.axis.visible {
+  stroke-dashoffset: 0;
+}
+
+.road {
+  fill: #000;
+  opacity: 0.8;
+}
+
+.centreLine {
+  stroke-width: 5;
+  stroke: #ec7211;
+  stroke-dasharray: 15 15;
+  fill: none;
+}
+
+.trackBoundary {
+  stroke: #bbb;
+  stroke-width: 8;
+}
+
+.waypoint text {
+  font-size: 0.4em;
+}
+
+.positionLine {
+  stroke: #a165ff;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 300 300;
+  stroke-dashoffset: -300;
+  transition:
+    stroke-dashoffset 1000ms ease,
+    opacity 0ms 1000ms linear;
+  opacity: 0;
+}
+
+.positionLine.visible {
+  stroke-dashoffset: 0;
+  opacity: 1;
+  transition-delay: 0ms;
+}
+
+.offTrack circle {
+  fill: red;
+}

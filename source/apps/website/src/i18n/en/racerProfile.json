@@ -1,0 +1,59 @@
+{
+  "copyButton": {
+    "clipboard": "{\"accessories\": \"{{accessories, string}}\", \"clothing\": \"{{clothing, string}}\", \"clothingColor\":\"{{clothingColor, string}}\", \"eyebrows\": \"{{eyebrows, string}}\", \"eyes\": \"{{eyes, string}}\", \"facialHair\": \"{{facialHair, string}}\", \"facialHairColor\": \"{{facialHairColor, string}}\", \"hairColor\": \"{{hairColor, string}}\", \"mouth\": \"{{mouth, string}}\", \"skinColor\": \"{{skinColor, string}}\", \"top\": \"{{top, string}}\", \"tshirtGraphic\": \"{{tshirtGraphic, string}}\"}",
+    "copied": "copied",
+    "failed": "failed",
+    "label": "Copy your racer profile JSON"
+  },
+  "header": "Your racer profile",
+  "models": {
+    "modelCountHeader": "Models Stored",
+    "modelCount": "{{trainedCount, number}} out of {{allowedCount, number}}",
+    "modelCountUnlimited": "{{trainedCount, number}} models (Unlimited)",
+    "pieChartUsed": "Used training hours",
+    "pieChartUnused": "Unused training hours"
+  },
+  "profile": {
+    "button": "Edit details",
+    "header": "Racer details",
+    "placerholderName": "--",
+    "racerName": "Racer name"
+  },
+  "profileModal": {
+    "cancelButton": "Cancel",
+    "selectLabels": {
+      "skinColor": "Skin tone",
+      "top": "Head",
+      "hairColor": "Hair color",
+      "accessories": "Glasses",
+      "facialHair": "Facial hair",
+      "facialHairColor": "Facial hair color",
+      "eyes": "Eyes",
+      "eyebrows": "Eyebrows",
+      "mouth": "Mouth",
+      "clothing": "Clothing",
+      "clothingColor": "Clothing color",
+      "tshirtGraphic": "Graphic"
+    },
+    "header": "Your racer profile",
+    "nameCharacterError": "Only letters, numbers, hyphen (-), and underscore (_) are allowed.",
+    "nameDescription": "Choose a unique name to be used for races. Your racer name can be changed later.",
+    "nameLabel": "Racer name",
+    "nameLengthError": "Must be between 2 and 64 characters.",
+    "nameRequiredError": "Racer name is required.",
+    "saveButton": "Save"
+  },
+  "uploadButton": "Upload racer profile",
+  "uploadProfileModal": {
+    "header": "Upload racer profile",
+    "textAreaPlaceholder": "Paste racer configuration here",
+    "errors": {
+      "invalidConfiguration": "Invalid avatar configuration",
+      "invalidFormat": "Avatar is formatted incorrectly",
+      "invalidPiece": "Invalid avatar piece",
+      "invalidType": "Invalid avatar slot"
+    },
+    "okButton": "Ok",
+    "cancelButton": "Cancel"
+  }
+}

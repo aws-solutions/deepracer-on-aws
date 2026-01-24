@@ -1,0 +1,14 @@
+/*
+Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+SPDX-License-Identifier: Apache-2.0
+*/
+
+.simulationVideoPlaceholder {
+  width: 100%;
+  height: 425px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+  background: #8080801c;
+}

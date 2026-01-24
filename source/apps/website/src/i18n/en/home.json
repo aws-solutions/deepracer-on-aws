@@ -1,0 +1,23 @@
+{
+  "communityRaces": {
+    "button": "Manage race",
+    "description": "Create your own community race and invite your colleagues, classmates, or friends by sharing a race invitation link. Access open races in this instance.",
+    "header": "Community Races"
+  },
+  "fundamentals": {
+    "button": "Get started",
+    "description": "Learn the basics of RL to build your model, evaluate its performance on a virtual track, and then compete in a race.",
+    "header": "Get started by learning the fundamentals of ML"
+  },
+  "header": "Welcome to DeepRacer on AWS",
+  "models": {
+    "button": "Manage models",
+    "description": "Create a new model, or upload and manage existing models.",
+    "header": "Models",
+    "modelCountHeader": "Models stored",
+    "modelCount": "{{trainedCount, number}} out of {{allowedCount, number}}",
+    "pieChartUsed": "Used training hours",
+    "pieChartUnused": "Unused training hours",
+    "loadingChart": "Loading chart..."
+  }
+}

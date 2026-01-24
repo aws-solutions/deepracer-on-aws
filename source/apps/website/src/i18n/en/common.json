@@ -1,0 +1,57 @@
+{
+  "serviceName": "DeepRacer on AWS",
+  "topNavigation": {
+    "profile": "Profile",
+    "account": "Account",
+    "signOut": "Sign out"
+  },
+  "jobStatus": {
+    "CANCELED": "Canceled",
+    "COMPLETED": "Completed",
+    "FAILED": "Failed",
+    "IN_PROGRESS": "In progress",
+    "INITIALIZING": "Initializing",
+    "QUEUED": "Queued",
+    "STOPPING": "Stopping"
+  },
+  "modelStatus": {
+    "DELETING": "Deleting",
+    "ERROR": "Error",
+    "EVALUATING": "Evaluating",
+    "IMPORTING": "Importing",
+    "QUEUED": "Queued",
+    "READY": "Ready",
+    "STOPPING": "Stopping",
+    "SUBMITTING": "Submitting",
+    "TRAINING": "Training"
+  },
+  "raceType": {
+    "TIME_TRIAL": "Time trial",
+    "OBJECT_AVOIDANCE": "Object avoidance"
+  },
+  "trackDirection": {
+    "CLOCKWISE": "Clockwise",
+    "COUNTER_CLOCKWISE": "Counterclockwise"
+  },
+  "sensors": {
+    "camera": {
+      "FRONT_FACING_CAMERA": "Camera",
+      "LEFT_CAMERA": "Left camera",
+      "OBSERVATION_CAMERA": "Camera",
+      "STEREO_CAMERAS": "Stereo camera"
+    },
+    "lidar": {
+      "DISCRETIZED_SECTOR_LIDAR": "Sector lidar",
+      "LIDAR": "Lidar",
+      "SECTOR_LIDAR": "Sector lidar"
+    }
+  },
+  "actionSpaceType": {
+    "CONTINUOUS": "Continuous",
+    "DISCRETE": "Discrete"
+  },
+  "videoPlayer": {
+    "loadError": "Error loading the video",
+    "playError": "Error playing the video"
+  }
+}

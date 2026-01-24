@@ -1,0 +1,35 @@
+{
+  "header": "Your account",
+  "info": "Info",
+  "description": "Use this page to update your account password or delete your account. Deleting your account will remove resources in these accounts as well.",
+  "yourAccountInfo": "Your account information",
+  "yourEmail": "Your email",
+  "yourPassword": "Your password",
+  "deleteYourAccount": "Delete your Player account",
+  "changePassword": "Change password",
+  "required": "Required",
+  "passwordFormat": "Passwords must contain at least 8 characters uppercase, lowercase, number, and symbol.",
+  "deleteAccountModal": {
+    "deleteAccountHeader": "Do you want to permanently delete you AWS Player account?",
+    "deleteAccountDesc": "Deleting your account cannot be undone. When you delete your account, you will lose access to other resources outside of DeepRacer on AWS.",
+    "deleteAccountInputHeader": "To confirm deletion, type Delete in the field.",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "closeModal": "Close modal",
+    "deleteField": "Please enter exactly same string",
+    "successMessage": "Account deleted successfully."
+  },
+  "changePasswordModal": {
+    "updatePasswordHeader": "Change your password",
+    "currPassword": "Your current password",
+    "newPassword": "Your new password",
+    "yourPassword": "Your password",
+    "newPassPlaceholder": "New password",
+    "passwordFormat": "Your password can have up to 8 characters. Valid characters: A-Z, a-z, 0-9, and . : + = @ _ %",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "changePassword": "Change password",
+    "closeModal": "Close modal",
+    "successMessage": "The password has been changed successfully."
+  }
+}

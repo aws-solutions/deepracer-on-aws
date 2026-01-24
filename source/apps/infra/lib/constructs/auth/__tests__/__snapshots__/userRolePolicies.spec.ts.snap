@@ -1,0 +1,1555 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`UserRolePolicies > should match snapshot 1`] = `
+{
+  "Outputs": {
+    "TestApiEndpoint316CA9C6": {
+      "Value": {
+        "Fn::Join": [
+          "",
+          [
+            "https://",
+            {
+              "Ref": "TestApi65B47ECD",
+            },
+            ".execute-api.us-east-1.",
+            {
+              "Ref": "AWS::URLSuffix",
+            },
+            "/",
+            {
+              "Ref": "TestApiDeploymentStageprod9E5CEC48",
+            },
+            "/",
+          ],
+        ],
+      },
+    },
+  },
+  "Parameters": {
+    "BootstrapVersion": {
+      "Default": "/cdk-bootstrap/hnb659fds/version",
+      "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]",
+      "Type": "AWS::SSM::Parameter::Value<String>",
+    },
+  },
+  "Resources": {
+    "AdminRole38563C57": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "cognito-identity.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "AdminRoleDefaultPolicy1C2AB961": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "s3:PutObject",
+                "s3:PutObjectAcl",
+                "s3:ListMultipartUploadParts",
+                "s3:AbortMultipartUpload",
+                "s3:ListBucketMultipartUploads",
+                "s3:CreateMultipartUpload",
+                "s3:CompleteMultipartUpload",
+              ],
+              "Effect": "Allow",
+              "Resource": "arn:aws:s3:::test-bucket/*",
+            },
+            {
+              "Action": "execute-api:Invoke",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition",
+                    },
+                    ":execute-api:us-east-1:123456789012:",
+                    {
+                      "Ref": "TestApi65B47ECD",
+                    },
+                    "/*/*/*",
+                  ],
+                ],
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "PolicyName": "AdminRoleDefaultPolicy1C2AB961",
+        "Roles": [
+          {
+            "Ref": "AdminRole38563C57",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Policy",
+    },
+    "RaceFacilitatorRoleDefaultPolicyFDB21350": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "s3:PutObject",
+                "s3:PutObjectAcl",
+                "s3:ListMultipartUploadParts",
+                "s3:AbortMultipartUpload",
+                "s3:ListBucketMultipartUploads",
+                "s3:CreateMultipartUpload",
+                "s3:CompleteMultipartUpload",
+              ],
+              "Effect": "Allow",
+              "Resource": "arn:aws:s3:::test-bucket/*",
+            },
+            {
+              "Action": "execute-api:Invoke",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/importmodel",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/POST/importmodel",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/leaderboards",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/leaderboards",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/POST/leaderboards",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/DELETE/leaderboards/*",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/leaderboards/*",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/leaderboards/*",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/PATCH/leaderboards/*",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/POST/leaderboards/*",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/leaderboards/*/ranking",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/leaderboards/*/ranking",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/leaderboards/*/rankings",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/leaderboards/*/rankings",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/leaderboards/*/submissions",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/leaderboards/*/submissions",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/POST/leaderboards/*/submissions",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/models",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/models",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/POST/models",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/DELETE/models/*",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/models/*",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/models/*",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/PATCH/models/*",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/models/*/evaluation",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/POST/models/*/evaluation",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/models/*/evaluations",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/models/*/evaluations",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/models/*/evaluations/*",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/models/*/evaluations/*",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/models/*/getasset",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/models/*/getasset",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/profile",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/profile",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/PATCH/profile",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/POST/profile",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/rewardFunction",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/POST/rewardFunction",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/settings/*",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/settings/*",
+                    ],
+                  ],
+                },
+              ],
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "PolicyName": "RaceFacilitatorRoleDefaultPolicyFDB21350",
+        "Roles": [
+          {
+            "Ref": "RaceFacilitatorRoleFE0274ED",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Policy",
+    },
+    "RaceFacilitatorRoleFE0274ED": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "cognito-identity.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "RacerRole3F0786F0": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "cognito-identity.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "RacerRoleDefaultPolicy468F8E80": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "s3:PutObject",
+                "s3:PutObjectAcl",
+                "s3:ListMultipartUploadParts",
+                "s3:AbortMultipartUpload",
+                "s3:ListBucketMultipartUploads",
+                "s3:CreateMultipartUpload",
+                "s3:CompleteMultipartUpload",
+              ],
+              "Effect": "Allow",
+              "Resource": "arn:aws:s3:::test-bucket/*",
+            },
+            {
+              "Action": "execute-api:Invoke",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/importmodel",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/POST/importmodel",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/leaderboards",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/leaderboards",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/leaderboards/*",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/leaderboards/*",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/POST/leaderboards/*",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/leaderboards/*/ranking",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/leaderboards/*/ranking",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/leaderboards/*/rankings",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/leaderboards/*/rankings",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/leaderboards/*/submissions",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/leaderboards/*/submissions",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/POST/leaderboards/*/submissions",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/models",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/models",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/POST/models",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/DELETE/models/*",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/models/*",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/models/*",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/PATCH/models/*",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/models/*/evaluation",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/POST/models/*/evaluation",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/models/*/evaluations",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/models/*/evaluations",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/models/*/evaluations/*",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/models/*/evaluations/*",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/models/*/getasset",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/models/*/getasset",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/profile",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/profile",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/PATCH/profile",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/POST/profile",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/rewardFunction",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/POST/rewardFunction",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/settings/*",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/settings/*",
+                    ],
+                  ],
+                },
+              ],
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "PolicyName": "RacerRoleDefaultPolicy468F8E80",
+        "Roles": [
+          {
+            "Ref": "RacerRole3F0786F0",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Policy",
+    },
+    "TestApi65B47ECD": {
+      "Properties": {
+        "Body": {
+          "info": {
+            "title": "Test API",
+            "version": "1.0.0",
+          },
+          "paths": {},
+          "swagger": "2.0",
+        },
+        "Name": "TestApi",
+      },
+      "Type": "AWS::ApiGateway::RestApi",
+    },
+    "TestApiAccountC79E0025": {
+      "DeletionPolicy": "Retain",
+      "DependsOn": [
+        "TestApi65B47ECD",
+      ],
+      "Properties": {
+        "CloudWatchRoleArn": {
+          "Fn::GetAtt": [
+            "TestApiCloudWatchRole3E85D09F",
+            "Arn",
+          ],
+        },
+      },
+      "Type": "AWS::ApiGateway::Account",
+      "UpdateReplacePolicy": "Retain",
+    },
+    "TestApiCloudWatchRole3E85D09F": {
+      "DeletionPolicy": "Retain",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "apigateway.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition",
+                },
+                ":iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs",
+              ],
+            ],
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Role",
+      "UpdateReplacePolicy": "Retain",
+    },
+    "TestApiDeployment8541C0A042dbeed27fbe0b08f86e6a9f3a07881f": {
+      "Properties": {
+        "Description": "Automatically created by the RestApi construct",
+        "RestApiId": {
+          "Ref": "TestApi65B47ECD",
+        },
+      },
+      "Type": "AWS::ApiGateway::Deployment",
+    },
+    "TestApiDeploymentStageprod9E5CEC48": {
+      "DependsOn": [
+        "TestApiAccountC79E0025",
+      ],
+      "Properties": {
+        "DeploymentId": {
+          "Ref": "TestApiDeployment8541C0A042dbeed27fbe0b08f86e6a9f3a07881f",
+        },
+        "RestApiId": {
+          "Ref": "TestApi65B47ECD",
+        },
+        "StageName": "prod",
+      },
+      "Type": "AWS::ApiGateway::Stage",
+    },
+  },
+  "Rules": {
+    "CheckBootstrapVersion": {
+      "Assertions": [
+        {
+          "Assert": {
+            "Fn::Not": [
+              {
+                "Fn::Contains": [
+                  [
+                    "1",
+                    "2",
+                    "3",
+                    "4",
+                    "5",
+                  ],
+                  {
+                    "Ref": "BootstrapVersion",
+                  },
+                ],
+              },
+            ],
+          },
+          "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI.",
+        },
+      ],
+    },
+  },
+}
+`;

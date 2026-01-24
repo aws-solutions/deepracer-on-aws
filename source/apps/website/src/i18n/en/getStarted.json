@@ -1,0 +1,90 @@
+{
+  "header": "Get started with reinforcement learning",
+  "overviewHeader": "How DeepRacer on AWS works",
+  "accountResourcesHeader": "Step 0: Create account resources (Required / ~5 mins)",
+  "rlFtueHeader": "Step 1: Take a crash course on Reinforcement Learning (10min)",
+  "rlFtueDescription": "Reinforcement Learning (RL) is the Machine Learning technique which drives AWS DeepRacer. Learn the basics of RL to create and optimize your models.",
+  "rlFtueButtonText": "Start the course",
+  "modelCreateHeader": "Step 2: Create a model",
+  "modelCreateDescription": "dummy text",
+  "modelCreateButtonText": "Create model",
+  "altText": {
+    "howItWorks": "How DeepRacer works?"
+  },
+  "crashCourseGuide": {
+    "welcomeSlide": {
+      "header": "Developers, start your engines!",
+      "title": "Introduction",
+      "paragraphOne": "This guide will walk you through the basics of reinforcement learning (RL), how to train an RL model, and define the reward functions with parameters.",
+      "paragraphTwo": "With this knowledge, you’ll be ready to train a model and race in the AWS DeepRacer League."
+    },
+    "whyRLSlide": {
+      "header": "What is reinforcement learning?",
+      "paragraphTwo": "A reinforcement learning model will learn from its experience and over time will be able to identify which actions lead to the best rewards.",
+      "otherTypes": {
+        "header": "Other types of machine learning",
+        "supervisedLearning": "Supervised learning",
+        "supervisedLearningParagraph": "Example-driven training — with labeled data of known outputs for given inputs, a model is trained to predict output for new inputs.",
+        "unsupervisedLearning": "Unsupervised learning",
+        "unsupervisedLearningParagraph": "Inference-based training — with unlabeled data without known outputs, a model is trained to identify related structures or similar patterns within the input data."
+      }
+    },
+    "trainingSlide": {
+      "title": "How to train a reinforcement learning model?"
+    },
+    "rlOnDrSlide": {
+      "title": "How does AWS DeepRacer learn to drive itself?"
+    },
+    "defineRewardFunctionSlide": {
+      "title": "Reward function",
+      "steps": {
+        "one": {
+          "title": "Overview",
+          "meta": "define-reward-1"
+        },
+        "two": {
+          "title": "Stay on track example",
+          "meta": "define-reward-2"
+        },
+        "three": {
+          "title": "Follow the center line example",
+          "meta": "define-reward-3"
+        },
+        "four": {
+          "title": "Prevent zig-zag",
+          "meta": "define-reward-4"
+        }
+      },
+      "containerHeader": "The Reward Function",
+      "subStepZero": {
+        "header": "Putting it all together",
+        "paragraphOne": "With all these parameters at your disposal, you can define a reward function to incentivize whatever driving behavior you like.",
+        "paragraphTwo": "Let's see a few examples of reward functions and how they use the parameters to determine a reward. The following three reward functions are available as examples in the AWS DeepRacer console so you can try them out and see how they behave, or submit them to the AWS DeepRacer League."
+      },
+      "subStepOne": {
+        "header": "1. Stay On Track",
+        "paragraphOne": "In this example, we give a high reward for when the car stays on the track, and penalize if the car deviates from the track boundaries.",
+        "paragraphThree": "Since this function doesn't reward any specific kind of behavior besides staying on the track, an agent trained with this function may take a longer time to converge to any particular behavior."
+      },
+      "subStepTwo": {
+        "header": "2. Follow Center Line",
+        "paragraphOne": "In this example we measure how far away the car is from the center of the track, and give a higher reward if the car is close to the center line.",
+        "paragraphThree": "This example is more specific about what kind of driving behavior to reward, so an agent trained with this function is likely to learn to follow the track very well. However, it is unlikely to learn any other behavior such as accelerating or braking for corners."
+      },
+      "subStepThree": {
+        "header": "3. Prevent zig-zag",
+        "paragraphOne": "This example incentivizes the agent to follow the center line but penalizes with lower reward if it steers too much, which will help prevent zig-zag behavior.",
+        "paragraphTwo": "The agent will learn to drive smoothly in the simulator and likely display the same behavior when deployed in the physical vehicle."
+      }
+    },
+    "rewardFunctionSlide": {
+      "title": "Parameters of reward functions"
+    },
+    "finalSlide": {
+      "header": "Congratulations!",
+      "title": "Next steps",
+      "paragraph": "It's time for the rubber to hit the road. Now that you've learned how to use reward functions to give you a competitive edge, you're ready to build a model and enter the AWS DeepRacer League.",
+      "createModel": "Create model"
+    }
+  }
+}
