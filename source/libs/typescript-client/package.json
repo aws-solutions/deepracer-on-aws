@@ -18,7 +18,7 @@
     "@aws-sdk/types": "3.609.0",
     "@aws-sdk/util-user-agent-browser": "3.609.0",
     "@aws-sdk/util-user-agent-node": "3.614.0",
-    "@smithy/config-resolver": "^3.0.5",
+    "@smithy/config-resolver": "^4.4.0",
     "@smithy/core": "^2.3.2",
     "@smithy/fetch-http-handler": "^3.2.4",
     "@smithy/hash-node": "^3.0.3",
