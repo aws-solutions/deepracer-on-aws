@@ -1,0 +1,11 @@
+/*
+Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+SPDX-License-Identifier: Apache-2.0
+*/
+
+#top-navigation {
+  position: sticky;
+  top: 0;
+  width: 100%;
+  z-index: 1003;
+}

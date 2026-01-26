@@ -1,0 +1,275 @@
+{
+  "buttons": {
+    "submitModel": "Submit to a virtual race",
+    "actions": "Actions",
+    "deleteModel": "Delete",
+    "cloneModel": "Clone",
+    "downloadModel": "Download physical car model",
+    "downloadVirtualModel": "Download virtual model",
+    "startEvaluation": "Start evaluation",
+    "stopEvaluation": "Stop evaluation",
+    "loadEvaluation": "Load evaluation"
+  },
+  "tabs": {
+    "training": "Training",
+    "evaluation": "Evaluation"
+  },
+  "modelDoesNotExist": "Model does not exist.",
+  "notifications": {
+    "deleteModelSuccess": "Successfully deleted model \"{{ modelName }}\".",
+    "trainingComplete": {
+      "header": "Training complete",
+      "content": "You can now evaluate your model.",
+      "action": "Start evaluation"
+    },
+    "trainingInProgress": {
+      "header": "Training in progress",
+      "content": "Training will stop after {{minutes}} minutes."
+    },
+    "trainingInitializing": {
+      "header": "Initializing training",
+      "content": "This can take a few minutes."
+    },
+    "trainingStopping": {
+      "header": "Stopping training",
+      "content": "This can take a few minutes. Once the training stops, you can evaluate your model."
+    },
+    "evaluationInitializing": {
+      "header": "Initializing evaluation",
+      "content": "This can take a few minutes."
+    },
+    "evaluationInProgress": {
+      "header": "Evaluation in progress",
+      "content": "You will see per-trial performance as the evaluation progresses."
+    },
+    "evaluationStopping": {
+      "header": "Stopping evaluation",
+      "content": "This can take a few minutes."
+    },
+    "physicalDownloadModelSuccess": "Download started for physical model \"{{ modelName }}\".",
+    "virtualDownloadModelSuccess": "Download started for virtual model \"{{ modelName }}\".",
+    "virtualDownloadModelPackaging": "Please wait. Preparing download for virtual model for \"{{ modelName }}\". This process may take 1-2 minutes."
+  },
+  "evaluationDetails": {
+    "header": {
+      "noEvaluation": "Evaluation details",
+      "withEvaluation": "{{evaluationName}} evaluation details"
+    },
+    "placeholder": {
+      "title": {
+        "trainingComplete": "<b>Training complete. You can now evaluate your model's performance.</b>",
+        "trainingNotComplete": "<b>Evaluate your model after the training is completed.</b>"
+      },
+      "description": "Evaluate the trained model by having the agent race against the clock along a chosen track in simulation.<br/>See how your model performs in any environment."
+    },
+    "actions": {
+      "downloadLogs": "Download logs",
+      "stopEvaluation": "Stop evaluation",
+      "startEvaluation": "Start evaluation",
+      "startNewEvaluation": "Start new evaluation"
+    },
+    "simulationVideo": {
+      "header": {
+        "stream": "Simulation video stream",
+        "video": "Simulation video"
+      }
+    },
+    "evaluationResultsTable": {
+      "header": "Evaluation results",
+      "empty": {
+        "noTrials": "No evaluation trials yet",
+        "noTrialsCompleted": "No evaluation trials completed.",
+        "status": "Evaluation status: {{status}}"
+      },
+      "columnHeaders": {
+        "crashCount": "Crashes",
+        "crashPenalty": "Crash penalty",
+        "offTrackCount": "Off-tracks",
+        "offTrackPenalty": "Off-track penalty",
+        "resetCount": "Resets",
+        "status": "Status",
+        "time": "Time (MM:SS.mmm)",
+        "trial": "Trial",
+        "trialResult": "Trial result (% track completed)"
+      },
+      "seconds": "{{seconds}} seconds"
+    },
+    "stopEvaluationModal": {
+      "header": "Stop evaluation",
+      "content1": "Are you sure you want to stop the evaluation of your reinforcement learning model?",
+      "content2": "You will not be able to restart the current evaluation. To continue evaluating your model, you can start a new evaluation.",
+      "cancel": "Cancel",
+      "confirm": "Stop evaluation"
+    }
+  },
+  "evaluationConfiguration": {
+    "header": "Evaluation configuration",
+    "keyValueLabels": {
+      "raceType": "Race type",
+      "enviromentSimulation": "Environment simulation",
+      "track": "Track",
+      "trackDirection": "Track direction",
+      "numberOfTrials": "Number of trials",
+      "objectAvoidanceRules": "Object avoidance rules"
+    }
+  },
+  "evaluationsTable": {
+    "header": "Evaluations selector",
+    "actions": {
+      "loadEvaluation": "Load evaluation"
+    },
+    "loadingText": "Loading evaluations",
+    "columnHeaders": {
+      "name": "Name",
+      "evaluationDate": "Evaluation date",
+      "lapTime": "Best lap time",
+      "track": "Track",
+      "raceType": "Race type"
+    },
+    "empty": {
+      "title": "No evaluations",
+      "subtitle": "No evaluations to display",
+      "action": "Start evaluation"
+    },
+    "noMatch": {
+      "title": "No matches",
+      "subtitle": "We can't find a match.",
+      "action": "Clear filter"
+    },
+    "pagination": {
+      "nextPageLabel": "Next page",
+      "pageLabel": "Page {{pageNumber}} of all pages",
+      "previousPageLabel": "Previous page"
+    },
+    "preferences": {
+      "cancelLabel": "Cancel",
+      "confirmLabel": "Confirm",
+      "contentDisplay": {
+        "title": "Column preferences",
+        "description": "Customize the columns visibility and order."
+      },
+      "pageSize": {
+        "optionsLabel": "{{count}} evaluations",
+        "title": "Select page size"
+      },
+      "title": "Preferences",
+      "visibleContentTitle": "Select visible content"
+    },
+    "filter": {
+      "ariaLabel": "Filter models",
+      "filterBy": "Filter by",
+      "matchCount_one": "{{count}} match",
+      "matchCount_other": "{{count}} matches",
+      "placeholder": "Find evaluations"
+    }
+  },
+  "trainingDetails": {
+    "header": "Training",
+    "description": "DeepRacer on AWS leverages Amazon SageMaker to train your model behind the scenes and to simulate the agent's interaction with the environment. Watch how the agent behaves in the chosen environment, as prescribed by the reward function.",
+    "initializingPlaceholder": "<p><b>Inspect training after the training instance is provisioned and the training is initialized.</b></p><br/><p>Watch training in progress to see how your agent attempts to complete the track in the simulator.</p>",
+    "actionButtons": {
+      "downloadLogs": "Download logs",
+      "stopTraining": "Stop training"
+    },
+    "simulationVideo": {
+      "header": "Simulation video stream",
+      "notAvailable": "Simulation video stream not available.<br/>Video is only available during training.",
+      "alt": "Simulation video stream not available"
+    },
+    "rewardGraph": {
+      "i18nStrings": {
+        "filterLabel": "Filter",
+        "filterPlaceholder": "Filter data",
+        "filterSelectedAriaLabel": "Selected filter",
+        "legendAriaLabel": "Legend",
+        "detailPopoverDismissAriaLabel": "Dismiss",
+        "chartAriaRoleDescription": "Line chart",
+        "xAxisAriaRoleDescription": "x axis",
+        "yAxisAriaRoleDescription": "y axis"
+      },
+      "header": "Reward graph",
+      "loading": "Loading training metrics",
+      "noData": {
+        "header": "No data to display",
+        "content": "There is no data available"
+      },
+      "noMatch": {
+        "header": "No matching data",
+        "content": "There is no matching data to display"
+      },
+      "series": {
+        "avgTrainingReward": "Average reward (Training)",
+        "avgEvaluationReward": "Average reward (Evaluation)",
+        "avgTrainingCompletion": "Average completion (Training)",
+        "avgEvaluationCompletion": "Average completion (Evaluation)",
+        "bestModel": "Best model"
+      },
+      "xTitle": "Iteration",
+      "yTitle": "Reward/Percentage"
+    },
+    "stopTrainingModal": {
+      "header": "Stop training",
+      "content": "<p>Are you sure you want to stop the training of your reinforcement learning model?</p><br/><p>Once stopped, the training cannot be continued. It takes approximately 4 minutes to stop the training process.</p>",
+      "cancel": "Cancel",
+      "confirm": "Stop training"
+    }
+  },
+  "trainingConfiguration": {
+    "header": "Training Configuration",
+    "keyValueLabels": {
+      "raceType": "Race type",
+      "enviromentSimulation": "Environment simulation",
+      "rewardFunction": "Reward function",
+      "sensors": "Sensor(s)",
+      "actionSpaceType": "Action space type",
+      "actionSpace": "Action space",
+      "framework": "Framework",
+      "reinforcementLearningAlgorithm": "Reinforcement learning algorithm",
+      "totalTrainingTime": "Total training time"
+    },
+    "tensorflow": "Tensorflow",
+    "totalTrainingTime": "{{count}} minutes",
+    "rewardFunctionModal": {
+      "copySuccess": "Reward function copied",
+      "copyError": "Reward function failed to copy"
+    },
+    "showRewardFunctionButton": "Show",
+    "actionSpaceDisplay": {
+      "discreteTable": {
+        "columnHeaders": {
+          "number": "No.",
+          "steeringAngle": "Steering angle (°)",
+          "speed": "Speed (m/s)"
+        }
+      },
+      "speed": "Speed: ",
+      "steeringAngle": "Steering angle: "
+    },
+    "hyperparameterTable": {
+      "columnHeaders": {
+        "hyperparameter": "Hyperparameter",
+        "value": "Value"
+      },
+      "hyperparameters": {
+        "batch_size": "Gradient descent batch size",
+        "beta_entropy": "Entropy",
+        "discount_factor": "Discount factor",
+        "e_greedy_value": "Epsilon greedy final value",
+        "epsilon_steps": "Epsilon greedy steps",
+        "exploration_type": "Exploration type",
+        "loss_type": "Loss type",
+        "lr": "Learning rate",
+        "num_episodes_between_training": "Number of experience episodes between each policy-updating iteration",
+        "num_epochs": "Number of epochs",
+        "sac_alpha": "SAC alpha",
+        "stack_size": "Stack size"
+      }
+    }
+  },
+  "simulationVideoPlaceholder": {
+    "alt": "Simulation video stream not available.",
+    "evaluationNoCompletedLaps": "Simulation video not available.<br/>Model must complete at least one lap.",
+    "evaluation": "Simulation video stream not available.<br/>Video is available after evaluation is initialized.",
+    "training": "Simulation video stream not available.<br/>Video is only available during training."
+  }
+}

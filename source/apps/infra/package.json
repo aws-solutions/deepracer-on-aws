@@ -1,0 +1,38 @@
+{
+  "name": "@deepracer-indy/infra",
+  "version": "0.0.0",
+  "bin": {
+    "cdk": "bin/deepRacerIndy.ts"
+  },
+  "scripts": {
+    "build": "cdk synth",
+    "clean": "rm -rf dist cdk.out",
+    "cdk": "cdk",
+    "bootstrap": "cdk bootstrap",
+    "deploy": "cdk deploy --parameters AdminEmail=$ADMIN_EMAIL${NAMESPACE:+ --parameters Namespace=$NAMESPACE}",
+    "list": "cdk list"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "aws-cdk": "2.1002.0",
+    "esbuild": "0.25.0"
+  },
+  "dependencies": {
+    "@aws-smithy/server-apigateway": "1.0.0-alpha.10",
+    "@aws-smithy/server-common": "1.0.0-alpha.10",
+    "@aws-solutions-constructs/aws-cloudfront-s3": "^2.64.0",
+    "@aws-solutions-constructs/aws-wafwebacl-apigateway": "^2.64.0",
+    "@deepracer-indy/config": "workspace:*",
+    "@deepracer-indy/database": "workspace:*",
+    "@deepracer-indy/typescript-server-client": "workspace:*",
+    "@types/aws-lambda": "^8.10.140",
+    "aws-cdk-lib": "2.181.0",
+    "constructs": "^10.3.0",
+    "js-yaml": "^4.1.0",
+    "uuid": "^11.0.3",
+    "vitest": "3.0.7"
+  },
+  "imports": {
+    "#*": "./lib/*"
+  }
+}

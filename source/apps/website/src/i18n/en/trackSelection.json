@@ -1,0 +1,35 @@
+{
+  "CLOCKWISE": "Clockwise",
+  "collectionPreferences": {
+    "cancelLabel": "Cancel",
+    "confirmLabel": "Confirm",
+    "pageSizeOptionsLabel": "{{count}} tracks",
+    "pageSizeTitle": "Select page size",
+    "title": "Preferences",
+    "visibleContentLabel": "Main properties",
+    "visibleContentTitle": "Select visible content"
+  },
+  "COUNTER_CLOCKWISE": "Counterclockwise",
+  "difficultyAsc": "Difficulty: Least to most",
+  "difficultyDesc": "Difficulty: Most to least",
+  "direction": "Direction",
+  "filters": {
+    "filteringAriaLabel": "Filter track",
+    "matchCount_one": "{{count}} match",
+    "matchCount_other": "{{count}} matches",
+    "searchFilterPlaceholder": "Find track"
+  },
+  "length": "Length",
+  "lengthAsc": "Length: Shortest to longest",
+  "lengthDesc": "Length: Longest to shortest",
+  "notracks": "No tracks",
+  "pagination": {
+    "nextPageLabel": "Next page",
+    "pageLabel": "Page {{pageNumber}} of all pages",
+    "previousPageLabel": "Previous page"
+  },
+  "sortBy": "Sort by",
+  "trackDir": "Track direction",
+  "trackDirDesc": "Select the direction in which you wish to race",
+  "width": "Width"
+}

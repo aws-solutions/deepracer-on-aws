@@ -1,0 +1,18 @@
+{
+  "submitModelToRace": "Submit model to race",
+  "modelDetails": "Model details",
+  "chooseRace": "Choose race",
+  "raceSelection": "Race selection and submission",
+  "chooseARace": "Choose a race",
+  "cancel": "Cancel",
+  "raceDescription": "Submit your model to participate in the selected virtual race. Your time and rank will be displayed on the race leaderboard alongside other competitors.",
+  "modelDoesNotExist": "Model doesn't exist",
+  "modelNotReady": "Model is not ready for submission. Please wait for the model to finish training.",
+  "createRace": "Create race",
+  "noOpenRaces": "Currently there are no open races available.",
+  "noSelectedRace": "Currently you do not have any race chosen. Please choose a race to submit your model to.",
+  "retrievingRaces": "Retrieving races. Please wait.",
+  "closesOn": "Closes on",
+  "submitToRace": "Submit to race",
+  "submitModelSuccess": "Successfully submitted model '{{modelName}}' to race '{{raceName}}'"
+}

@@ -1,0 +1,49 @@
+{
+  "tables": [
+    {
+      "TableName": "TestTable",
+      "KeySchema": [
+        { "AttributeName": "pk", "KeyType": "HASH" },
+        { "AttributeName": "sk", "KeyType": "RANGE" }
+      ],
+      "AttributeDefinitions": [
+        { "AttributeName": "pk", "AttributeType": "S" },
+        { "AttributeName": "sk", "AttributeType": "S" },
+        { "AttributeName": "gsi1pk", "AttributeType": "S" },
+        { "AttributeName": "gsi1sk", "AttributeType": "S" },
+        { "AttributeName": "closeTime", "AttributeType": "S" },
+        { "AttributeName": "rankingScore", "AttributeType": "N" }
+      ],
+      "ProvisionedThroughput": { "ReadCapacityUnits": 1000, "WriteCapacityUnits": 1000 },
+      "GlobalSecondaryIndexes": [
+        {
+          "IndexName": "gsi1pk-gsi1sk",
+          "KeySchema": [
+            { "AttributeName": "gsi1pk", "KeyType": "HASH" },
+            { "AttributeName": "gsi1sk", "KeyType": "RANGE" }
+          ],
+          "Projection": { "ProjectionType": "ALL" }
+        }
+      ],
+      "LocalSecondaryIndexes": [
+        {
+          "IndexName": "closeTime",
+          "KeySchema": [
+            { "AttributeName": "pk", "KeyType": "HASH" },
+            { "AttributeName": "closeTime", "KeyType": "RANGE" }
+          ],
+          "Projection": { "ProjectionType": "ALL" }
+        },
+        {
+          "IndexName": "rankingScore",
+          "KeySchema": [
+            { "AttributeName": "pk", "KeyType": "HASH" },
+            { "AttributeName": "rankingScore", "KeyType": "RANGE" }
+          ],
+          "Projection": { "ProjectionType": "ALL" }
+        }
+      ]
+    }
+  ],
+  "basePort": 8001
+}

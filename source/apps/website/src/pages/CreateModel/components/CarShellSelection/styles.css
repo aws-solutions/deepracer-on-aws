@@ -1,0 +1,29 @@
+/*
+Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+SPDX-License-Identifier: Apache-2.0
+*/
+
+.shellDiv {
+  height: 600px;
+  margin-top: 20px;
+}
+
+.carouselImage {
+  cursor: pointer;
+  height: 85%;
+  width: 85%;
+  display: block;
+  margin: 10px;
+  border: 1px;
+  border-style: solid;
+  border-color: black;
+}
+
+.selectedCarouselImage {
+  height: 90%;
+  width: 90%;
+  display: block;
+  border: 2px;
+  border-style: inset;
+  border-color: #046f92;
+}

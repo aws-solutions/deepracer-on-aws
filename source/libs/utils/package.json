@@ -1,0 +1,19 @@
+{
+  "name": "@deepracer-indy/utils",
+  "version": "0.0.1",
+  "main": "./src/index.ts",
+  "module": "./src/index.ts",
+  "type": "module",
+  "private": true,
+  "sideEffects": false,
+  "scripts": {
+    "upgrade-deps": "pnpx npm-check-updates -i"
+  },
+  "dependencies": {
+    "@aws-sdk/lib-storage": "3.654.0",
+    "@aws-sdk/s3-request-presigner": "3.654.0"
+  },
+  "imports": {
+    "#*": "./src/*"
+  }
+}

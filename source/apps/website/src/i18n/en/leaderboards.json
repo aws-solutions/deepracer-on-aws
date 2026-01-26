@@ -1,0 +1,56 @@
+{
+  "table": {
+    "collectionPreferences": {
+      "cancelLabel": "Cancel",
+      "confirmLabel": "Confirm",
+      "pageSizeOptionsLabel": "{{count}} leaderboards",
+      "pageSizeTitle": "Select page size",
+      "title": "Preferences",
+      "visibleContentTitle": "Select visible content"
+    },
+    "columnHeader": {
+      "name": "Name",
+      "status": "Status",
+      "competitionFormat": "Competition format",
+      "startDate": "Start date",
+      "endDate": "End date"
+    },
+    "emptySubtitle": "No races to display.",
+    "emptyTitle": "No races",
+    "contentDisplay": {
+      "title": "Column preferences",
+      "description": "Customize the columns visibility and order."
+    },
+    "noMatchTitle": "No matches",
+    "noMatchSubtitle": "We can't find a match.",
+    "pagination": {
+      "nextPageLabel": "Next page",
+      "pageLabel": "Page {{pageNumber}} of all pages",
+      "previousPageLabel": "Previous page"
+    },
+    "creationTime": "{{date, datetime(month: numeric; day: numeric; year: numeric; hour: numeric; minute: 2-digit;)}}",
+    "cloneRaceButton": "Clone race",
+    "createRaceButton": "Create Race",
+    "raceDetailButton": "Race details",
+    "header": "Manage races",
+    "loadingText": "Loading races",
+    "status": {
+      "open": "Open",
+      "closed": "Closed",
+      "toRace": "to race"
+    },
+    "raceType": {
+      "timeTrial": "Time trial",
+      "objectAvoidance": "Object avoidance"
+    },
+    "filters": {
+      "filteringAriaLabel": "Filter races",
+      "filterBy": "Filter by",
+      "matchCount_one": "{{count}} match",
+      "matchCount_other": "{{count}} matches",
+      "noFilter": "No filter",
+      "selectedAriaLabel": "Selected",
+      "searchFilterPlaceholder": "Find race"
+    }
+  }
+}

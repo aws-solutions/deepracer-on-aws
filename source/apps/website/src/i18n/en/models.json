@@ -1,0 +1,88 @@
+{
+  "table": {
+    "collectionPreferences": {
+      "cancelLabel": "Cancel",
+      "confirmLabel": "Confirm",
+      "pageSizeOptionsLabel": "{{count}} models",
+      "pageSizeTitle": "Select page size",
+      "title": "Preferences",
+      "visibleContentTitle": "Select visible content"
+    },
+    "columnHeader": {
+      "modelName": "Model name",
+      "modelDescription": "Model description",
+      "status": "Status",
+      "agentAlgorithm": "Agent algorithm",
+      "creationTime": "Creation time",
+      "sensors": "Sensors"
+    },
+    "emptySubtitle": "No models to display.",
+    "emptyTitle": "No models",
+    "filters": {
+      "filteringAriaLabel": "Filter models",
+      "filterBy": "Filter by",
+      "matchCount_one": "{{count}} match",
+      "matchCount_other": "{{count}} matches",
+      "noFilter": "No filter",
+      "selectedAriaLabel": "Selected",
+      "searchFilterPlaceholder": "Find model"
+    },
+    "contentDisplay": {
+      "title": "Column preferences",
+      "description": "Customize the columns visibility and order."
+    },
+    "header": "Your models",
+    "loadingText": "Loading models",
+    "noMatchTitle": "No matches",
+    "noMatchSubtitle": "We can’t find a match.",
+    "pagination": {
+      "nextPageLabel": "Next page",
+      "pageLabel": "Page {{pageNumber}} of all pages",
+      "previousPageLabel": "Previous page"
+    },
+    "creationTime": "{{date, datetime(month: numeric; day: numeric; year: numeric; hour: numeric; minute: 2-digit;)}}",
+    "noVideoLabel": "Not available",
+    "videoLabel": "View",
+    "visibleContentPreferenceOptionsLabel": "Model properties",
+    "createModelButton": "Create model",
+    "buttonDropdownLabel": "Actions",
+    "cloneButton": "Clone",
+    "deleteButton": "Delete",
+    "downloadVirtualCarModelButton": "Download virtual model",
+    "downloadPhysicalCarModelButton": "Download physical car model",
+    "editModelNameButton": "Edit model name",
+    "manageTagsButton": "Manage tags",
+    "importModelButton": "Import model",
+    "deleteModal": {
+      "header": "You're about to permanently delete your model",
+      "deleteButton": "Delete",
+      "cancelButton": "Cancel",
+      "content": "This will interupt any cloned model currently in training based on this model. Are you sure you want to delete the following model: {{modelName}}"
+    }
+  },
+  "sensors": {
+    "camera": "Camera",
+    "stereoCamera": "Stereo camera",
+    "lidar": "Lidar"
+  },
+  "notifications": {
+    "statusTransitions": {
+      "IMPORTING": {
+        "toReady": "Model \"{{modelName}}\" imported successfully.",
+        "toError": "Failed to import model \"{{modelName}}\"."
+      },
+      "TRAINING": {
+        "toReady": "Training completed for model \"{{modelName}}\".",
+        "toError": "Training failed for model \"{{modelName}}\"."
+      },
+      "EVALUATING": {
+        "toReady": "Evaluation completed for model \"{{modelName}}\".",
+        "toError": "Evaluation failed for model \"{{modelName}}\"."
+      },
+      "DELETING": {
+        "completed": "Model \"{{modelName}}\" deleted successfully.",
+        "toError": "Failed to delete model \"{{modelName}}\"."
+      }
+    }
+  }
+}

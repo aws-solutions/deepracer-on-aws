@@ -1,0 +1,25 @@
+{
+  "sections": {
+    "raceHub": "Race hub",
+    "learningAndModels": "Learning & Models",
+    "admin": "Admin"
+  },
+  "breadcrumbs": {
+    "account": "Account",
+    "createEvaluation": "Create evaluation",
+    "createModel": "Create model",
+    "createRace": "Create race",
+    "editRace": "Edit race",
+    "enterRace": "Enter race",
+    "getStarted": "Get started",
+    "home": "Home",
+    "importModel": "Account",
+    "managedRaces": "Managed races",
+    "manageInstance": "Manage instance",
+    "modelDetails": "Model details",
+    "models": "Your models",
+    "raceDetails": "Race details",
+    "racerProfile": "Racer profile",
+    "races": "Races"
+  }
+}

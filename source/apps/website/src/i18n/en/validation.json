@@ -1,0 +1,18 @@
+{
+  "number": {
+    "min": "{{name}} must be greater than or equal to {{min}}.",
+    "max": "{{name}} must less than or equal to {{max}}.",
+    "lessThanField": "{{name}} must be less than {{lessThanName, lowercase}}.",
+    "greaterThanField": "{{name}} must be greater than {{greaterThanName, lowercase}}.",
+    "invalid": "Please enter a valid number for {{name}}.",
+    "integer": "{{name}} must be an integer."
+  },
+  "string": {
+    "length": {
+      "min": "The {{name, lowercase}} has too few characters.",
+      "max": "The {{name, lowercase}} has too many characters."
+    },
+    "format": "Enter a valid {{name, lowercase}}."
+  },
+  "required": "{{name}} is required."
+}

@@ -1,0 +1,207 @@
+{
+  "accessories": {
+    "groupNames": {
+      "noGroup": "NoGroup",
+      "prescriptionGlasses": "Prescription Glasses",
+      "sunglasses": "Sunglasses"
+    },
+    "Blank": "--",
+    "Prescription02": "Black rectangular",
+    "Round": "Black round",
+    "Prescription01": "Light blue frame",
+    "Wayfarers": "Black rectangular",
+    "Sunglasses": "Black round",
+    "Kurt": "White frame"
+  },
+  "top": {
+    "groupNames": {
+      "noGroup": "NoGroup",
+      "hair": "Hair",
+      "headwear": "Headwear"
+    },
+    "Helmet": "Helmet",
+    "LongHairFro": "Afro",
+    "LongHairFroBand": "Afro with headband",
+    "NoHair": "Bald",
+    "ShortHairSides": "Balding",
+    "LongHairBun": "Bun",
+    "LongHairDreads": "Long locs",
+    "LongHairStraight": "Long straight",
+    "LongHairStraight2": "Long straight with ear tuck",
+    "LongHairBigHair": "Long wavy",
+    "LongHairCurvy": "Long wavy with fringe",
+    "LongHairMiaWallace": "Medium bob with fringe",
+    "LongHairBob": "Medium bob with side part",
+    "LongHairCurly": "Medium curly",
+    "ShortHairShaggyMullet": "Medium layered",
+    "LongHairNotTooLong": "Medium with left side part",
+    "LongHairStraightStrand": "Medium with right side part",
+    "ShortHairTheCaesar": "Short caesar",
+    "ShortHairTheCaesarSidePart": "Short caesar with part",
+    "ShortHairShortFlat": "Short crew cut",
+    "ShortHairDreads01": "Short high top fade",
+    "ShortHairDreads02": "Short locs",
+    "ShortHairShortWaved": "Short quiff",
+    "ShortHairFrizzle": "Short undercut",
+    "ShortHairShortCurly": "Short wavy",
+    "ShortHairShortRound": "Short with part",
+    "LongHairFrida": "Flower crown",
+    "Hat": "Hat",
+    "Hijab": "Hijab",
+    "WinterHat2": "Knit hat with ear flaps",
+    "WinterHat3": "Stocking hat",
+    "WinterHat4": "Stocking hat with ears",
+    "Turban": "Turban",
+    "WinterHat1": "Winter trapper hat"
+  },
+  "hairColor": {
+    "groupNames": {
+      "noGroup": "NoGroup",
+      "blond": "Blond",
+      "brown": "Brown"
+    },
+    "Black": "Black",
+    "PastelPink": "Pastel pink",
+    "Red": "Red",
+    "SilverGray": "Silver gray",
+    "BlondeGolden": "Blond",
+    "Blonde": "Blondish brown",
+    "Platinum": "Platinum",
+    "Auburn": "Brown light",
+    "Brown": "Brown",
+    "BrownDark": "Brown dark"
+  },
+  "facialHair": {
+    "groupNames": {
+      "noGroup": "NoGroup"
+    },
+    "Blank": "--",
+    "BeardMajestic": "Burly beard",
+    "BeardMedium": "Full beard",
+    "MoustacheFancy": "Handlebar mustache",
+    "BeardLight": "Manicured beard",
+    "MoustacheMagnum": "Painter's brush mustache"
+  },
+  "facialHairColor": {
+    "groupNames": {
+      "noGroup": "NoGroup",
+      "blond": "Blond",
+      "brown": "Brown"
+    },
+    "Black": "Black",
+    "Red": "Red",
+    "BlondeGolden": "Blond",
+    "Blonde": "Blondish brown",
+    "Platinum": "Platinum",
+    "Brown": "Brown",
+    "BrownDark": "Brown dark",
+    "Auburn": "Brown light"
+  },
+  "clothing": {
+    "groupNames": {
+      "noGroup": "NoGroup",
+      "blazers": "Blazers",
+      "shirts": "Shirts"
+    },
+    "CollarSweater": "Collared sweater",
+    "Hoodie": "Hoodie",
+    "Overall": "Overalls",
+    "BlazerSweater": "Blazer with collared sweater",
+    "BlazerShirt": "Blazer with t-shirt",
+    "ShirtCrewNeck": "Crew neck",
+    "GraphicShirt": "Graphic t-shirt",
+    "ShirtScoopNeck": "Scoop neck",
+    "ShirtVNeck": "V-neck"
+  },
+  "clothingColor": {
+    "groupNames": {
+      "blue": "Blue",
+      "red": "Red",
+      "pastel": "Pastel",
+      "gray": "Gray",
+      "neutral": "Neutral"
+    },
+    "Blue03": "Aegean",
+    "Blue02": "Cerulean",
+    "Blue01": "Sky blue",
+    "Heather": "Heather gray",
+    "Gray01": "Light gray",
+    "Gray02": "Medium gray",
+    "Black": "Black",
+    "White": "White",
+    "PastelBlue": "Pastel blue",
+    "PastelGreen": "Pastel green",
+    "PastelOrange": "Pastel orange",
+    "PastelRed": "Pastel red",
+    "PastelYellow": "Pastel yellow",
+    "Pink": "Pink",
+    "Red": "Red"
+  },
+  "tshirtGraphic": {
+    "groupNames": {
+      "noGroup": "NoGroup"
+    },
+    "Diamond": "Diamond",
+    "Hola": "Hola",
+    "Pizza": "Pizza"
+  },
+  "eyes": {
+    "groupNames": {
+      "noGroup": "NoGroup"
+    },
+    "Close": "Closed",
+    "Cry": "Cry",
+    "Squint": "Excited",
+    "EyeRoll": "Eye roll",
+    "Happy": "Happy",
+    "Hearts": "Hearts",
+    "Default": "Neutral",
+    "Side": "Side",
+    "Surprised": "Surprised",
+    "Wink": "Wink",
+    "WinkWacky": "Wink wacky"
+  },
+  "eyebrows": {
+    "groupNames": {
+      "noGroup": "NoGroup"
+    },
+    "AngryNatural": "Angry thick",
+    "Angry": "Angry thin",
+    "SadConcernedNatural": "Concerned thick",
+    "SadConcerned": "Concerned thin",
+    "RaisedExcitedNatural": "Excited thick",
+    "RaisedExcited": "Excited thin",
+    "FlatNatural": "Furrowed thick",
+    "DefaultNatural": "Neutral thick",
+    "Default": "Neutral thin",
+    "UpDownNatural": "Raised thick",
+    "UpDown": "Raised thin",
+    "UnibrowNatural": "Unibrow thick"
+  },
+  "mouth": {
+    "groupNames": {
+      "noGroup": "NoGroup"
+    },
+    "Concerned": "Concerned",
+    "Disbelief": "Disbelief",
+    "Eating": "Eating",
+    "Grimace": "Grimace",
+    "Twinkle": "Grin",
+    "Serious": "Neutral",
+    "Sad": "Sad",
+    "ScreamOpen": "Shocked",
+    "Default": "Smile",
+    "Smile": "Smile with teeth",
+    "Tongue": "Stuck out tongue"
+  },
+  "skinColor": {
+    "groupNames": {
+      "noGroup": "NoGroup"
+    },
+    "Pale": "Light",
+    "Light": "Medium light",
+    "Brown": "Medium",
+    "DarkBrown": "Medium dark",
+    "Black": "Dark"
+  }
+}

@@ -1,0 +1,27 @@
+build
+.DS_Store
+Thumbs.db
+./nx
+
+# Dependency directories
+node_modules/
+py_modules/
+.pytest_cache/
+__pycache__/
+
+# Derived build assets
+**/deployment/global-s3-assets
+**/deployment/regional-s3-assets
+**/deployment/open-source
+**/deployment/ecr
+**/deployment/temp_checkout*
+git-info
+
+# local scripts
+script_*.sh
+
+#e2e tests
+.env
+*.log
+.e2e-tests/cypress/videos
+.e2e-tests/cypress/screenshots

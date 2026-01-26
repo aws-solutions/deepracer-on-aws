@@ -1,0 +1,13 @@
+{
+  "name": "@deepracer-indy/config",
+  "description": "Stores the app-wide config for DeepRacer Indy.",
+  "version": "0.0.1",
+  "main": "./src/index.ts",
+  "module": "./src/index.ts",
+  "type": "module",
+  "private": true,
+  "sideEffects": false,
+  "imports": {
+    "#*": "./src/*"
+  }
+}

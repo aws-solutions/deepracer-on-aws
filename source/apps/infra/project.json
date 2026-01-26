@@ -1,0 +1,13 @@
+{
+  "name": "infra",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/infra/src",
+  "projectType": "application",
+  "implicitDependencies": ["website"],
+  "tags": [],
+  "// targets": "to see all targets run: nx show project infra --web",
+  "targets": {
+    "lint": {},
+    "typecheck": {}
+  }
+}

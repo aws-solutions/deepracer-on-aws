@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleDetection": "force",
+    "declaration": false
+  },
+  "include": ["src"],
+  "exclude": ["**/*.stories.*", "**/*.spec.*"]
+}

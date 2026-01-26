@@ -1,0 +1,80 @@
+/*
+Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+SPDX-License-Identifier: Apache-2.0
+*/
+
+.rlOnDrSlideContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0px 32px 0px 32px;
+}
+
+.rlOnDrSlideContent {
+  flex-grow: 0;
+  flex-basis: 50%;
+  padding: 0px 8px 0px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 500px;
+}
+
+.rlOnDrSlideText {
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+.rlOnDrSlideImage {
+  flex-grow: 0;
+  flex-basis: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 500px;
+}
+
+.placeholder {
+  width: 200px;
+  height: 150px;
+  background: red;
+}
+
+.line {
+  stroke: #ec7211;
+  fill: none;
+  stroke-width: 2;
+  stroke-dasharray: 200 200;
+  opacity: 0.25;
+  transition:
+    stroke-dashoffset 1000ms ease,
+    opacity 400ms linear;
+}
+
+.lineVisible {
+  opacity: 1;
+  stroke-dashoffset: 0;
+}
+
+.text {
+  opacity: 0.25;
+  transition: opacity 300ms linear;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  font-size: 12px;
+  fill: currentColor;
+}
+
+.textVisible {
+  opacity: 1;
+}
+
+.image {
+  opacity: 1;
+  transition: opacity 300ms linear;
+}
+
+.fade {
+  opacity: 0.25;
+}

@@ -1,0 +1,31 @@
+{
+  "title": "Import model",
+  "description": "Choose a DeepRacer model to upload from your local file system. The selected model must be a virtual model previously exported from the DeepRacer solution. Physical car models cannot be uploaded to the solution.",
+  "details": {
+    "title": "Details",
+    "modelName": {
+      "label": "Model name",
+      "description": "The model name can have up to 64 characters. Valid characters: A-Z, a-z, 0-9, and hyphens (-). No spaces or underscores (_)."
+    },
+    "modelDescription": {
+      "label": "Model description - optional",
+      "description": "The model description can have up to 255 characters. Valid characters: A-Z, a-z, 0-9, and hyphens (-). No spaces or underscores (_)."
+    }
+  },
+  "validation": {
+    "modelNameRequired": "Model name is required",
+    "modelNameSpecialCharsAndLength": "Model name has one or more non-allowed characters, or is greater than 64 characters in length",
+    "modelDescSpecialCharsAndLength": "Model description has one or more non-allowed characters, or is greater than 255 characters in length",
+    "filesRequired": "Files are required",
+    "folderSizeExceeds": "Folder size exceeds max 1GB limit",
+    "missingRequiredFiles": "Missing required files: {{files}}"
+  },
+  "buttons": {
+    "cancel": "Cancel",
+    "import": "Import"
+  },
+  "notifications": {
+    "uploadModelSuccess": "Model upload completed successfully. Redirecting to model details page...",
+    "startModelUpload": "Model upload started. Please wait while files are being uploaded..."
+  }
+}

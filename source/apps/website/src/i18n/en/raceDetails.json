@@ -1,0 +1,140 @@
+{
+  "header": "Race details",
+  "start": "Start {{value, datetime(month: long; day: numeric; hour: numeric; minute: 2-digit;)}}",
+  "end": "End {{value, datetime(month: long; day: numeric; hour: numeric; minute: 2-digit;)}}",
+  "editRace": "Edit race",
+  "deleteRace": "Delete race",
+  "deleteRaceConfirm": "This action will permanently delete this race.",
+  "deleteRaceSuccessful": "Successfully deleted the race.",
+  "raceDetailsColumnLabels": {
+    "raceType": "Race type",
+    "raceDates": "Race dates",
+    "timezone": "Time zone",
+    "accessType": "Access type",
+    "raceHosting": "Race hosting"
+  },
+  "raceType": {
+    "TIME_TRIAL": "Time trial",
+    "OBJECT_AVOIDANCE": "Object avoidance"
+  },
+  "raceTrackColumn": {
+    "competitionTrack": "Competition track",
+    "trackDirection": {
+      "CLOCKWISE": "Direction: Clockwise",
+      "COUNTER_CLOCKWISE": "Direction: Counterclockwise"
+    }
+  },
+  "raceRulesColumn": {
+    "header": "Rules",
+    "rankingMethod": "Ranking method",
+    "style": "Style",
+    "entryCriteria": "Entry Criteria",
+    "resets": "Resets",
+    "offTrackPenalty": "Off-track penalty",
+    "rankingMethodPopoverContents": {
+      "BEST_LAP_TIME": "The best lap time is a leaderboard ranking method where the winner is the racer who posts the fastest lap.",
+      "TOTAL_TIME": "The total time is a leaderboard ranking method where the winner is the racer with the fastest overall average.",
+      "AVG_LAP_TIME": "The average lap time is a leaderboard ranking method where the winner is the racer who posts the best average lap time."
+    },
+    "resetsPopoverContent": "Resets are the maximum number of times each racer can rerun the race.",
+    "offTrackPenaltyPopoverContent": "An off-track penalty is the number of seconds added to a racer's time when all four wheels of an RL model drive off track. This triggers a reset.",
+    "timingMethodLabels": {
+      "BEST_LAP_TIME": "Best lap time",
+      "AVG_LAP_TIME": "Average lap time",
+      "TOTAL_TIME": "Total time"
+    },
+    "individualLap": "Individual lap",
+    "consecutiveLapCount_one": "{{count}} consecutive lap",
+    "consecutiveLapCount_other": "{{count}} consecutive laps",
+    "resetCountUnlimited": "Unlimited resets",
+    "secondCount_one": "{{count, number}} second",
+    "secondCount_other": "{{count, number}} seconds",
+    "collisionPenalty": "Collision penalty",
+    "collisionPenaltyPopoverContent": "A collision penalty is the number of seconds added to a racer's time for colliding with an object or bot. This triggers a reset."
+  },
+  "enterRace": "Enter race",
+  "info": "Info",
+  "yourFastestTime": "Your fastest time",
+  "fastestModelSubmitted": "Fastest model submitted",
+  "submissionsTable": {
+    "tableHeader": "Your submissions",
+    "header": {
+      "modelName": "Model name",
+      "time": "Time",
+      "status": "Status",
+      "date": "Date submitted to race"
+    },
+    "emptySubtitle": "No submissions to display.",
+    "emptyTitle": "No submissions",
+    "collectionPreferences": {
+      "cancelLabel": "Cancel",
+      "confirmLabel": "Confirm",
+      "pageSizeOptionsLabel": "{{count}} submissions",
+      "pageSizeTitle": "Select page size",
+      "title": "Preferences",
+      "visibleContentTitle": "Select visible content"
+    },
+    "contentDisplay": {
+      "title": "Column preferences",
+      "description": "Customize the columns visibility and order."
+    },
+    "pagination": {
+      "nextPageLabel": "Next page",
+      "pageLabel": "Page {{pageNumber}} of all pages",
+      "previousPageLabel": "Previous page"
+    },
+    "filters": {
+      "filteringAriaLabel": "Filter submissions",
+      "filterBy": "Filter by",
+      "matchCount_one": "{{count}} match",
+      "matchCount_other": "{{count}} matches",
+      "noFilter": "No filter",
+      "selectedAriaLabel": "Selected",
+      "searchFilterPlaceholder": "Find submission"
+    }
+  },
+  "raceLeaderboardTable": {
+    "header": {
+      "rank": "Rank",
+      "racer": "Racer",
+      "time": "Time",
+      "gapToFirst": "Gap to 1st",
+      "video": "Video",
+      "offtrack": "Off-track",
+      "name": "{{name}} rankings"
+    },
+    "emptySubtitle": "No racers have submitted a qualifying model to this race.",
+    "emptyTitle": "No qualifying submissions",
+    "collectionPreferences": {
+      "cancelLabel": "Cancel",
+      "confirmLabel": "Confirm",
+      "pageSizeOptionsLabel": "{{count}} submissions",
+      "pageSizeTitle": "Select page size",
+      "title": "Preferences",
+      "visibleContentTitle": "Select visible content"
+    },
+    "pagination": {
+      "nextPageLabel": "Next page",
+      "pageLabel": "Page {{pageNumber}} of all pages",
+      "previousPageLabel": "Previous page"
+    },
+    "filters": {
+      "filteringAriaLabel": "Filter racers",
+      "filterBy": "Filter by",
+      "matchCount_one": "{{count}} match",
+      "matchCount_other": "{{count}} matches",
+      "noFilter": "No filter",
+      "selectedAriaLabel": "Selected",
+      "searchFilterPlaceholder": "Find racer"
+    },
+    "contentDisplay": {
+      "title": "Column preferences",
+      "description": "Customize the columns visibility and order."
+    }
+  },
+  "tabs": {
+    "raceLeaderboard": "Race leaderboard",
+    "yourSubmissions": "Your submissions"
+  },
+  "raceDoesNotExist": "Leaderboard doesn't exist"
+}

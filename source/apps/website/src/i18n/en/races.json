@@ -1,0 +1,44 @@
+{
+  "welcome": "Welcome to community races",
+  "communityRaces": "Community races",
+  "createRace": "Create race",
+  "actions": "Actions",
+  "manageRace": "Manage race",
+  "completedRaces": "Completed races",
+  "seeRaceDetails": "See race details",
+  "collectionPreferences": {
+    "cancelLabel": "Cancel",
+    "confirmLabel": "Confirm",
+    "pageSizeOptionsLabel": "{{count}} races",
+    "pageSizeTitle": "Select page size",
+    "title": "Preferences",
+    "visibleContentLabel": "Main properties",
+    "visibleContentTitle": "Select visible content"
+  },
+  "start": "{{value, datetime(month: long; day: numeric; hour: numeric; minute: 2-digit;)}}",
+  "end": "{{value, datetime(month: long; day: numeric; hour: numeric; minute: 2-digit;)}}",
+  "raceDates": "Race dates",
+  "filters": {
+    "filterBy": "Filter by",
+    "filteringAriaLabel": "Filter races",
+    "matchCount_one": "{{count}} match",
+    "matchCount_other": "{{count}} matches",
+    "noFilter": "No filter",
+    "searchFilterPlaceholder": "Find race",
+    "selectedAriaLabel": "Selected"
+  },
+  "pagination": {
+    "nextPageLabel": "Next page",
+    "pageLabel": "Page {{pageNumber}} of all pages",
+    "previousPageLabel": "Previous page"
+  },
+  "noraces": "No races",
+  "TIME_TRIAL": "Time trial",
+  "OBJECT_AVOIDANCE": "Object avoidance",
+  "open": "LIVE",
+  "closed": "Closed",
+  "toRace": "until open",
+  "raceName": "Race name",
+  "raceType": "Race type",
+  "remaining": "remaining"
+}

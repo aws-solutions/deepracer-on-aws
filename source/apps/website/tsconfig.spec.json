@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["DOM", "ES2023"],
+    "types": [
+      "node",
+      "vitest/globals",
+      "vitest/importMeta",
+      "@nx/react/typings/cssmodule.d.ts",
+      "@nx/react/typings/image.d.ts"
+    ]
+  },
+  "include": [
+    "./.storybook/**/*",
+    ".eslintrc.cjs",
+    "./src/**/*.spec.*",
+    "./src/**/*.stories.*",
+    "./src/**/*.d.ts",
+    "vite.config.ts"
+  ]
+}

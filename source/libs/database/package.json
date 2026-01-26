@@ -1,0 +1,28 @@
+{
+  "name": "@deepracer-indy/database",
+  "version": "0.0.1",
+  "main": "./src/index.ts",
+  "module": "./src/index.ts",
+  "type": "module",
+  "sideEffects": false,
+  "private": true,
+  "scripts": {
+    "upgrade-deps": "pnpx npm-check-updates -i"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "3.654.0",
+    "@aws-sdk/lib-dynamodb": "3.654.0",
+    "@aws-sdk/util-dynamodb": "3.654.0",
+    "@deepracer-indy/config": "workspace:*",
+    "@deepracer-indy/typescript-server-client": "workspace:*",
+    "@deepracer-indy/utils": "workspace:*",
+    "electrodb": "3.4.1",
+    "nanoid": "^5.1.2"
+  },
+  "devDependencies": {
+    "vitest-dynamodb-lite": "^3.1.1"
+  },
+  "imports": {
+    "#*": "./src/*"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "version": "1.0",
+  "sources": ["src/main/smithy"],
+  "plugins": {
+    "typescript-codegen": {
+      "package": "@deepracer-indy/typescript-client",
+      "packageManager": "npm",
+      "packageVersion": "1.0.0",
+      "requiredMemberMode": "strict",
+      "useLegacyAuth": true
+    },
+    "typescript-ssdk-codegen": {
+      "package": "@deepracer-indy/typescript-server-client",
+      "packageManager": "npm",
+      "packageVersion": "1.0.0",
+      "requiredMemberMode": "strict"
+    },
+    "openapi": {
+      "apiGatewayDefaults": "2023-08-11",
+      "service": "com.aws.solutions.deepracer#DeepRacerIndy",
+      "tags": true,
+      "useIntegerType": true
+    }
+  }
+}
