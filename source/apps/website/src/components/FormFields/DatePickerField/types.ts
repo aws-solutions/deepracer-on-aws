@@ -9,5 +9,5 @@ import type { CommonFormFieldProps } from '#components/FormFields/types';
 export interface DatePickerFieldProps<
   FormValues extends FieldValues,
   FieldName extends FieldPathByValue<FormValues, string | undefined>,
-> extends CommonFormFieldProps<FormValues, FieldName>,
-    Omit<DatePickerProps, 'controlId' | 'name' | 'value'> {}
+>
+  extends CommonFormFieldProps<FormValues, FieldName>, Omit<DatePickerProps, 'controlId' | 'name' | 'value'> {}

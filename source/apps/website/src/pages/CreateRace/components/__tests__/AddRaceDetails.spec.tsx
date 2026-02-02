@@ -20,6 +20,7 @@ vi.mock('#components/TrackSelection', () => ({
 
 vi.mock('#utils/dateTimeUtils', () => ({
   isDateRangeInvalid: vi.fn(() => false),
+  getUTCOffsetTimeZoneText: vi.fn(() => 'UTC-0500 America/New_York'),
 }));
 
 const defaultFormValues: CreateRaceFormValues = {
@@ -72,6 +73,14 @@ describe('AddRaceDetails', () => {
     expect(screen.getByText(i18n.t('createRace:addRaceDetails.chooseRaceType'))).toBeInTheDocument();
     expect(screen.getByText(i18n.t('createRace:addRaceDetails.nameOfRacingEvent'))).toBeInTheDocument();
     expect(screen.getByText(i18n.t('createRace:addRaceDetails.chooseRaceDates'))).toBeInTheDocument();
+  });
+
+  it('displays timezone-aware date picker description', () => {
+    render(<TestWrapper />);
+
+    expect(
+      screen.getByText(/Choose a start and close date in 24-hour format UTC-0500 America\/New_York/),
+    ).toBeInTheDocument();
   });
 
   it('displays race type options', () => {

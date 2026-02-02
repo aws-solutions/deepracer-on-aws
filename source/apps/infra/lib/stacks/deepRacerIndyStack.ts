@@ -219,7 +219,7 @@ export class DeepRacerIndyStack extends Stack {
       ],
     });
 
-    applyDrTag(this);
+    applyDrTag(this, namespace);
 
     new CfnOutput(this, 'ApiEndpoint', {
       value: api.url,

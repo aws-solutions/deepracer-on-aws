@@ -4,7 +4,7 @@
 import { CfnGroup } from 'aws-cdk-lib/aws-resourcegroups';
 import { Construct } from 'constructs';
 
-import { drTagName, drTagValue } from '../common/taggingHelper.js';
+import { drTagName, getDrTagValue } from '../common/taggingHelper.js';
 
 interface ResourceGroupProps {
   namespace: string;
@@ -22,7 +22,7 @@ export class ResourceGroup extends Construct {
           tagFilters: [
             {
               key: drTagName,
-              values: [drTagValue],
+              values: [getDrTagValue(namespace)],
             },
           ],
         },

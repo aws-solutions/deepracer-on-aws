@@ -21,7 +21,7 @@ import TilesField from '#components/FormFields/TilesField/TilesField';
 import TimeInputField from '#components/FormFields/TimeInputField/TimeInputField';
 import TrackSelection from '#components/TrackSelection';
 import { DEFAULT_OBJECT_POSITIONS, TRACKS } from '#constants/tracks';
-import { isDateRangeInvalid } from '#utils/dateTimeUtils';
+import { getUTCOffsetTimeZoneText, isDateRangeInvalid } from '#utils/dateTimeUtils';
 
 import { CreateRaceFormValues } from '../CreateRace';
 
@@ -98,7 +98,7 @@ const AddRaceDetails = (props: AddRaceDetailsProps) => {
           </div>
           <div>
             <FormField
-              description={t('addRaceDetails.chooseRaceDatesDesc')}
+              description={t('addRaceDetails.chooseRaceDatesDesc', { timezone: getUTCOffsetTimeZoneText() })}
               label={t('addRaceDetails.chooseRaceDates')}
               stretch
             >

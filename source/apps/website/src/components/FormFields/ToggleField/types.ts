@@ -9,5 +9,5 @@ import type { CommonFormFieldProps } from '#components/FormFields/types';
 export interface ToggleFieldProps<
   FormValues extends FieldValues,
   FieldName extends FieldPathByValue<FormValues, boolean | undefined>,
-> extends CommonFormFieldProps<FormValues, FieldName>,
-    Omit<ToggleProps, 'controlId' | 'checked' | 'name'> {}
+>
+  extends CommonFormFieldProps<FormValues, FieldName>, Omit<ToggleProps, 'controlId' | 'checked' | 'name'> {}
