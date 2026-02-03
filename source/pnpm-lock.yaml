@@ -206,10 +206,10 @@ importers:
         version: 1.0.0-alpha.10
       '@aws-solutions-constructs/aws-cloudfront-s3':
         specifier: ^2.64.0
-        version: 2.97.0(@aws-solutions-constructs/core@2.97.0(aws-cdk-lib@2.181.0(constructs@10.4.5))(constructs@10.4.5))(@aws-solutions-constructs/resources@2.97.0(@aws-solutions-constructs/core@2.97.0(aws-cdk-lib@2.181.0(constructs@10.4.5))(constructs@10.4.5))(aws-cdk-lib@2.181.0(constructs@10.4.5))(constructs@10.4.5))(aws-cdk-lib@2.181.0(constructs@10.4.5))(constructs@10.4.5)
+        version: 2.97.0(@aws-solutions-constructs/core@2.97.0(aws-cdk-lib@2.189.1(constructs@10.4.5))(constructs@10.4.5))(@aws-solutions-constructs/resources@2.97.0(@aws-solutions-constructs/core@2.97.0(aws-cdk-lib@2.189.1(constructs@10.4.5))(constructs@10.4.5))(aws-cdk-lib@2.189.1(constructs@10.4.5))(constructs@10.4.5))(aws-cdk-lib@2.189.1(constructs@10.4.5))(constructs@10.4.5)
       '@aws-solutions-constructs/aws-wafwebacl-apigateway':
         specifier: ^2.64.0
-        version: 2.97.0(@aws-solutions-constructs/core@2.97.0(aws-cdk-lib@2.181.0(constructs@10.4.5))(constructs@10.4.5))(aws-cdk-lib@2.181.0(constructs@10.4.5))(constructs@10.4.5)
+        version: 2.97.0(@aws-solutions-constructs/core@2.97.0(aws-cdk-lib@2.189.1(constructs@10.4.5))(constructs@10.4.5))(aws-cdk-lib@2.189.1(constructs@10.4.5))(constructs@10.4.5)
       '@deepracer-indy/config':
         specifier: workspace:*
         version: link:../../libs/config
@@ -223,8 +223,8 @@ importers:
         specifier: ^8.10.140
         version: 8.10.160
       aws-cdk-lib:
-        specifier: 2.181.0
-        version: 2.181.0(constructs@10.4.5)
+        specifier: 2.189.1
+        version: 2.189.1(constructs@10.4.5)
       constructs:
         specifier: ^10.3.0
         version: 10.4.5
@@ -795,14 +795,15 @@ packages:
       xstate:
         optional: true
 
-  '@aws-cdk/asset-awscli-v1@2.2.264':
-    resolution: {integrity: sha512-qlU8noPKUxwe5pcC4pNYeeWH1Ih2l6KZjGO/HE8+7Ht6cl15aPtv0yx8BJDLPOKWC4rN50DzGwTlDQW9Yi/gFA==}
+  '@aws-cdk/asset-awscli-v1@2.2.265':
+    resolution: {integrity: sha512-xYBuQusNEANqQk5FCeg4+o64mhP1eqdp9LeKpIqFZY5xN35TvihhicZ55EaI6AeWFfrM7t+edhcapJja7fHl8w==}
 
   '@aws-cdk/asset-node-proxy-agent-v6@2.1.0':
     resolution: {integrity: sha512-7bY3J8GCVxLupn/kNmpPc5VJz8grx+4RKfnnJiO1LG+uxkZfANZG3RMHhE+qQxxwkyQ9/MfPtTpf748UhR425A==}
 
-  '@aws-cdk/cloud-assembly-schema@39.2.20':
-    resolution: {integrity: sha512-RI7S8jphGA8mak154ElnEJQPNTTV4PZmA7jgqnBBHQGyOPJIXxtACubNQ5m4YgjpkK3UJHsWT+/cOAfM/Au/Wg==}
+  '@aws-cdk/cloud-assembly-schema@41.2.0':
+    resolution: {integrity: sha512-JaulVS6z9y5+u4jNmoWbHZRs9uGOnmn/ktXygNWKNu1k6lF3ad4so3s18eRu15XCbUIomxN9WPYT6Ehh7hzONw==}
+    engines: {node: '>= 14.15.0'}
     bundledDependencies:
       - jsonschema
       - semver
@@ -5491,8 +5492,8 @@ packages:
   aws-amplify@6.13.2:
     resolution: {integrity: sha512-z2gg34Pe32GQkRLzg9ga8HO16vUGgNm8JdjverQW3kdG6nejAeTcRi78QyFT77TKLM3N7OqntsKHjZBT1Po2WQ==}
 
-  aws-cdk-lib@2.181.0:
-    resolution: {integrity: sha512-W95HRgahebHQdXwGTIvJydc33JG4NBIKpzoNFS17pmfX3nauxa7o4YPTJHHjQwv7A5LNQotuF7QilpN5PlQFzg==}
+  aws-cdk-lib@2.189.1:
+    resolution: {integrity: sha512-9JU0yUr2iRTJ1oCPrHyx7hOtBDWyUfyOcdb6arlumJnMcQr2cyAMASY8HuAXHc8Y10ipVp8dRTW+J4/132IIYA==}
     engines: {node: '>= 14.15.0'}
     peerDependencies:
       constructs: ^10.0.0
@@ -9969,11 +9970,11 @@ snapshots:
     optionalDependencies:
       xstate: 4.38.3
 
-  '@aws-cdk/asset-awscli-v1@2.2.264': {}
+  '@aws-cdk/asset-awscli-v1@2.2.265': {}
 
   '@aws-cdk/asset-node-proxy-agent-v6@2.1.0': {}
 
-  '@aws-cdk/cloud-assembly-schema@39.2.20': {}
+  '@aws-cdk/cloud-assembly-schema@41.2.0': {}
 
   '@aws-cdk/cloud-assembly-schema@48.20.0': {}
 
@@ -12222,29 +12223,29 @@ snapshots:
       re2-wasm: 1.0.2
       tslib: 1.14.1
 
-  '@aws-solutions-constructs/aws-cloudfront-s3@2.97.0(@aws-solutions-constructs/core@2.97.0(aws-cdk-lib@2.181.0(constructs@10.4.5))(constructs@10.4.5))(@aws-solutions-constructs/resources@2.97.0(@aws-solutions-constructs/core@2.97.0(aws-cdk-lib@2.181.0(constructs@10.4.5))(constructs@10.4.5))(aws-cdk-lib@2.181.0(constructs@10.4.5))(constructs@10.4.5))(aws-cdk-lib@2.181.0(constructs@10.4.5))(constructs@10.4.5)':
+  '@aws-solutions-constructs/aws-cloudfront-s3@2.97.0(@aws-solutions-constructs/core@2.97.0(aws-cdk-lib@2.189.1(constructs@10.4.5))(constructs@10.4.5))(@aws-solutions-constructs/resources@2.97.0(@aws-solutions-constructs/core@2.97.0(aws-cdk-lib@2.189.1(constructs@10.4.5))(constructs@10.4.5))(aws-cdk-lib@2.189.1(constructs@10.4.5))(constructs@10.4.5))(aws-cdk-lib@2.189.1(constructs@10.4.5))(constructs@10.4.5)':
     dependencies:
-      '@aws-solutions-constructs/core': 2.97.0(aws-cdk-lib@2.181.0(constructs@10.4.5))(constructs@10.4.5)
-      '@aws-solutions-constructs/resources': 2.97.0(@aws-solutions-constructs/core@2.97.0(aws-cdk-lib@2.181.0(constructs@10.4.5))(constructs@10.4.5))(aws-cdk-lib@2.181.0(constructs@10.4.5))(constructs@10.4.5)
-      aws-cdk-lib: 2.181.0(constructs@10.4.5)
+      '@aws-solutions-constructs/core': 2.97.0(aws-cdk-lib@2.189.1(constructs@10.4.5))(constructs@10.4.5)
+      '@aws-solutions-constructs/resources': 2.97.0(@aws-solutions-constructs/core@2.97.0(aws-cdk-lib@2.189.1(constructs@10.4.5))(constructs@10.4.5))(aws-cdk-lib@2.189.1(constructs@10.4.5))(constructs@10.4.5)
+      aws-cdk-lib: 2.189.1(constructs@10.4.5)
       constructs: 10.4.5
 
-  '@aws-solutions-constructs/aws-wafwebacl-apigateway@2.97.0(@aws-solutions-constructs/core@2.97.0(aws-cdk-lib@2.181.0(constructs@10.4.5))(constructs@10.4.5))(aws-cdk-lib@2.181.0(constructs@10.4.5))(constructs@10.4.5)':
+  '@aws-solutions-constructs/aws-wafwebacl-apigateway@2.97.0(@aws-solutions-constructs/core@2.97.0(aws-cdk-lib@2.189.1(constructs@10.4.5))(constructs@10.4.5))(aws-cdk-lib@2.189.1(constructs@10.4.5))(constructs@10.4.5)':
     dependencies:
-      '@aws-solutions-constructs/core': 2.97.0(aws-cdk-lib@2.181.0(constructs@10.4.5))(constructs@10.4.5)
-      aws-cdk-lib: 2.181.0(constructs@10.4.5)
+      '@aws-solutions-constructs/core': 2.97.0(aws-cdk-lib@2.189.1(constructs@10.4.5))(constructs@10.4.5)
+      aws-cdk-lib: 2.189.1(constructs@10.4.5)
       constructs: 10.4.5
 
-  '@aws-solutions-constructs/core@2.97.0(aws-cdk-lib@2.181.0(constructs@10.4.5))(constructs@10.4.5)':
+  '@aws-solutions-constructs/core@2.97.0(aws-cdk-lib@2.189.1(constructs@10.4.5))(constructs@10.4.5)':
     dependencies:
       '@aws-cdk/cloud-assembly-schema': 48.20.0
-      aws-cdk-lib: 2.181.0(constructs@10.4.5)
+      aws-cdk-lib: 2.189.1(constructs@10.4.5)
       constructs: 10.4.5
 
-  '@aws-solutions-constructs/resources@2.97.0(@aws-solutions-constructs/core@2.97.0(aws-cdk-lib@2.181.0(constructs@10.4.5))(constructs@10.4.5))(aws-cdk-lib@2.181.0(constructs@10.4.5))(constructs@10.4.5)':
+  '@aws-solutions-constructs/resources@2.97.0(@aws-solutions-constructs/core@2.97.0(aws-cdk-lib@2.189.1(constructs@10.4.5))(constructs@10.4.5))(aws-cdk-lib@2.189.1(constructs@10.4.5))(constructs@10.4.5)':
     dependencies:
-      '@aws-solutions-constructs/core': 2.97.0(aws-cdk-lib@2.181.0(constructs@10.4.5))(constructs@10.4.5)
-      aws-cdk-lib: 2.181.0(constructs@10.4.5)
+      '@aws-solutions-constructs/core': 2.97.0(aws-cdk-lib@2.189.1(constructs@10.4.5))(constructs@10.4.5)
+      aws-cdk-lib: 2.189.1(constructs@10.4.5)
       constructs: 10.4.5
 
   '@aws/lambda-invoke-store@0.2.3': {}
@@ -17297,11 +17298,11 @@ snapshots:
     transitivePeerDependencies:
       - aws-crt
 
-  aws-cdk-lib@2.181.0(constructs@10.4.5):
+  aws-cdk-lib@2.189.1(constructs@10.4.5):
     dependencies:
-      '@aws-cdk/asset-awscli-v1': 2.2.264
+      '@aws-cdk/asset-awscli-v1': 2.2.265
       '@aws-cdk/asset-node-proxy-agent-v6': 2.1.0
-      '@aws-cdk/cloud-assembly-schema': 39.2.20
+      '@aws-cdk/cloud-assembly-schema': 41.2.0
       constructs: 10.4.5
 
   aws-cdk@2.1002.0:
