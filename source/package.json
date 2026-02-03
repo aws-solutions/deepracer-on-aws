@@ -51,7 +51,7 @@
     "aws-sdk-client-mock": "^4.1.0",
     "aws-sdk-client-mock-vitest": "^6.2.1",
     "esbuild": "0.25.0",
-    "eslint": "~8.57.1",
+    "eslint": "~9.26.0",
     "eslint-config-prettier": "^9.1.2",
     "eslint-import-resolver-typescript": "^3.10.1",
     "eslint-plugin-import": "2.29.1",
