@@ -7,5 +7,4 @@ import type { FieldPath, FieldValues } from 'react-hook-form';
 import type { CommonFormFieldProps } from '#components/FormFields/types';
 
 export interface TagEditorFieldProps<FormValues extends FieldValues, FieldName extends FieldPath<FormValues>>
-  extends CommonFormFieldProps<FormValues, FieldName>,
-    TagEditorProps {}
+  extends CommonFormFieldProps<FormValues, FieldName>, TagEditorProps {}

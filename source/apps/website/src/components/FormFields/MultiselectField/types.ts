@@ -9,5 +9,7 @@ import type { CommonFormFieldProps } from '#components/FormFields/types';
 export interface MultiselectFieldProps<
   FormValues extends FieldValues,
   FieldName extends FieldPathByValue<FormValues, string[] | undefined>,
-> extends CommonFormFieldProps<FormValues, FieldName>,
+>
+  extends
+    CommonFormFieldProps<FormValues, FieldName>,
     Omit<MultiselectProps, 'controlId' | 'name' | 'selectedOptions'> {}
