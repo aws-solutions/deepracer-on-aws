@@ -9,5 +9,8 @@ RUN pip install --upgrade pip
 # Here we get all python packages.
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Remove unused aws-lambda-rie to fix CVE-2025-61726
+RUN rm -f /usr/local/bin/aws-lambda-rie
+
 # Pass the name of the function handler as an argument to the runtime
 CMD [ "lambda_function.lambda_handler" ]

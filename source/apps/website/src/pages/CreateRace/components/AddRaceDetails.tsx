@@ -8,7 +8,7 @@ import FormField from '@cloudscape-design/components/form-field';
 import Header from '@cloudscape-design/components/header';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import { RaceType, TimingMethod } from '@deepracer-indy/typescript-client';
-import { MutableRefObject, useEffect } from 'react';
+import { MutableRefObject, useEffect, useMemo } from 'react';
 import { Control, useFieldArray, UseFormSetValue, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
@@ -54,7 +54,15 @@ const AddRaceDetails = (props: AddRaceDetailsProps) => {
     }
   }, [objectAvoidanceConfig.numberOfObjects, randomizeObstacles, fields.length, append, remove]);
 
-  const currentDate = new Date();
+  const { currentDate, currentDateOnly, startDateOnly } = useMemo(() => {
+    const cDate = new Date();
+    const cDateOnly = new Date(cDate.getFullYear(), cDate.getMonth(), cDate.getDate());
+    if (!startDate) return { currentDate: cDate, currentDateOnly: cDateOnly, startDateOnly: cDateOnly };
+    const sDateObj = new Date(startDate);
+    const sDateOnly = new Date(sDateObj.getFullYear(), sDateObj.getMonth(), sDateObj.getDate());
+    return { currentDate: cDate, currentDateOnly: cDateOnly, startDateOnly: sDateOnly };
+  }, [startDate]);
+
   return (
     <SpaceBetween size={'l'} direction="vertical">
       <Container
@@ -107,7 +115,7 @@ const AddRaceDetails = (props: AddRaceDetailsProps) => {
                   name="startDate"
                   control={control}
                   placeholder="YYYY/MM/DD"
-                  isDateEnabled={(date) => date >= new Date(currentDate.toLocaleDateString())}
+                  isDateEnabled={(date) => date >= currentDateOnly}
                 />
                 <TimeInputField
                   name="startTime"
@@ -124,9 +132,7 @@ const AddRaceDetails = (props: AddRaceDetailsProps) => {
                   name="endDate"
                   control={control}
                   placeholder="YYYY/MM/DD"
-                  isDateEnabled={(date) =>
-                    date >= new Date(startDate) && date >= new Date(currentDate.toLocaleDateString())
-                  }
+                  isDateEnabled={(date) => date >= startDateOnly && date >= currentDateOnly}
                   disabled={startDate === ''}
                 />
                 <TimeInputField

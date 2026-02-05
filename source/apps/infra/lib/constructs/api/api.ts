@@ -128,7 +128,7 @@ export class Api extends Construct {
             AWS_APPCONFIG_DEPLOYMENT_STRATEGY: props.globalSettings.deploymentStrategy.attrId,
             USER_POOL_ID: props.userPool.userPoolId,
           },
-          ...(operation === 'GetAssetUrl' && { memorySize: 4096 }),
+          ...(operation === 'GetAssetUrl' && { memorySize: 3008 }),
         }),
       }),
       {} as { [Operation in DeepRacerIndyServiceOperations]: NodejsFunction },
