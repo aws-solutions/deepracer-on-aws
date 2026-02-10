@@ -7,6 +7,7 @@ import {
   CognitoIdentityProviderClient,
   UserNotFoundException,
 } from '@aws-sdk/client-cognito-identity-provider';
+import { logger } from '@deepracer-indy/utils';
 import type { CloudFormationCustomResourceEvent, CloudFormationCustomResourceResponse } from 'aws-lambda';
 
 import { UserGroups } from './common/constants';
@@ -28,7 +29,7 @@ export const AddAdminToGroup = async (
     };
   }
 
-  console.log('Adding admin to group');
+  logger.info('Adding admin to group');
 
   const cognitoClient = new CognitoIdentityProviderClient({
     region: process.env.AWS_REGION,
@@ -58,7 +59,7 @@ const addUser = async (
     }
   }
 
-  console.log('Successfully added admin to group');
+  logger.info('Successfully added admin to group');
 };
 
 const createUser = async (
