@@ -95,7 +95,7 @@ export class MonitoringDashboard extends Construct {
           markdown:
             '## Training Instance Usage\n\n' +
             'Current ml.c5.4xlarge training job usage. ' +
-            '[View quota limits and utilization →](https://console.aws.amazon.com/servicequotas/home/services/sagemaker/quotas/L-E7898792)',
+            '[View quota limits and utilization](https://console.aws.amazon.com/servicequotas/home/services/sagemaker/quotas/L-E7898792)',
           width: 24,
           height: 2,
         }),

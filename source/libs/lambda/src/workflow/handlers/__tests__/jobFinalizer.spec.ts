@@ -175,8 +175,8 @@ describe('JobFinalizer', () => {
       .mockImplementation(() => Promise.resolve(TEST_ACCOUNT_RESOURCE_USAGE_NORMAL));
     updateProfileSpy = vi.spyOn(profileDao, 'update');
     vi.spyOn(metricsLogger, 'logDeepRacerJob').mockImplementation(() => undefined);
-    vi.spyOn(metrics, 'addMetric').mockImplementation(() => undefined);
-    vi.spyOn(metrics, 'addDimension').mockImplementation(() => undefined);
+    vi.spyOn(metrics, 'addMetric').mockImplementation(() => metrics);
+    vi.spyOn(metrics, 'addDimension').mockImplementation(() => metrics);
   });
 
   describe('handler()', () => {
