@@ -1,9 +1,10 @@
 ---
 name: Feature request
 about: Suggest an idea for this solution
-title: ""
-labels: feature-request, enhancement
-assignees: ""
+title: ''
+labels: enhancement
+assignees: ''
+
 ---
 
 **Is your feature request related to a problem? Please describe.**

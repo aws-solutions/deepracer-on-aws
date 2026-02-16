@@ -1,9 +1,10 @@
 ---
 name: Bug report
 about: Create a report to help us improve
-title: ""
+title: ''
 labels: bug
-assignees: ""
+assignees: ''
+
 ---
 
 **Describe the bug**
@@ -23,7 +24,7 @@ assignees: ""
 - [ ] Version: [e.g. v1.0.0]
 
 To get the version of the solution, you can look at the description of the created
-CloudFormation stack. For example, _"(SO0284) Innovation Sandbox on AWS Stack, v1.0.0"_.
+CloudFormation stack. For example, _"(SO0310) - DeepRacer on AWS. Version v1.0.0"_.
 
 - [ ] Region: [e.g. us-east-1]
 - [ ] Was the solution modified from the version published on this repository?
@@ -32,6 +33,7 @@ CloudFormation stack. For example, _"(SO0284) Innovation Sandbox on AWS Stack, v
 - [ ] Have you checked your [service quotas]
       (https://docs.aws.amazon.com/general/latest/gr/aws_service_limits.html)
       for the sevices this solution uses?
+- [] Have you checked [Troubleshooting the solution](https://docs.aws.amazon.com/solutions/latest/deepracer-on-aws/troubleshooting-the-solution.html)
 - [ ] Were there any errors in the CloudWatch Logs? [Troubleshooting]
       (https link to troubleshooting in docs.aws.amazon.com for solution)
 
