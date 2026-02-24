@@ -4,7 +4,7 @@
     "BEST_LAP_TIME": "Best lap time",
     "chooseAccessType": "Choose access type",
     "chooseRaceDates": "Choose race dates",
-    "chooseRaceDatesDesc": "Choose a start and close date in 24-hour format (Pacific Daylight Time) America/Los_Angeles.",
+    "chooseRaceDatesDesc": "Choose a start and close date in 24-hour format {{timezone}}.",
     "chooseRaceType": "Choose race type",
     "chooseRaceTypeDesc": "Race types increase in complexity from left to right. For first-time racers, we recommend Time trials because models converge faster.",
     "classicRace": "Classic race",

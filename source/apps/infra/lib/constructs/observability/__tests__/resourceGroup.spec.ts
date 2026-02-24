@@ -6,7 +6,7 @@ import { Template } from 'aws-cdk-lib/assertions';
 import { describe, it, expect, beforeEach } from 'vitest';
 
 import { TEST_NAMESPACE } from '../../../constants/testConstants.js';
-import { drTagName, drTagValue } from '../../common/taggingHelper.js';
+import { drTagName, getDrTagValue } from '../../common/taggingHelper.js';
 import { ResourceGroup } from '../resourceGroup.js';
 
 describe('ResourceGroup', () => {
@@ -38,7 +38,7 @@ describe('ResourceGroup', () => {
             TagFilters: [
               {
                 Key: drTagName,
-                Values: [drTagValue],
+                Values: [getDrTagValue(TEST_NAMESPACE)],
               },
             ],
           },

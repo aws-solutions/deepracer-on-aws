@@ -7,7 +7,7 @@ import { ServiceInputTypes, ServiceOutputTypes } from '@deepracer-indy/typescrip
 import { retryMiddlewareOptions } from '@smithy/middleware-retry';
 import { HttpRequest } from '@smithy/protocol-http';
 import type { FinalizeRequestMiddleware, Pluggable } from '@smithy/types';
-import { fetchAuthSession } from 'aws-amplify/auth';
+import { AuthSession, fetchAuthSession } from 'aws-amplify/auth';
 
 import { environmentConfig } from '../../utils/envUtils.js';
 
@@ -20,22 +20,7 @@ export const httpSigningMiddleware: FinalizeRequestMiddleware<ServiceInputTypes,
     const session = await fetchAuthSession(); // TODO: use Redux and logout/redirect if cannot get tokens
     const request = args.request as HttpRequest;
 
-    if (!session.credentials) {
-      throw new Error('No credentials found');
-    }
-
-    const signer = new SignatureV4({
-      credentials: {
-        accessKeyId: session.credentials.accessKeyId,
-        secretAccessKey: session.credentials.secretAccessKey,
-        sessionToken: session.credentials.sessionToken,
-      },
-      region: environmentConfig.region,
-      service: 'execute-api',
-      sha256: Sha256,
-    });
-
-    const signedRequest = await signer.sign(request);
+    const signedRequest = await signRequest(session, request);
 
     return next({
       ...args,
@@ -54,4 +39,24 @@ export const httpSigningPlugin: Pluggable<ServiceInputTypes, ServiceOutputTypes>
       toMiddleware: retryMiddlewareOptions.name as string,
     });
   },
+};
+
+export const signRequest = async (session: AuthSession, request: HttpRequest) => {
+  if (!session.credentials) {
+    throw new Error('No credentials found');
+  }
+  const signer = new SignatureV4({
+    credentials: {
+      accessKeyId: session.credentials.accessKeyId,
+      secretAccessKey: session.credentials.secretAccessKey,
+      sessionToken: session.credentials.sessionToken,
+    },
+    region: environmentConfig.region,
+    service: 'execute-api',
+    sha256: Sha256,
+  });
+
+  const signedRequest = await signer.sign(request);
+
+  return signedRequest;
 };

@@ -5,12 +5,16 @@ import { CfnResource, Tags } from 'aws-cdk-lib';
 import { IConstruct } from 'constructs';
 
 export const drTagName = 'aws-solutions:dr-id';
-export const drTagValue = 'DeepRacerOnAWS-default';
+const drTagPrefix = 'DeepRacerOnAWS';
 
-export function applyDrTag(scope: IConstruct) {
+export function getDrTagValue(namespace: string) {
+  return `${drTagPrefix}-${namespace}`;
+}
+
+export function applyDrTag(scope: IConstruct, namespace: string) {
   tagAll(scope, {
     tagName: drTagName,
-    tagValue: drTagValue,
+    tagValue: getDrTagValue(namespace),
   });
 }
 

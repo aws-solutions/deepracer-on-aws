@@ -26,6 +26,8 @@ import {
 import { LambdaInvoke } from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { Construct } from 'constructs';
 
+import { isDevMode } from '#constructs/common/deploymentModeHelper.js';
+
 import { KmsHelper } from '../common/kmsHelper.js';
 import { DefaultLogRemovalPolicy, DefaultLogRetentionDays, LogGroupCategory } from '../common/logGroupsHelper.js';
 import { NodeLambdaFunction } from '../common/nodeLambdaFunction.js';
@@ -106,6 +108,27 @@ export class Workflow extends Construct {
 
     sageMakerRole.attachInlinePolicy(sageMakerAccessPolicy);
 
+    if (isDevMode(scope)) {
+      sageMakerRole.attachInlinePolicy(
+        new Policy(this, 'SshSsmAgent', {
+          document: new PolicyDocument({
+            statements: [
+              new PolicyStatement({
+                sid: 'AllowSSM',
+                actions: [
+                  'ssmmessages:CreateControlChannel',
+                  'ssmmessages:CreateDataChannel',
+                  'ssmmessages:OpenControlChannel',
+                  'ssmmessages:OpenDataChannel',
+                ],
+                resources: ['*'],
+              }),
+            ],
+          }),
+        }),
+      );
+    }
+
     modelStorageBucket.grantReadWrite(sageMakerRole);
 
     const jobInitializerFunction = new NodeLambdaFunction(this, 'JobInitializerFunction', {
@@ -118,6 +141,7 @@ export class Workflow extends Construct {
         SAGEMAKER_ROLE_ARN: sageMakerRole.roleArn,
         SAGEMAKER_TRAINING_IMAGE: simAppRepositoryUri,
         POWERTOOLS_METRICS_NAMESPACE: 'DeepRacerIndyWorkflow',
+        SAGEMAKER_INSTANCE_TYPE: scope.node.tryGetContext('SAGEMAKER_INSTANCE_TYPE') ?? '',
       },
     });
 

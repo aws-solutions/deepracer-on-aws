@@ -6,6 +6,7 @@ import { RemovalPolicy, Stack } from 'aws-cdk-lib';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { Construct } from 'constructs';
 
+import { isDevMode } from './deploymentModeHelper';
 import { KmsHelper } from './kmsHelper';
 
 interface CustomLogGroupProps {
@@ -63,7 +64,7 @@ export class LogGroupsHelper {
     const newLogGroup = new LogGroup(Stack.of(scope), `${category}LogGroup`, {
       logGroupName: logGroupName,
       retention: props.retention ?? defaultLogRetention,
-      removalPolicy: DefaultLogRemovalPolicy,
+      removalPolicy: isDevMode(scope) ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN,
       encryptionKey: KmsHelper.get(scope, props.namespace ?? DEFAULT_NAMESPACE),
     });
 

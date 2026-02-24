@@ -9,5 +9,5 @@ import type { CommonFormFieldProps } from '#components/FormFields/types';
 export interface TextareaFieldProps<
   FormValues extends FieldValues,
   FieldName extends FieldPathByValue<FormValues, string | undefined>,
-> extends CommonFormFieldProps<FormValues, FieldName>,
-    Omit<TextareaProps, 'controlId' | 'name' | 'value'> {}
+>
+  extends CommonFormFieldProps<FormValues, FieldName>, Omit<TextareaProps, 'controlId' | 'name' | 'value'> {}

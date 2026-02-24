@@ -4,8 +4,10 @@
 import type { FormFieldProps } from '@cloudscape-design/components/form-field';
 import type { Control, FieldPath, FieldValues } from 'react-hook-form';
 
-export interface CommonFormFieldProps<FormValues extends FieldValues, FieldName extends FieldPath<FormValues>>
-  extends Omit<FormFieldProps, 'children' | 'controlId' | 'errorText' | 'i18nStrings'> {
+export interface CommonFormFieldProps<
+  FormValues extends FieldValues,
+  FieldName extends FieldPath<FormValues>,
+> extends Omit<FormFieldProps, 'children' | 'controlId' | 'errorText' | 'i18nStrings'> {
   /**
    * The control for the field.
    *

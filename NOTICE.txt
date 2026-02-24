@@ -320,6 +320,7 @@ This software includes third party software subject to the following copyrights:
 @humanwhocodes/config-array under the Apache-2.0 license.
 @humanwhocodes/module-importer under the Apache-2.0 license.
 @humanwhocodes/object-schema under the BSD-3-Clause license.
+@inquirer/ansi under the MIT license.
 @inquirer/confirm under the MIT license.
 @inquirer/core under the MIT license.
 @inquirer/figures under the MIT license.
@@ -336,6 +337,7 @@ This software includes third party software subject to the following copyrights:
 @jest/expect under the MIT license.
 @jest/fake-timers under the MIT license.
 @jest/globals under the MIT license.
+@jest/pattern under the MIT license.
 @jest/reporters under the MIT license.
 @jest/schemas under the MIT license.
 @jest/source-map under the MIT license.
@@ -351,6 +353,7 @@ This software includes third party software subject to the following copyrights:
 @jridgewell/sourcemap-codec under the MIT license.
 @jridgewell/trace-mapping under the MIT license.
 @juggle/resize-observer under the Apache-2.0 license.
+@material/material-color-utilities under the Apache-2.0 license.
 @mdx-js/react under the MIT license.
 @mediapipe/tasks-vision under the Apache-2.0 license.
 @middy/core under the MIT license.
@@ -451,6 +454,7 @@ This software includes third party software subject to the following copyrights:
 @radix-ui/react-slot under the MIT license.
 @radix-ui/react-use-callback-ref under the MIT license.
 @radix-ui/react-use-controllable-state under the MIT license.
+@radix-ui/react-use-effect-event under the MIT license.
 @radix-ui/react-use-escape-keydown under the MIT license.
 @radix-ui/react-use-layout-effect under the MIT license.
 @radix-ui/react-use-previous under the MIT license.
@@ -467,6 +471,7 @@ This software includes third party software subject to the following copyrights:
 @react-three/fiber under the MIT license.
 @reduxjs/toolkit under the MIT license.
 @remix-run/router under the MIT license.
+@rolldown/pluginutils under the MIT license.
 @rollup/pluginutils under the MIT license.
 @rollup/rollup-android-arm-eabi under the MIT license.
 @rollup/rollup-android-arm64 under the MIT license.
@@ -479,12 +484,15 @@ This software includes third party software subject to the following copyrights:
 @rollup/rollup-linux-arm64-gnu under the MIT license.
 @rollup/rollup-linux-arm64-musl under the MIT license.
 @rollup/rollup-linux-loong64-gnu under the MIT license.
+@rollup/rollup-linux-loong64-musl under the MIT license.
 @rollup/rollup-linux-ppc64-gnu under the MIT license.
+@rollup/rollup-linux-ppc64-musl under the MIT license.
 @rollup/rollup-linux-riscv64-gnu under the MIT license.
 @rollup/rollup-linux-riscv64-musl under the MIT license.
 @rollup/rollup-linux-s390x-gnu under the MIT license.
 @rollup/rollup-linux-x64-gnu under the MIT license.
 @rollup/rollup-linux-x64-musl under the MIT license.
+@rollup/rollup-openbsd-x64 under the MIT license.
 @rollup/rollup-openharmony-arm64 under the MIT license.
 @rollup/rollup-win32-arm64-msvc under the MIT license.
 @rollup/rollup-win32-ia32-msvc under the MIT license.
@@ -761,6 +769,7 @@ This software includes third party software subject to the following copyrights:
 @aws-cdk/cx-api under the Apache-2.0 license.
 @aws-cdk/service-spec-types under the Apache-2.0 license.
 @aws-sdk/credential-provider-cognito-identity under the Apache-2.0 license.
+@aws-sdk/credential-provider-login under the Apache-2.0 license.
 @aws-sdk/credential-providers under the Apache-2.0 license.
 @aws-sdk/property-provider under the Apache-2.0 license.
 @cdklabs/tskb under the Apache-2.0 license.

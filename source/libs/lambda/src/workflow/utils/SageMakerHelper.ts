@@ -10,6 +10,7 @@ import {
   DescribeTrainingJobCommand,
   StopTrainingJobCommand,
   TrainingJobStatus,
+  TrainingInstanceType,
   paginateListTrainingJobs,
 } from '@aws-sdk/client-sagemaker';
 import { deepRacerIndyAppConfig } from '@deepracer-indy/config';
@@ -47,13 +48,17 @@ class SageMakerHelper {
         },
         ResourceConfig: {
           InstanceCount: deepRacerIndyAppConfig.sageMaker.instanceCount,
-          InstanceType: deepRacerIndyAppConfig.sageMaker.instanceType,
+          InstanceType: (process.env.SAGEMAKER_INSTANCE_TYPE ||
+            deepRacerIndyAppConfig.sageMaker.instanceType) as TrainingInstanceType,
           VolumeSizeInGB: deepRacerIndyAppConfig.sageMaker.instanceVolumeSizeInGB,
         },
         StoppingCondition: {
           MaxRuntimeInSeconds: terminationConditions.maxTimeInMinutes * 60,
         },
         HyperParameters: await this.getSageMakerHyperparameters(jobItem, modelItem),
+        RemoteDebugConfig: {
+          EnableRemoteDebug: process.env.DEPLOYMENT_MODE?.toLowerCase() === 'dev',
+        },
       };
 
       const { TrainingJobArn } = await sageMakerClient.send(new CreateTrainingJobCommand(createTrainingJobInput));

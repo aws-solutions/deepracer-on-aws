@@ -8,7 +8,8 @@ import { Function, Runtime, Code } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import { describe, it, expect, beforeEach } from 'vitest';
 
-import { applyDrTag, tagAll, drTagName, drTagValue } from '../taggingHelper.js';
+import { TEST_NAMESPACE } from '../../../constants/testConstants.js';
+import { applyDrTag, tagAll, drTagName, getDrTagValue } from '../taggingHelper.js';
 
 const TEST_LAMBDA_CONFIG = {
   runtime: Runtime.NODEJS_LATEST,
@@ -18,6 +19,7 @@ const TEST_LAMBDA_CONFIG = {
 
 const TEST_ROLE_ID = 'TestRole';
 const TEST_FUNCTION_ID = 'TestFunction';
+const TEST_TAG_VALUE = getDrTagValue(TEST_NAMESPACE);
 
 function createTestResources(scope: Construct, idPrefix = '') {
   const role = new Role(scope, `${idPrefix}${TEST_ROLE_ID}`, {
@@ -46,19 +48,19 @@ describe('taggingHelper', () => {
   it('should tag IAM role and Lambda function', () => {
     createTestResources(stack);
 
-    applyDrTag(stack);
+    applyDrTag(stack, TEST_NAMESPACE);
 
     const template = Template.fromStack(stack);
 
     expect(() => {
       template.hasResourceProperties('AWS::IAM::Role', {
-        Tags: [{ Key: drTagName, Value: drTagValue }],
+        Tags: [{ Key: drTagName, Value: TEST_TAG_VALUE }],
       });
     }).not.toThrow();
 
     expect(() => {
       template.hasResourceProperties('AWS::Lambda::Function', {
-        Tags: [{ Key: drTagName, Value: drTagValue }],
+        Tags: [{ Key: drTagName, Value: TEST_TAG_VALUE }],
       });
     }).not.toThrow();
   });
@@ -68,32 +70,32 @@ describe('taggingHelper', () => {
 
     createTestResources(stack, 'Parent');
 
-    applyDrTag(stack);
+    applyDrTag(stack, TEST_NAMESPACE);
 
     const parentTemplate = Template.fromStack(stack);
     const nestedTemplate = Template.fromStack(nestedStack);
 
     expect(() => {
       parentTemplate.hasResourceProperties('AWS::IAM::Role', {
-        Tags: [{ Key: drTagName, Value: drTagValue }],
+        Tags: [{ Key: drTagName, Value: TEST_TAG_VALUE }],
       });
     }).not.toThrow();
 
     expect(() => {
       parentTemplate.hasResourceProperties('AWS::Lambda::Function', {
-        Tags: [{ Key: drTagName, Value: drTagValue }],
+        Tags: [{ Key: drTagName, Value: TEST_TAG_VALUE }],
       });
     }).not.toThrow();
 
     expect(() => {
       nestedTemplate.hasResourceProperties('AWS::IAM::Role', {
-        Tags: [{ Key: drTagName, Value: drTagValue }],
+        Tags: [{ Key: drTagName, Value: TEST_TAG_VALUE }],
       });
     }).not.toThrow();
 
     expect(() => {
       nestedTemplate.hasResourceProperties('AWS::Lambda::Function', {
-        Tags: [{ Key: drTagName, Value: drTagValue }],
+        Tags: [{ Key: drTagName, Value: TEST_TAG_VALUE }],
       });
     }).not.toThrow();
   });
@@ -101,7 +103,7 @@ describe('taggingHelper', () => {
   it('should handle empty stack without errors', () => {
     const emptyStack = new Stack(app, 'EmptyStack');
 
-    expect(() => applyDrTag(emptyStack)).not.toThrow();
+    expect(() => applyDrTag(emptyStack, TEST_NAMESPACE)).not.toThrow();
 
     const template = Template.fromStack(emptyStack);
     expect(template).toBeDefined();
@@ -112,7 +114,7 @@ describe('taggingHelper', () => {
 
     tagAll(stack, {
       tagName: drTagName,
-      tagValue: drTagValue,
+      tagValue: TEST_TAG_VALUE,
       excludeResourceTypes: ['AWS::IAM::Role'],
     });
 
@@ -120,13 +122,13 @@ describe('taggingHelper', () => {
 
     expect(() => {
       template.hasResourceProperties('AWS::Lambda::Function', {
-        Tags: [{ Key: drTagName, Value: drTagValue }],
+        Tags: [{ Key: drTagName, Value: TEST_TAG_VALUE }],
       });
     }).not.toThrow();
 
     expect(() => {
       template.hasResourceProperties('AWS::IAM::Role', {
-        Tags: [{ Key: drTagName, Value: drTagValue }],
+        Tags: [{ Key: drTagName, Value: TEST_TAG_VALUE }],
       });
     }).toThrow();
 

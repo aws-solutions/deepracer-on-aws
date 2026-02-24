@@ -535,6 +535,137 @@ describe('Workflow', () => {
     });
   });
 
+  describe('Dev Mode Configuration', () => {
+    it('attaches SSM policy to SageMaker role when DEPLOYMENT_MODE is dev', () => {
+      const devApp = new App({
+        context: {
+          DEPLOYMENT_MODE: 'dev',
+        },
+      });
+      const devStack = new Stack(devApp, 'DevTestStack');
+
+      const devTable = new TableV2(devStack, 'TestTable', {
+        partitionKey: { name: 'pk', type: AttributeType.STRING },
+        sortKey: { name: 'sk', type: AttributeType.STRING },
+      });
+      const devBucket = new Bucket(devStack, 'TestBucket');
+      const devQueue = new Queue(devStack, 'TestQueue');
+
+      new Workflow(devStack, 'TestWorkflow', {
+        dynamoDBTable: devTable,
+        modelStorageBucket: devBucket,
+        workflowJobQueue: devQueue,
+        simAppRepositoryUri: 'test-repo-uri',
+        namespace: TEST_NAMESPACE,
+      });
+
+      const template = Template.fromStack(devStack);
+
+      expect(() => {
+        template.hasResourceProperties('AWS::IAM::Policy', {
+          PolicyDocument: {
+            Statement: Match.arrayWith([
+              Match.objectLike({
+                Sid: 'AllowSSM',
+                Action: [
+                  'ssmmessages:CreateControlChannel',
+                  'ssmmessages:CreateDataChannel',
+                  'ssmmessages:OpenControlChannel',
+                  'ssmmessages:OpenDataChannel',
+                ],
+                Effect: 'Allow',
+                Resource: '*',
+              }),
+            ]),
+          },
+          Roles: [
+            {
+              Ref: Match.stringLikeRegexp('.*SageMakerRole.*'),
+            },
+          ],
+        });
+      }).not.toThrow();
+    });
+
+    it('does not attach SSM policy to SageMaker role when DEPLOYMENT_MODE is not dev', () => {
+      const prodApp = new App({
+        context: {
+          DEPLOYMENT_MODE: 'prod',
+        },
+      });
+      const prodStack = new Stack(prodApp, 'ProdTestStack');
+
+      const prodTable = new TableV2(prodStack, 'TestTable', {
+        partitionKey: { name: 'pk', type: AttributeType.STRING },
+        sortKey: { name: 'sk', type: AttributeType.STRING },
+      });
+      const prodBucket = new Bucket(prodStack, 'TestBucket');
+      const prodQueue = new Queue(prodStack, 'TestQueue');
+
+      new Workflow(prodStack, 'TestWorkflow', {
+        dynamoDBTable: prodTable,
+        modelStorageBucket: prodBucket,
+        workflowJobQueue: prodQueue,
+        simAppRepositoryUri: 'test-repo-uri',
+        namespace: TEST_NAMESPACE,
+      });
+
+      const template = Template.fromStack(prodStack);
+
+      // Should NOT have the SshSsmAgent policy
+      expect(() => {
+        template.hasResourceProperties('AWS::IAM::Policy', {
+          PolicyDocument: {
+            Statement: Match.arrayWith([
+              Match.objectLike({
+                Sid: 'AllowSSM',
+              }),
+            ]),
+          },
+        });
+      }).toThrow();
+    });
+  });
+
+  describe('SageMaker Instance Type Configuration', () => {
+    it('includes SAGEMAKER_INSTANCE_TYPE in job initializer environment when context is set', () => {
+      const customApp = new App({
+        context: {
+          SAGEMAKER_INSTANCE_TYPE: 'ml.g4dn.2xlarge',
+        },
+      });
+      const customStack = new Stack(customApp, 'CustomTestStack');
+
+      const customTable = new TableV2(customStack, 'TestTable', {
+        partitionKey: { name: 'pk', type: AttributeType.STRING },
+        sortKey: { name: 'sk', type: AttributeType.STRING },
+      });
+      const customBucket = new Bucket(customStack, 'TestBucket');
+      const customQueue = new Queue(customStack, 'TestQueue');
+
+      new Workflow(customStack, 'TestWorkflow', {
+        dynamoDBTable: customTable,
+        modelStorageBucket: customBucket,
+        workflowJobQueue: customQueue,
+        simAppRepositoryUri: 'test-repo-uri',
+        namespace: TEST_NAMESPACE,
+      });
+
+      const template = Template.fromStack(customStack);
+
+      expect(() => {
+        template.hasResourceProperties('AWS::Lambda::Function', {
+          FunctionName: `${TEST_NAMESPACE}-DeepRacerIndyWorkflow-JobInitializerFn`,
+          Environment: {
+            Variables: Match.objectLike({
+              SAGEMAKER_INSTANCE_TYPE: 'ml.g4dn.2xlarge',
+            }),
+          },
+        });
+      }).not.toThrow();
+    });
+  });
+
   describe('Resource Grants', () => {
     it('grants DynamoDB permissions to all Lambda functions', () => {
       new Workflow(stack, 'TestWorkflow', {
