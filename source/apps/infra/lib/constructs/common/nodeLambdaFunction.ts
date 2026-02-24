@@ -11,6 +11,7 @@ import { LogGroup } from 'aws-cdk-lib/aws-logs';
 import { Construct } from 'constructs';
 
 import { addCfnGuardSuppression } from './cfnGuardHelper.js';
+import { getDeploymentMode, isDevMode } from './deploymentModeHelper.js';
 import { LogGroupCategory, LogGroupsHelper } from './logGroupsHelper.js';
 import { getCustomUserAgent } from './manifestReader.js';
 
@@ -44,7 +45,7 @@ export class NodeLambdaFunction extends NodejsFunction {
       tracing: Tracing.ACTIVE,
       timeout: Duration.seconds(30),
       loggingFormat: LoggingFormat.JSON,
-      applicationLogLevelV2: ApplicationLogLevel.INFO,
+      applicationLogLevelV2: isDevMode(scope) ? ApplicationLogLevel.DEBUG : ApplicationLogLevel.INFO,
       logGroup:
         logGroup ??
         LogGroupsHelper.getOrCreateLogGroup(scope, id, {
@@ -58,9 +59,9 @@ export class NodeLambdaFunction extends NodejsFunction {
         NODE_OPTIONS: '--enable-source-maps',
         POWERTOOLS_SERVICE_NAME: 'DeepRacerIndy',
         POWERTOOLS_METRICS_NAMESPACE: 'DeepRacerIndy',
-        POWERTOOLS_LOG_LEVEL: 'INFO', // Change to DEBUG to see trace details in logs
         NAMESPACE: namespace,
         CUSTOM_USER_AGENT: getCustomUserAgent(),
+        DEPLOYMENT_MODE: getDeploymentMode(scope),
         ...environmentProps,
       },
       bundling: {
