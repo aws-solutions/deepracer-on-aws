@@ -3,8 +3,11 @@
 
 import { BASE_TABLE_NAME } from '@deepracer-indy/config/src/defaults/dynamoDBDefaults.js';
 import { DynamoDBItemAttribute, GlobalSecondaryIndex, LocalSecondaryIndex } from '@deepracer-indy/database';
+import { RemovalPolicy } from 'aws-cdk-lib';
 import { AttributeType, TableV2 } from 'aws-cdk-lib/aws-dynamodb';
 import { Construct } from 'constructs';
+
+import { isDevMode } from '../common/deploymentModeHelper';
 
 export interface DynamoDBTableProps {
   namespace: string;
@@ -25,6 +28,7 @@ export class DynamoDBTable extends Construct {
       tableName,
       partitionKey: { name: DynamoDBItemAttribute.PK, type: AttributeType.STRING },
       sortKey: { name: DynamoDBItemAttribute.SK, type: AttributeType.STRING },
+      removalPolicy: isDevMode(this) ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN,
       globalSecondaryIndexes: [
         {
           indexName: GlobalSecondaryIndex.GSI1,

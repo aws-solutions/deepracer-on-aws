@@ -50,6 +50,54 @@ describe('SageMakerHelper', () => {
       ).resolves.toBe(testTrainingJobArn);
       expect(spyOnGetSageMakerHyperparameters).toHaveBeenCalledWith(TEST_TRAINING_ITEM, TEST_MODEL_ITEM);
     });
+
+    it('should use SAGEMAKER_INSTANCE_TYPE from env var when set', async () => {
+      process.env.SAGEMAKER_INSTANCE_TYPE = 'ml.g4dn.2xlarge';
+
+      vi.spyOn(sageMakerHelper, 'getSageMakerHyperparameters').mockResolvedValueOnce({} as SageMakerHyperparameters);
+
+      mockSageMakerClient.on(CreateTrainingJobCommand).resolves({ TrainingJobArn: testTrainingJobArn });
+
+      await sageMakerHelper.createTrainingJob({ jobItem: TEST_TRAINING_ITEM, modelItem: TEST_MODEL_ITEM });
+
+      const calls = mockSageMakerClient.commandCalls(CreateTrainingJobCommand);
+      expect(calls).toHaveLength(1);
+      expect(calls[0].args[0].input.ResourceConfig?.InstanceType).toBe('ml.g4dn.2xlarge');
+
+      delete process.env.SAGEMAKER_INSTANCE_TYPE;
+    });
+
+    it('should enable RemoteDebugConfig when DEPLOYMENT_MODE is dev', async () => {
+      process.env.DEPLOYMENT_MODE = 'dev';
+
+      vi.spyOn(sageMakerHelper, 'getSageMakerHyperparameters').mockResolvedValueOnce({} as SageMakerHyperparameters);
+
+      mockSageMakerClient.on(CreateTrainingJobCommand).resolves({ TrainingJobArn: testTrainingJobArn });
+
+      await sageMakerHelper.createTrainingJob({ jobItem: TEST_TRAINING_ITEM, modelItem: TEST_MODEL_ITEM });
+
+      const calls = mockSageMakerClient.commandCalls(CreateTrainingJobCommand);
+      expect(calls).toHaveLength(1);
+      expect(calls[0].args[0].input.RemoteDebugConfig?.EnableRemoteDebug).toBe(true);
+
+      delete process.env.DEPLOYMENT_MODE;
+    });
+
+    it('should disable RemoteDebugConfig when DEPLOYMENT_MODE is not dev', async () => {
+      process.env.DEPLOYMENT_MODE = 'prod';
+
+      vi.spyOn(sageMakerHelper, 'getSageMakerHyperparameters').mockResolvedValueOnce({} as SageMakerHyperparameters);
+
+      mockSageMakerClient.on(CreateTrainingJobCommand).resolves({ TrainingJobArn: testTrainingJobArn });
+
+      await sageMakerHelper.createTrainingJob({ jobItem: TEST_TRAINING_ITEM, modelItem: TEST_MODEL_ITEM });
+
+      const calls = mockSageMakerClient.commandCalls(CreateTrainingJobCommand);
+      expect(calls).toHaveLength(1);
+      expect(calls[0].args[0].input.RemoteDebugConfig?.EnableRemoteDebug).toBe(false);
+
+      delete process.env.DEPLOYMENT_MODE;
+    });
   });
 
   describe('stopQueuedJob()', () => {

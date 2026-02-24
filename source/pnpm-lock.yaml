@@ -9,7 +9,7 @@ overrides:
   glob@<10.5.0: '>=10.5.0'
   qs@<6.14.1: '>=6.14.1'
   react-hook-form: 7.54.2
-  fast-xml-parser: '>=5.3.4'
+  fast-xml-parser: '>=5.3.6'
   axios@1.13.4: '>=1.13.5'
   npm: npm:empty-npm-package@1.0.0
 
@@ -6644,8 +6644,8 @@ packages:
   fast-uri@3.1.0:
     resolution: {integrity: sha512-iPeeDKJSWf4IEOasVVrknXpaBV0IApz/gp7S2bb7Z4Lljbl2MGJRqInZiUrQwV16cpzw/D3S5j5Julj/gT52AA==}
 
-  fast-xml-parser@5.3.5:
-    resolution: {integrity: sha512-JeaA2Vm9ffQKp9VjvfzObuMCjUYAp5WDYhRYL5LrBPY/jUDlUtOvDfot0vKSkB9tuX885BDHjtw4fZadD95wnA==}
+  fast-xml-parser@5.3.7:
+    resolution: {integrity: sha512-JzVLro9NQv92pOM/jTCR6mHlJh2FGwtomH8ZQjhFj/R29P2Fnj38OgPJVtcvYw6SuKClhgYuwUZf5b3rd8u2mA==}
     hasBin: true
 
   fastparse@1.1.2:
@@ -9848,7 +9848,7 @@ snapshots:
       '@smithy/md5-js': 2.0.7
       buffer: 4.9.2
       crc-32: 1.2.2
-      fast-xml-parser: 5.3.5
+      fast-xml-parser: 5.3.7
       tslib: 2.8.1
 
   '@aws-amplify/ui-react-core@3.3.2(@aws-amplify/core@6.10.2)(@types/react@18.3.3)(aws-amplify@6.13.2)(react@18.3.1)':
@@ -11363,7 +11363,7 @@ snapshots:
       '@smithy/smithy-client': 3.7.0
       '@smithy/types': 3.7.2
       '@smithy/util-middleware': 3.0.11
-      fast-xml-parser: 5.3.5
+      fast-xml-parser: 5.3.7
       tslib: 2.8.1
 
   '@aws-sdk/core@3.624.0':
@@ -11375,7 +11375,7 @@ snapshots:
       '@smithy/smithy-client': 3.7.0
       '@smithy/types': 3.7.2
       '@smithy/util-middleware': 3.0.11
-      fast-xml-parser: 5.3.5
+      fast-xml-parser: 5.3.7
       tslib: 2.8.1
 
   '@aws-sdk/core@3.654.0':
@@ -11388,7 +11388,7 @@ snapshots:
       '@smithy/smithy-client': 3.7.0
       '@smithy/types': 3.7.2
       '@smithy/util-middleware': 3.0.11
-      fast-xml-parser: 5.3.5
+      fast-xml-parser: 5.3.7
       tslib: 2.8.1
 
   '@aws-sdk/core@3.973.7':
@@ -12136,7 +12136,7 @@ snapshots:
   '@aws-sdk/xml-builder@3.972.4':
     dependencies:
       '@smithy/types': 4.12.0
-      fast-xml-parser: 5.3.5
+      fast-xml-parser: 5.3.7
       tslib: 2.8.1
 
   '@aws-smithy/server-apigateway@1.0.0-alpha.10':
@@ -18610,7 +18610,7 @@ snapshots:
 
   fast-uri@3.1.0: {}
 
-  fast-xml-parser@5.3.5:
+  fast-xml-parser@5.3.7:
     dependencies:
       strnum: 2.1.2
 
