@@ -26,6 +26,10 @@ source/apps/infra/cdk.out.*
 # local scripts
 script_*.sh
 
+# Local Makefile config (copy build.config.example to build.config)
+build.config
+cfn.outputs
+
 #e2e tests
 .env
 *.log
@@ -35,3 +39,6 @@ script_*.sh
 # vim swap files
 *.swp
 *.swo
+
+# vscode
+.vscode/
