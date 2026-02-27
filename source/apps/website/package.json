@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "clean": "rm -rf dist",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "config:local": "./scripts/generate-local-env.sh"
   },
   "dependencies": {
     "@aws-amplify/ui-react": "6.9.2",
