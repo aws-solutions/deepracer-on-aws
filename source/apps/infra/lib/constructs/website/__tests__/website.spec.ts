@@ -76,4 +76,14 @@ describe.skip('StaticWebsite', () => {
       expect(str.includes('{"Header":"Cross-Origin-Opener-Policy","Override":true,"Value":"same-origin"}')).toBe(true);
     });
   });
+
+  describe('CloudFront logging', () => {
+    it('conditionally disables logging in unsupported opt-in regions', () => {
+      const str = JSON.stringify(template.toJSON());
+      expect(str).toContain('SupportsCloudFrontLogging');
+      expect(str).toContain('"Ref":"AWS::NoValue"');
+      expect(str).toContain('ap-east-1');
+      expect(str).toContain('me-south-1');
+    });
+  });
 });

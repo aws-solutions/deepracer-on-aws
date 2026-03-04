@@ -4,8 +4,13 @@
 import path from 'node:path';
 
 import { CloudFrontToS3 } from '@aws-solutions-constructs/aws-cloudfront-s3';
-import { CfnOutput, CustomResource, Duration, Stack } from 'aws-cdk-lib';
-import { DistributionProps, HeadersFrameOption, HeadersReferrerPolicy } from 'aws-cdk-lib/aws-cloudfront';
+import { CfnCondition, CfnOutput, CustomResource, Duration, Fn, Stack } from 'aws-cdk-lib';
+import {
+  CfnDistribution,
+  DistributionProps,
+  HeadersFrameOption,
+  HeadersReferrerPolicy,
+} from 'aws-cdk-lib/aws-cloudfront';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { BucketDeployment, Source } from 'aws-cdk-lib/aws-s3-deployment';
@@ -44,6 +49,32 @@ export class StaticWebsite extends Construct {
     } = props;
 
     const region = Stack.of(this).region;
+
+    // Regions that don't support CloudFront legacy access logging (opt-in regions)
+    const unsupportedLoggingRegions = [
+      'af-south-1', // Cape Town
+      'ap-east-1', // Hong Kong
+      'ap-south-2', // Hyderabad
+      'ap-southeast-3', // Jakarta
+      'ap-southeast-4', // Melbourne
+      'ca-west-1', // Calgary
+      'eu-central-2', // Zurich
+      'eu-south-1', // Milan
+      'eu-south-2', // Spain
+      'il-central-1', // Tel Aviv
+      'me-central-1', // UAE
+      'me-south-1', // Bahrain
+    ];
+
+    const supportsCloudFrontLogging = new CfnCondition(this, 'SupportsCloudFrontLogging', {
+      expression: Fn.conditionNot(
+        Fn.conditionOr(
+          ...unsupportedLoggingRegions.map((unsupportedRegion) =>
+            Fn.conditionEquals(Fn.ref('AWS::Region'), unsupportedRegion),
+          ),
+        ),
+      ),
+    });
 
     const cloudFrontToS3 = new CloudFrontToS3(this, 'CloudFrontToS3', {
       cloudFrontDistributionProps: {
@@ -121,6 +152,20 @@ export class StaticWebsite extends Construct {
         },
       },
     });
+
+    // Conditionally disable CloudFront logging in unsupported regions (opt-in regions)
+    const cfnDistribution = cloudFrontToS3.cloudFrontWebDistribution.node.defaultChild as CfnDistribution;
+    cfnDistribution.addPropertyOverride(
+      'DistributionConfig.Logging',
+      Fn.conditionIf(
+        supportsCloudFrontLogging.logicalId,
+        {
+          Bucket: cloudFrontToS3.cloudFrontLoggingBucket?.bucketDomainName,
+          IncludeCookies: false,
+        },
+        Fn.ref('AWS::NoValue'),
+      ),
+    );
 
     const websiteDistPath = path.join(__dirname, '../../../../website/dist');
 
