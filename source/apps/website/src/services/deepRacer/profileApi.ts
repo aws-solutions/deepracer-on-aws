@@ -30,6 +30,7 @@ import { deepRacerApi } from './deepRacerApi.js';
 export const createProfile = {
   createProfileCommand: (input: CreateProfileCommandInput) => ({
     command: new CreateProfileCommand(input),
+    displayNotificationOnError: false,
   }),
   createProfileTransformResponse: (response: CreateProfileCommandOutput) => response.message,
 };
@@ -52,6 +53,7 @@ export const listProfiles = {
 export const deleteProfile = {
   deleteProfileCommand: (input: DeleteProfileCommandInput) => ({
     command: new DeleteProfileCommand(input),
+    displayNotificationOnError: false,
   }),
   deleteProfileTransformResponse: (response: DeleteProfileCommandOutput) => undefined,
 };
@@ -59,6 +61,7 @@ export const deleteProfile = {
 export const deleteProfileModels = {
   deleteProfileModelsCommand: (input: DeleteProfileModelsCommandInput) => ({
     command: new DeleteProfileModelsCommand(input),
+    displayNotificationOnError: false,
   }),
   deleteProfileModelsTransformResponse: (response: DeleteProfileModelsCommandOutput) => undefined,
 };
@@ -66,6 +69,7 @@ export const deleteProfileModels = {
 export const updateGroupMembership = {
   updateGroupMembershipCommand: (input: UpdateGroupMembershipCommandInput) => ({
     command: new UpdateGroupMembershipCommand(input),
+    displayNotificationOnError: false,
   }),
   updateGroupMembershipTransformResponse: (response: UpdateGroupMembershipCommandOutput) => undefined,
 };

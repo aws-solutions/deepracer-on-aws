@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.8] - 2026-03-04
+
+### Security
+
+- Update dependencies to mitigate [CVE-2026-27148](https://nvd.nist.gov/vuln/detail/CVE-2026-27148), [CVE-2026-27903](https://nvd.nist.gov/vuln/detail/CVE-2026-27903), [CVE-2026-27904](https://nvd.nist.gov/vuln/detail/CVE-2026-27904), and [GHSA-5c6j-r48x-rmvq](https://github.com/advisories/GHSA-5c6j-r48x-rmvq).
+
+### Fixed
+
+- Duplicate error flashbar notifications appearing for profile management operations (invite user, delete user, change role).
+- Deployment failures in opt-in regions (af-south-1, ap-east-1, eu-south-2, me-south-1) where CloudFront access logging is not supported.
+- Excessive simulation logging by moving verbose Gazebo system messages to DEBUG level ([#15](https://github.com/aws-solutions/deepracer-on-aws/issues/15))
+
 ## [1.0.7] - 2026-02-27
 
 ### Security

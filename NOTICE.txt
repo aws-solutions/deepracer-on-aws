@@ -327,6 +327,7 @@ This software includes third party software subject to the following copyrights:
 @inquirer/type under the MIT license.
 @isaacs/balanced-match under the MIT license.
 @isaacs/brace-expansion under the MIT license.
+@isaacs/cliui under the ISC license.
 @istanbuljs/load-nyc-config under the ISC license.
 @istanbuljs/schema under the MIT license.
 @jest/console under the MIT license.
@@ -430,6 +431,7 @@ This software includes third party software subject to the following copyrights:
 @oxc-resolver/binding-win32-arm64-msvc under the MIT license.
 @oxc-resolver/binding-win32-x64-msvc under the MIT license.
 @phenomnomnominal/tsquery under the MIT license.
+@pkgjs/parseargs under the ISC license.
 @pkgr/core under the MIT license.
 @polka/url under the MIT license.
 @radix-ui/number under the MIT license.

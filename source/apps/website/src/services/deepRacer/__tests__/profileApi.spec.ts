@@ -38,6 +38,7 @@ describe('profileApi', () => {
 
       expect(result.command).toBeInstanceOf(CreateProfileCommand);
       expect(result.command.input).toEqual(input);
+      expect(result.displayNotificationOnError).toBe(false);
     });
   });
 
@@ -65,6 +66,7 @@ describe('profileApi', () => {
 
       expect(result.command).toBeInstanceOf(DeleteProfileCommand);
       expect(result.command.input).toEqual(input);
+      expect(result.displayNotificationOnError).toBe(false);
     });
   });
 
@@ -90,6 +92,7 @@ describe('profileApi', () => {
 
       expect(result.command).toBeInstanceOf(DeleteProfileModelsCommand);
       expect(result.command.input).toEqual(input);
+      expect(result.displayNotificationOnError).toBe(false);
     });
   });
 
@@ -241,6 +244,7 @@ describe('profileApi', () => {
 
       expect(result.command).toBeInstanceOf(UpdateGroupMembershipCommand);
       expect(result.command.input).toEqual(input);
+      expect(result.displayNotificationOnError).toBe(false);
     });
 
     it('should create command with RACERS group', () => {
