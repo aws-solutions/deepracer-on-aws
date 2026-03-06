@@ -37,7 +37,6 @@ class SimulationEnvironmentHelper {
     const jobType = jobNameHelper.getJobType(jobName);
     const metricsS3Location = new AmazonS3URI(jobAssetS3Locations.metricsS3Location);
     const simTraceS3Location = new AmazonS3URI(jobAssetS3Locations.simTraceS3Location);
-    const videosS3Location = new AmazonS3URI(jobAssetS3Locations.videosS3Location);
 
     const simEnvVars: Partial<SimulationEnvironmentVariables> = {
       AWS_REGION: process.env.REGION,
@@ -45,8 +44,6 @@ class SimulationEnvironmentHelper {
       JOB_TYPE: jobType.toUpperCase(),
       METRICS_S3_BUCKET: metricsS3Location.bucket,
       METRICS_S3_OBJECT_KEY: metricsS3Location.key,
-      MP4_S3_BUCKET: videosS3Location.bucket,
-      MP4_S3_OBJECT_PREFIX: videosS3Location.key,
       SIMTRACE_S3_BUCKET: simTraceS3Location.bucket,
       SIMTRACE_S3_PREFIX: simTraceS3Location.key,
       KINESIS_VIDEO_STREAM_NAME: jobName,
@@ -91,7 +88,10 @@ class SimulationEnvironmentHelper {
     const { assetS3Locations: modelAssetS3Locations } = modelItem;
 
     const sageMakerArtifactsS3Location = new AmazonS3URI(modelAssetS3Locations.sageMakerArtifactsS3Location);
+    const videosS3Location = new AmazonS3URI(jobItem.assetS3Locations.videosS3Location);
 
+    simEnvVars.MP4_S3_BUCKET = videosS3Location.bucket;
+    simEnvVars.MP4_S3_OBJECT_PREFIX = videosS3Location.key;
     simEnvVars.MODEL_S3_BUCKET = sageMakerArtifactsS3Location.bucket;
     simEnvVars.MODEL_S3_PREFIX = sageMakerArtifactsS3Location.key;
     simEnvVars.NUMBER_OF_TRIALS = terminationConditions.maxLaps;
