@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { Readable } from 'stream';
 
-import { S3Client, GetObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
+import { GetObjectCommand, ListObjectsV2Command, S3Client } from '@aws-sdk/client-s3';
 import { modelDao, ResourceId, TEST_MODEL_ITEM } from '@deepracer-indy/database';
 import { sdkStreamMixin } from '@smithy/util-stream';
 import { mockClient } from 'aws-sdk-client-mock';
@@ -63,7 +63,7 @@ describe('Asset Packaging lambdaHandler', () => {
 
   it('should successfully compress and update model', async () => {
     const output = await handler(testEvent, mockContext);
-    const expectedKey = 's3://dest-bucket/testProfile/models/testModel/virtualmodel.zip';
+    const expectedKey = 's3://dest-bucket/testProfile/models/testModel/virtualmodel.tar.gz';
 
     expect(output.virtualModelArtifactS3Location).toMatch(/^s3:\/\/.+/);
     expect(modelDao.update).toHaveBeenCalledWith(

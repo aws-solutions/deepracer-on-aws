@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { PassThrough } from 'stream';
 
-import { S3Client } from '@aws-sdk/client-s3';
+import { CompleteMultipartUploadCommandOutput, S3Client } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
 import { modelDao, ResourceId } from '@deepracer-indy/database';
 import { ModelStatus } from '@deepracer-indy/typescript-server-client';
@@ -32,7 +32,7 @@ interface CompressRequest {
  * @returns The S3 key for the destination zip file
  */
 function generateDestKey(sourcePrefix: string): string {
-  const filePath = `${sourcePrefix.replace(/\/$/, '')}/virtualmodel.zip`;
+  const filePath = `${sourcePrefix.replace(/\/$/, '')}/virtualmodel.tar.gz`;
   return filePath;
 }
 
@@ -48,17 +48,17 @@ function convertToMB(bytes: number): string {
 /**
  * Initiates a multipart upload to S3 for the compressed file
  * @param destKey - The destination S3 key
- * @param passThrough - The PassThrough stream containing the file data
+ * @param passThrough - The PassThrough stream containing the file data; satisfies StreamingBlobPayloadInputTypes
  * @returns A promise that resolves when the upload is complete
  */
-function multiPartUpload(destKey: string, passThrough: PassThrough) {
+function multiPartUpload(destKey: string, passThrough: PassThrough): Promise<CompleteMultipartUploadCommandOutput> {
   const upload = new Upload({
     client: s3Client,
     params: {
       Bucket: destBucket,
       Key: destKey,
       Body: passThrough,
-      ContentType: 'application/zip',
+      ContentType: 'application/gzip',
     },
     queueSize: 5,
     partSize,
@@ -95,9 +95,9 @@ async function compressAndTransferDirectory(request: CompressRequest): Promise<s
       throw new Error('No objects found in the specified directory');
     }
 
-    const archive = archiver('zip', {
-      zlib: { level: 6 },
-      forceZip64: true,
+    const archive = archiver('tar', {
+      gzipOptions: { level: 6 },
+      gzip: true,
     });
 
     const passThrough = new PassThrough();

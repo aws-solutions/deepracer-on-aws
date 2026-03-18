@@ -287,10 +287,10 @@ aws s3 sync ./regional-s3-assets s3://$REGIONAL_ARTIFACT_BUCKET-us-east-1/$SOLUT
 export ADMIN_EMAIL='user@example.com'
 ```
 
-2. If you are deploying more than one instance of DeepRacer on AWS into the same account, provide a unique value for the NAMESPACE environment variable. This will help with labelling and separating the resources created by each deployment.
+2. If you are deploying more than one instance of DeepRacer on AWS into the same account, provide a unique value for the NAMESPACE environment variable. This will help with labeling and separating the resources created by each deployment. It must use lowercase alphanumeric characters with a minimum length of 3 and a maximum length of 12.
 
 ```
-export NAMESPACE='deepracer-1'
+export NAMESPACE='deepracer1'
 ```
 
 If you want to use a public image for the reward validation function (or private image with appropriate permissions)

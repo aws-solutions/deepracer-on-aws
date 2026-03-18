@@ -34,6 +34,8 @@ import {
 import { LambdaInvoke } from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { Construct } from 'constructs';
 
+import { CompositeAlarmWrapper } from '#constructs/common/compositeAlarmWrapper.js';
+
 import { EcrStack } from '../../stacks/ecrStack.js';
 import { addCfnGuardSuppression } from '../common/cfnGuardHelper.js';
 import { KmsHelper } from '../common/kmsHelper.js';
@@ -323,7 +325,7 @@ export class ImportWorkflow extends Construct {
       treatMissingData: TreatMissingData.NOT_BREACHING,
     });
 
-    this.lambdaErrorsAlarm = new CompositeAlarm(this, 'ImportModelLambdaErrorsAlarm', {
+    this.lambdaErrorsAlarm = new CompositeAlarmWrapper(this, 'ImportModelLambdaErrorsAlarm', {
       alarmDescription: 'Composite alarm for import model workflow Lambda errors',
       alarmRule: AlarmRule.anyOf(
         importAssetsErrorAlarm,
@@ -332,6 +334,7 @@ export class ImportWorkflow extends Construct {
         rewardValidationErrorAlarm,
         modelValidationErrorAlarm,
       ),
+      prefix: namespace,
     });
 
     const importModelDispatcherRole = new Role(this, 'ImportModelDispatcherFunctionRole', {

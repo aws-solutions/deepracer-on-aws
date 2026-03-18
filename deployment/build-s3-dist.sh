@@ -79,7 +79,9 @@ cd $source_dir
 CONTEXT_PARAMS=()
 
 # Add context flags only if variables are set
-CONTEXT_PARAMS+=("--context" "PUBLIC_ECR_REGISTRY=$PUBLIC_ECR_REGISTRY")
+if [ -n "${PUBLIC_ECR_REGISTRY:-}" ]; then
+    CONTEXT_PARAMS+=("--context" "PUBLIC_ECR_REGISTRY=$PUBLIC_ECR_REGISTRY")
+fi
 
 pnpm reset:cache
 pnpm build

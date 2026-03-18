@@ -6,14 +6,14 @@ import { _Object, CompleteMultipartUploadCommandOutput, ListObjectsV2CommandOutp
 import {
   evaluationDao,
   modelDao,
-  trainingDao,
+  ModelItem,
+  ResourceId,
+  s3PathHelper,
   TEST_EVALUATION_ITEM,
   TEST_MODEL_ITEM,
   TEST_TRAINING_ITEM,
+  trainingDao,
   TrainingItem,
-  ResourceId,
-  ModelItem,
-  s3PathHelper,
 } from '@deepracer-indy/database';
 import {
   AssetType,
@@ -410,7 +410,7 @@ describe('GetAssetUrlOperation', () => {
         packagingStatus: ModelStatus.READY,
         assetS3Locations: {
           ...TEST_MODEL_ITEM.assetS3Locations,
-          virtualModelArtifactS3Location: 's3://test-bucket/virtual-model',
+          virtualModelArtifactS3Location: 's3://test-bucket/virtual-model.tar.gz',
         },
       };
 

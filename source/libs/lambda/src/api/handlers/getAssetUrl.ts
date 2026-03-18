@@ -15,16 +15,16 @@ import {
   trainingDao,
 } from '@deepracer-indy/database';
 import {
+  AssetType,
   BadRequestError,
   GetAssetUrlServerInput,
   GetAssetUrlServerOutput,
   getGetAssetUrlHandler,
+  JobStatus,
   ModelStatus,
   NotFoundError,
-  AssetType,
-  JobStatus,
 } from '@deepracer-indy/typescript-server-client';
-import { s3Helper, AmazonS3URI, logger, metricsLogger } from '@deepracer-indy/utils';
+import { AmazonS3URI, logger, metricsLogger, s3Helper } from '@deepracer-indy/utils';
 
 import { lambdaClient } from '../../utils/clients/lambdaClient.js';
 import { FileToArchive, s3Archiver } from '../../utils/S3Archiver.js';
@@ -190,6 +190,7 @@ export class GetAssetUrlOperation {
 
   async getVirtualModelAssetUrl(modelItem: ModelItem) {
     const PACKAGING_TIME_DELTA = 60000; // To prevent race conditions
+    const VIRTUAL_MODEL_PACKAGE_FILE_EXTENSION = '.tar.gz';
 
     const virtualModelLocation = modelItem.assetS3Locations.virtualModelArtifactS3Location;
     const packagedAt = modelItem.packagedAt ? new Date(modelItem.packagedAt).getTime() : 0;
@@ -198,6 +199,7 @@ export class GetAssetUrlOperation {
     // Generate signed URL if a valid package exists and model was not updated more recently than the package
     const isValidPackage =
       virtualModelLocation &&
+      virtualModelLocation.endsWith(VIRTUAL_MODEL_PACKAGE_FILE_EXTENSION) &&
       modelItem.packagingStatus === ModelStatus.READY &&
       packagedAt &&
       updatedAt &&
@@ -205,7 +207,11 @@ export class GetAssetUrlOperation {
 
     if (isValidPackage) {
       logger.info('Generating presigned URL for virtual model artifact.');
-      const url = await s3Helper.getPresignedUrl(virtualModelLocation, 900, `virtualmodel-${modelItem.name}.tar.gz`);
+      const url = await s3Helper.getPresignedUrl(
+        virtualModelLocation,
+        900,
+        `virtualmodel-${modelItem.name}${VIRTUAL_MODEL_PACKAGE_FILE_EXTENSION}`,
+      );
       return { url };
     }
 
