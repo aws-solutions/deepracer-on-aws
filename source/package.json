@@ -92,12 +92,11 @@
   },
   "pnpm": {
     "overrides": {
-      "fast-xml-parser": ">=5.3.6",
+      "fast-xml-parser": ">=5.5.7",
       "npm": "npm:empty-npm-package@1.0.0",
       "minimatch@>=9.0.0 <9.0.7": "9.0.7",
       "serialize-javascript@<7.0.3": "7.0.3",
-      "svgo": ">=3.3.3",
-      "flatted": ">=3.4.0"
+      "flatted": ">=3.4.2"
     }
   }
 }
