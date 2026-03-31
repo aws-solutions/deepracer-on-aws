@@ -27,7 +27,7 @@
     "@types/aws-lambda": "^8.10.147",
     "archiver": "7.0.1",
     "base64url": "3.0.1",
-    "yaml": "^2.7.0"
+    "yaml": "^2.8.3"
   },
   "devDependencies": {
     "@smithy/util-stream": "^4.2.0",
