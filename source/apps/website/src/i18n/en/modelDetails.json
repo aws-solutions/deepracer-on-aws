@@ -225,7 +225,8 @@
       "actionSpace": "Action space",
       "framework": "Framework",
       "reinforcementLearningAlgorithm": "Reinforcement learning algorithm",
-      "totalTrainingTime": "Total training time"
+      "totalTrainingTime": "Total training time",
+      "minEvalTrials": "Minimum evaluation trials"
     },
     "tensorflow": "Tensorflow",
     "totalTrainingTime": "{{count}} minutes",

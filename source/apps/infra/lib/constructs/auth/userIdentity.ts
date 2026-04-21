@@ -5,12 +5,31 @@ import path from 'node:path';
 
 import { deepRacerIndyAppConfig } from '@deepracer-indy/config';
 import { BASE_USER_POOL_NAME } from '@deepracer-indy/config/src/defaults/userPoolDefaults';
-import { aws_events_targets, CfnOutput, CustomResource, Duration, RemovalPolicy, Stack } from 'aws-cdk-lib';
-import { Alarm, ComparisonOperator, Metric, TreatMissingData } from 'aws-cdk-lib/aws-cloudwatch';
+import {
+  Aws,
+  aws_events_targets,
+  CfnCondition,
+  CfnOutput,
+  CustomResource,
+  Duration,
+  Fn,
+  RemovalPolicy,
+  Stack,
+  Token,
+} from 'aws-cdk-lib';
+import {
+  Alarm,
+  CfnAlarm,
+  CfnAnomalyDetector,
+  ComparisonOperator,
+  Metric,
+  TreatMissingData,
+} from 'aws-cdk-lib/aws-cloudwatch';
 import {
   UserPool,
   IUserPool,
   UserPoolClient,
+  CfnUserPool,
   CfnUserPoolGroup,
   CfnIdentityPool,
   CfnIdentityPoolRoleAttachment,
@@ -38,6 +57,8 @@ export interface UserIdentityProps {
   globalSettings: GlobalSettings;
   adminEmail?: string;
   namespace: string;
+  isSesEnabled?: CfnCondition;
+  sesVerifiedEmail?: string;
 }
 
 export const BASE_IDENTITY_POOL_NAME = 'dr-idp';
@@ -54,6 +75,7 @@ export class UserIdentity extends Construct {
 
   readonly preSignUpErrorAlarm: Alarm;
   readonly postSignUpErrorAlarm: Alarm;
+  readonly sesAlarms: CfnAlarm[];
 
   private readonly namespace: string;
 
@@ -62,6 +84,7 @@ export class UserIdentity extends Construct {
 
     const { dynamoDBTable, globalSettings, adminEmail, namespace } = props;
     this.namespace = namespace;
+    this.sesAlarms = [];
 
     // Configure the pre-signup hook
     const preSignUpFn = new NodeLambdaFunction(this, 'PreSignUpFunction', {
@@ -154,6 +177,133 @@ export class UserIdentity extends Construct {
     });
 
     this.userPool.applyRemovalPolicy(RemovalPolicy.DESTROY); // TODO: link to config value
+
+    // Create CognitoEmailMetricFunction Lambda trigger for email metric tracking
+    const cognitoEmailMetricFn = new NodeLambdaFunction(this, 'CognitoEmailMetricFunction', {
+      entry: path.join(__dirname, '../../../../../libs/lambda/src/cognito/handlers/cognitoEmailMetric.ts'),
+      functionName: `${functionNamePrefix}-CognitoEmailMetricFn`,
+      logGroupCategory: LogGroupCategory.USER_IDENTITY,
+      namespace,
+      environment: {
+        NAMESPACE: namespace,
+      },
+    });
+
+    // Grant CloudWatch PutMetricData permission scoped to the email metric namespace
+    cognitoEmailMetricFn.addToRolePolicy(
+      new PolicyStatement({
+        actions: ['cloudwatch:PutMetricData'],
+        resources: ['*'],
+        conditions: {
+          StringEquals: {
+            'cloudwatch:namespace': 'DeepRacerOnAWS/Email',
+          },
+        },
+      }),
+    );
+
+    // Add CognitoEmailMetricFunction trigger to the CfnUserPool
+    const cfnUserPool = this.userPool.node.defaultChild as CfnUserPool;
+    cfnUserPool.addPropertyOverride('LambdaConfig.CustomMessage', cognitoEmailMetricFn.functionArn);
+
+    // Grant Cognito permission to invoke the CognitoEmailMetricFunction
+    cognitoEmailMetricFn.addPermission('AllowCognitoInvoke', {
+      principal: new ServicePrincipal('cognito-idp.amazonaws.com'),
+      action: 'lambda:InvokeFunction',
+      sourceArn: this.userPool.userPoolArn,
+    });
+
+    const sesPropsProvided = props.isSesEnabled !== undefined && props.sesVerifiedEmail !== undefined;
+    if (sesPropsProvided && props.isSesEnabled && props.sesVerifiedEmail) {
+      // Email volume anomaly detection — only created when SES is enabled
+      const emailMetric = new Metric({
+        namespace: 'DeepRacerOnAWS/Email',
+        metricName: 'TransactionalEmailSent',
+        dimensionsMap: {
+          Namespace: namespace,
+        },
+        period: Duration.hours(1),
+        statistic: 'Sum',
+      });
+
+      const anomalyDetector = new CfnAnomalyDetector(this, 'EmailVolumeAnomalyDetector', {
+        namespace: emailMetric.namespace,
+        metricName: emailMetric.metricName,
+        dimensions: [{ name: 'Namespace', value: namespace }],
+        stat: 'Sum',
+      });
+      anomalyDetector.cfnOptions.condition = props.isSesEnabled;
+
+      const emailVolumeAnomalyAlarm = new CfnAlarm(this, 'EmailVolumeAnomalyAlarm', {
+        alarmDescription: 'Unusual email sending volume detected',
+        comparisonOperator: 'LessThanLowerOrGreaterThanUpperThreshold',
+        evaluationPeriods: 3,
+        datapointsToAlarm: 2,
+        treatMissingData: 'notBreaching',
+        metrics: [
+          {
+            id: 'emailVolume',
+            metricStat: {
+              metric: {
+                namespace: emailMetric.namespace,
+                metricName: emailMetric.metricName,
+                dimensions: [{ name: 'Namespace', value: namespace }],
+              },
+              period: 3600,
+              stat: 'Sum',
+            },
+            returnData: true,
+          },
+          {
+            id: 'anomalyBand',
+            expression: 'ANOMALY_DETECTION_BAND(emailVolume, 2)',
+            returnData: true,
+          },
+        ],
+        thresholdMetricId: 'anomalyBand',
+      });
+      emailVolumeAnomalyAlarm.cfnOptions.condition = props.isSesEnabled;
+
+      const sesIdentityArn = `arn:${Stack.of(this).partition}:ses:${Stack.of(this).region}:${Stack.of(this).account}:identity/${props.sesVerifiedEmail}`;
+
+      cfnUserPool.emailConfiguration = {
+        emailSendingAccount: Token.asString(
+          Fn.conditionIf(props.isSesEnabled.logicalId, 'DEVELOPER', 'COGNITO_DEFAULT'),
+        ),
+        sourceArn: Token.asString(Fn.conditionIf(props.isSesEnabled.logicalId, sesIdentityArn, Aws.NO_VALUE)),
+        from: Token.asString(Fn.conditionIf(props.isSesEnabled.logicalId, props.sesVerifiedEmail, Aws.NO_VALUE)),
+      };
+
+      // SES reputation alarms per SES best practices:
+      // Bounce rate alarm at 5%, complaint rate alarm at 0.1%
+      const sesBounceRateAlarm = new CfnAlarm(this, 'SesBounceRateAlarm', {
+        alarmDescription: 'SES bounce rate exceeds 5% — risk of SES sending suspension',
+        namespace: 'AWS/SES',
+        metricName: 'Reputation.BounceRate',
+        statistic: 'Average',
+        period: 300,
+        evaluationPeriods: 1,
+        threshold: 0.05,
+        comparisonOperator: 'GreaterThanThreshold',
+        treatMissingData: 'notBreaching',
+      });
+      sesBounceRateAlarm.cfnOptions.condition = props.isSesEnabled;
+
+      const sesComplaintRateAlarm = new CfnAlarm(this, 'SesComplaintRateAlarm', {
+        alarmDescription: 'SES complaint rate exceeds 0.1% — risk of SES sending suspension',
+        namespace: 'AWS/SES',
+        metricName: 'Reputation.ComplaintRate',
+        statistic: 'Average',
+        period: 300,
+        evaluationPeriods: 1,
+        threshold: 0.001,
+        comparisonOperator: 'GreaterThanThreshold',
+        treatMissingData: 'notBreaching',
+      });
+      sesComplaintRateAlarm.cfnOptions.condition = props.isSesEnabled;
+
+      this.sesAlarms = [emailVolumeAnomalyAlarm, sesBounceRateAlarm, sesComplaintRateAlarm];
+    }
 
     // Add permissions to post confirmation function to manage user groups
     postConfirmationFn.addToRolePolicy(

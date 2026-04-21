@@ -74,7 +74,9 @@ structure SageMakerJobConfig {
     objectAvoidanceConfig: ObjectAvoidanceConfig
 }
 
-structure TrainingConfig with [SageMakerJobConfig] {}
+structure TrainingConfig with [SageMakerJobConfig] {
+    minEvalTrials: PositiveInteger
+}
 
 structure EvaluationConfig with [SageMakerJobConfig] {
     @required

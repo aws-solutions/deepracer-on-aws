@@ -4,3 +4,4 @@
 export * from '#configs/appConfig.js';
 export { tracks } from '#data/tracks.json';
 export * from '#constants/avatar.js';
+export * from '#defaults/commonDefaults.js';

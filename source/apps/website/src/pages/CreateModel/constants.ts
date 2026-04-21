@@ -1,6 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import { DEFAULT_MIN_EVAL_TRIALS } from '@deepracer-indy/config';
 import {
   TrackId,
   TrackDirection,
@@ -183,6 +184,7 @@ export const initialFormValues: CreateModelFormValues = {
       trackDirection: TrackDirection.CLOCKWISE,
     },
     maxTimeInMinutes: 10,
+    minEvalTrials: DEFAULT_MIN_EVAL_TRIALS,
     raceType: RaceType.TIME_TRIAL,
     objectAvoidanceConfig: undefined,
   },

@@ -9,6 +9,7 @@ import Header from '@cloudscape-design/components/header';
 import Select, { SelectProps } from '@cloudscape-design/components/select';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import TextFilter from '@cloudscape-design/components/text-filter';
+import { DEFAULT_MIN_EVAL_TRIALS } from '@deepracer-indy/config';
 import { RaceType, TrackDirection, TrackId } from '@deepracer-indy/typescript-client';
 import { useState } from 'react';
 import { Control, UseFormResetField, UseFormSetValue, useWatch } from 'react-hook-form';
@@ -190,6 +191,16 @@ const ModelInfo = ({ control, resetField, setValue }: ModelInfoProps) => {
                 disabled: !selectedTrack.enabledDirections.includes(TrackDirection.CLOCKWISE),
               },
             ]}
+          />
+          <InputField
+            control={control}
+            label={t('modelInfo.trackSelectionSection.minEvalTrialsLabel')}
+            name="trainingConfig.minEvalTrials"
+            description={t('modelInfo.trackSelectionSection.minEvalTrialsInfo')}
+            type="number"
+            placeholder={`${DEFAULT_MIN_EVAL_TRIALS}`}
+            onChange={(event) => setValue('trainingConfig.minEvalTrials', event.detail.value)}
+            constraintText={<Trans t={t}>{t('modelInfo.trackSelectionSection.minEvalTrialsError')}</Trans>}
           />
         </SpaceBetween>
       </Container>

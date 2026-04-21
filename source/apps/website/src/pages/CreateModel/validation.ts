@@ -84,6 +84,18 @@ export const createModelValidationSchema: Yup.ObjectSchema<CreateModelFormValues
       .max(1440, i18n.t('createModel:stopCondition.maximumTimeError'))
       .integer(i18n.t('validation:number.integer', { name: i18n.t('createModel:stopCondition.maximumTimeLabel') }))
       .required(i18n.t('validation:required', { name: i18n.t('createModel:stopCondition.maximumTimeLabel') })),
+    minEvalTrials: Yup.number()
+      .typeError(
+        i18n.t('validation:number.invalid', {
+          name: i18n.t('createModel:modelInfo.trackSelectionSection.minEvalTrialsLabel'),
+        }),
+      )
+      .min(1, i18n.t('createModel:modelInfo.trackSelectionSection.minEvalTrialsError'))
+      .integer(
+        i18n.t('validation:number.integer', {
+          name: i18n.t('createModel:modelInfo.trackSelectionSection.minEvalTrialsLabel'),
+        }),
+      ),
     raceType: Yup.string<RaceType>().oneOf(Object.values(RaceType)).required(),
     objectAvoidanceConfig: Yup.object({
       numberOfObjects: Yup.number()

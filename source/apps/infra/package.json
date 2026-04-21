@@ -9,12 +9,12 @@
     "clean": "rm -rf dist cdk.out",
     "cdk": "cdk",
     "bootstrap": "cdk bootstrap",
-    "deploy": "cdk deploy --parameters AdminEmail=$ADMIN_EMAIL${NAMESPACE:+ --parameters Namespace=$NAMESPACE}",
+    "deploy": "cdk deploy --parameters AdminEmail=$ADMIN_EMAIL --parameters EmailDeliveryMethod=${EMAIL_DELIVERY_METHOD:-COGNITO}${NAMESPACE:+ --parameters Namespace=$NAMESPACE}${SES_VERIFIED_EMAIL:+ --parameters SesVerifiedEmail=$SES_VERIFIED_EMAIL}",
     "list": "cdk list"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
-    "aws-cdk": "2.1002.0",
+    "aws-cdk": "2.1005.0",
     "esbuild": "0.25.0"
   },
   "dependencies": {
@@ -26,7 +26,7 @@
     "@deepracer-indy/database": "workspace:*",
     "@deepracer-indy/typescript-server-client": "workspace:*",
     "@types/aws-lambda": "^8.10.140",
-    "aws-cdk-lib": "2.181.0",
+    "aws-cdk-lib": "2.197.0",
     "constructs": "^10.3.0",
     "js-yaml": "^4.1.0",
     "uuid": "^11.0.3",

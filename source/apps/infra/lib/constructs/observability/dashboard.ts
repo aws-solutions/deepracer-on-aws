@@ -1,21 +1,29 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { Duration, Stack } from 'aws-cdk-lib';
+import { CfnCondition, Duration, Fn, IResolveContext, Lazy, Stack } from 'aws-cdk-lib';
 import { SpecRestApi } from 'aws-cdk-lib/aws-apigateway';
 import {
   Alarm,
   AlarmStatusWidget,
+  CfnAlarm,
+  CfnDashboard,
   CompositeAlarm,
   Dashboard,
   GraphWidget,
   Metric,
   Row,
+  SingleValueWidget,
   TextWidget,
 } from 'aws-cdk-lib/aws-cloudwatch';
 import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { IQueue } from 'aws-cdk-lib/aws-sqs';
 import { Construct } from 'constructs';
+
+interface MonitoringDashboardAlarms {
+  systemAlarms: (Alarm | CompositeAlarm)[];
+  emailAlarms: CfnAlarm[];
+}
 
 export interface MonitoringDashboardProps {
   /**
@@ -36,12 +44,17 @@ export interface MonitoringDashboardProps {
   /**
    * Optional: List of alarms to display on the dashboard
    */
-  alarms?: (Alarm | CompositeAlarm)[];
+  alarms?: MonitoringDashboardAlarms;
 
   /**
    * Optional: SQS queues to monitor
    */
   queues?: IQueue[];
+
+  /**
+   * Optional: CfnCondition that controls whether SES email alarms are created
+   */
+  isSesEnabled?: CfnCondition;
 }
 
 /**
@@ -68,8 +81,8 @@ export class MonitoringDashboard extends Construct {
       }),
     );
 
-    // Add alarm status widget
-    if (props.alarms && props.alarms.length > 0) {
+    // System alarms status widget
+    if (props.alarms?.systemAlarms && props.alarms.systemAlarms.length > 0) {
       this.dashboard.addWidgets(
         new Row(
           new TextWidget({
@@ -81,7 +94,7 @@ export class MonitoringDashboard extends Construct {
         new Row(
           new AlarmStatusWidget({
             title: 'Alarm Status',
-            alarms: props.alarms,
+            alarms: props.alarms.systemAlarms,
             width: 24,
           }),
         ),
@@ -94,22 +107,22 @@ export class MonitoringDashboard extends Construct {
         new TextWidget({
           markdown:
             '## Training Instance Usage\n\n' +
-            'Current ml.c5.4xlarge training job usage. ' +
-            '[View quota limits and utilization](https://console.aws.amazon.com/servicequotas/home/services/sagemaker/quotas/L-E7898792)',
+            'Current ml.c7i.4xlarge training job usage. ' +
+            '[View quota limits and utilization](https://console.aws.amazon.com/servicequotas/home/services/sagemaker/quotas/L-1EC4D7FD)',
           width: 24,
           height: 2,
         }),
       ),
       new Row(
         new GraphWidget({
-          title: 'ml.c5.4xlarge Training Jobs In Use',
+          title: 'ml.c7i.4xlarge Training Jobs In Use',
           left: [
             new Metric({
               namespace: 'AWS/Usage',
               metricName: 'ResourceCount',
               dimensionsMap: {
                 Type: 'Resource',
-                Resource: 'training-job/ml.c5.4xlarge',
+                Resource: 'training-job/ml.c7i.4xlarge',
                 Service: 'SageMaker',
                 Class: 'None',
               },
@@ -292,5 +305,86 @@ export class MonitoringDashboard extends Construct {
         }),
       ),
     );
+
+    // Email section — header and daily email count are always shown.
+    // SES alarm status widget is conditionally injected via Fn::If escape hatch.
+    const emailSentMetric = new Metric({
+      namespace: 'DeepRacerOnAWS/Email',
+      metricName: 'TransactionalEmailSent',
+      dimensionsMap: {
+        Namespace: props.namespace,
+      },
+      period: Duration.days(1),
+      statistic: 'Sum',
+      label: 'Number of authentication emails sent today.',
+    });
+
+    this.dashboard.addWidgets(
+      new Row(
+        new TextWidget({
+          markdown: '## Email',
+          width: 24,
+          height: 1,
+        }),
+      ),
+      new Row(
+        new SingleValueWidget({
+          title: 'Daily authentication email count',
+          metrics: [emailSentMetric],
+          width: 8,
+          setPeriodToTimeRange: true,
+        }),
+      ),
+    );
+
+    // Append conditional SES alarm widget at the end of the dashboard body.
+    const emailAlarms = props.alarms?.emailAlarms ?? [];
+    if (emailAlarms.length > 0 && props.isSesEnabled) {
+      this.appendConditionalSesAlarmWidget(emailAlarms, props.isSesEnabled);
+    }
+  }
+
+  /**
+   * Appends a conditional SES alarm status widget to the end of the dashboard body
+   * using a CfnDashboard escape hatch. The widget is only rendered when SES is enabled.
+   *
+   * Since the email section is the last section added to the dashboard, this appends
+   * the conditional widget JSON right before the closing "]}" of the dashboard body.
+   */
+  private appendConditionalSesAlarmWidget(alarms: CfnAlarm[], condition: CfnCondition): void {
+    const alarmArnsJson = Fn.join(
+      '","',
+      alarms.map((a) => a.attrArn),
+    );
+
+    const sesAlarmWidgetJson = Fn.join('', [
+      ',{"type":"alarm","width":24,"height":3,"properties":{"title":"SES Alarm Status","alarms":["',
+      alarmArnsJson,
+      '"]}}',
+    ]);
+
+    const conditionalFragment = Fn.conditionIf(condition.logicalId, sesAlarmWidgetJson, '').toString();
+
+    const cfnDashboard = this.dashboard.node.defaultChild as CfnDashboard;
+    const originalBody = cfnDashboard.dashboardBody;
+
+    cfnDashboard.dashboardBody = Lazy.uncachedString({
+      produce: (context: IResolveContext) => {
+        const resolved = context.resolve(originalBody);
+        const joinArray: unknown[] = resolved['Fn::Join'][1];
+
+        // The last element ends with "]}" closing the widgets array and dashboard object.
+        // Insert the conditional fragment just before it.
+        const lastIndex = joinArray.length - 1;
+        const lastElement = joinArray[lastIndex] as string;
+        if (typeof lastElement === 'string' && lastElement.endsWith(']}')) {
+          joinArray[lastIndex] = lastElement.slice(0, -2);
+          joinArray.push(context.resolve(conditionalFragment));
+          joinArray.push(']}');
+        }
+
+        return resolved;
+      },
+    });
   }
 }

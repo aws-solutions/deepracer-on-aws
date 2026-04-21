@@ -59,6 +59,7 @@ export const ListModelsOperation: Operation<ListModelsServerInput, ListModelsSer
         importErrorMessage: modelItem.importErrorMessage,
         trainingConfig: {
           maxTimeInMinutes: trainingItem.terminationConditions.maxTimeInMinutes,
+          minEvalTrials: trainingItem.minEvalTrials,
           objectAvoidanceConfig: trainingItem.objectAvoidanceConfig,
           raceType: trainingItem.raceType,
           trackConfig: trainingItem.trackConfig,
