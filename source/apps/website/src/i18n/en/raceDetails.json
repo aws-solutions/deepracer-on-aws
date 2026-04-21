@@ -29,6 +29,7 @@
     "rankingMethod": "Ranking method",
     "style": "Style",
     "entryCriteria": "Entry Criteria",
+    "maximumLaps": "Maximum laps",
     "resets": "Resets",
     "offTrackPenalty": "Off-track penalty",
     "rankingMethodPopoverContents": {
@@ -46,6 +47,8 @@
     "individualLap": "Individual lap",
     "consecutiveLapCount_one": "{{count}} consecutive lap",
     "consecutiveLapCount_other": "{{count}} consecutive laps",
+    "maximumLapCount_one": "{{count}} lap total",
+    "maximumLapCount_other": "{{count}} laps total",
     "resetCountUnlimited": "Unlimited resets",
     "secondCount_one": "{{count, number}} second",
     "secondCount_other": "{{count, number}} seconds",

@@ -37,6 +37,7 @@ const defaultFormValues: CreateRaceFormValues = {
   desc: '',
   ranking: TimingMethod.TOTAL_TIME,
   minLap: '3',
+  maxLap: '5',
   offTrackPenalty: '1',
   collisionPenalty: '1',
   maxSubmissionsPerUser: 99,

@@ -39,6 +39,7 @@ const EditRace = () => {
     desc: leaderboard.description || '',
     ranking: leaderboard.timingMethod,
     minLap: leaderboard.submissionTerminationConditions.minimumLaps.toString(),
+    maxLap: leaderboard.submissionTerminationConditions.maximumLaps.toString(),
     offTrackPenalty: leaderboard.resettingBehaviorConfig.offTrackPenaltySeconds?.toString() || '1',
     collisionPenalty: leaderboard.resettingBehaviorConfig.collisionPenaltySeconds?.toString() || '1',
     maxSubmissionsPerUser: leaderboard.maxSubmissionsPerUser,

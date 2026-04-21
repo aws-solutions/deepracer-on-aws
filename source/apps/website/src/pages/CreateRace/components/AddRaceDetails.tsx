@@ -39,10 +39,28 @@ const AddRaceDetails = (props: AddRaceDetailsProps) => {
     name: 'objectAvoidanceConfig.objectPositions',
   });
   // For validation as user is typing dates
-  const [startDate, startTime, endDate, endTime, raceType, objectAvoidanceConfig, randomizeObstacles] = useWatch({
-    name: ['startDate', 'startTime', 'endDate', 'endTime', 'raceType', 'objectAvoidanceConfig', 'randomizeObstacles'],
-    control,
-  });
+  const [startDate, startTime, endDate, endTime, raceType, objectAvoidanceConfig, randomizeObstacles, ranking, maxLap] =
+    useWatch({
+      name: [
+        'startDate',
+        'startTime',
+        'endDate',
+        'endTime',
+        'raceType',
+        'objectAvoidanceConfig',
+        'randomizeObstacles',
+        'ranking',
+        'maxLap',
+      ],
+      control,
+    });
+
+  // For TOTAL_TIME, minimum laps must equal maximum laps — keep them in sync
+  useEffect(() => {
+    if (ranking === TimingMethod.TOTAL_TIME) {
+      setValue('minLap', maxLap);
+    }
+  }, [ranking, maxLap, setValue]);
 
   useEffect(() => {
     const objectDiff = fields.length - objectAvoidanceConfig.numberOfObjects;
@@ -195,14 +213,43 @@ const AddRaceDetails = (props: AddRaceDetailsProps) => {
             />
 
             <SelectField
-              description={t('addRaceDetails.minimumLapsDesc')}
-              label={t('addRaceDetails.minimumLaps')}
+              description={
+                ranking === TimingMethod.AVG_LAP_TIME
+                  ? t('addRaceDetails.minimumLapsAvgLapDesc')
+                  : ranking === TimingMethod.TOTAL_TIME
+                    ? t('addRaceDetails.minimumLapsTotalTimeDesc')
+                    : t('addRaceDetails.minimumLapsBestLapDesc')
+              }
+              label={
+                ranking === TimingMethod.AVG_LAP_TIME
+                  ? t('addRaceDetails.minimumLapsAvgLapLabel')
+                  : t('addRaceDetails.minimumLaps')
+              }
               name="minLap"
+              control={control}
+              disabled={ranking === TimingMethod.TOTAL_TIME}
+              options={[
+                { label: '1 lap', value: '1' },
+                { label: `2 ${t('addRaceDetails.consecutiveLaps')}`, value: '2' },
+                { label: `3 ${t('addRaceDetails.consecutiveLaps')}`, value: '3' },
+                { label: `5 ${t('addRaceDetails.consecutiveLaps')}`, value: '5' },
+                { label: `10 ${t('addRaceDetails.consecutiveLaps')}`, value: '10' },
+                { label: `20 ${t('addRaceDetails.consecutiveLaps')}`, value: '20' },
+              ]}
+            />
+
+            <SelectField
+              description={t('addRaceDetails.maximumLapsDesc')}
+              label={t('addRaceDetails.maximumLaps')}
+              name="maxLap"
               control={control}
               options={[
                 { label: '1 lap', value: '1' },
                 { label: `2 ${t('addRaceDetails.consecutiveLaps')}`, value: '2' },
                 { label: `3 ${t('addRaceDetails.consecutiveLaps')}`, value: '3' },
+                { label: `5 ${t('addRaceDetails.consecutiveLaps')}`, value: '5' },
+                { label: `10 ${t('addRaceDetails.consecutiveLaps')}`, value: '10' },
+                { label: `20 ${t('addRaceDetails.consecutiveLaps')}`, value: '20' },
               ]}
             />
 

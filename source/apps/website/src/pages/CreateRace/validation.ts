@@ -115,6 +115,19 @@ export const createRaceValidationSchema = Yup.object().shape({
     }),
   ranking: Yup.mixed<TimingMethod>().required(i18n.t('createRace:required')),
   minLap: Yup.string().required(i18n.t('createRace:required')),
+  maxLap: Yup.string()
+    .required(i18n.t('createRace:required'))
+    .test(
+      'maxLap-gte-minLap',
+      i18n.t('createRace:addRaceDetails.validationErrors.maxLapsLessThanMinLaps'),
+      function (maxLap) {
+        const { minLap, ranking } = this.parent;
+        if (ranking === TimingMethod.TOTAL_TIME) {
+          return Number(maxLap) === Number(minLap);
+        }
+        return Number(maxLap) >= Number(minLap);
+      },
+    ),
   offTrackPenalty: Yup.string().required(i18n.t('createRace:required')),
   collisionPenalty: Yup.string().required(i18n.t('createRace:required')),
   maxSubmissionsPerUser: Yup.number().required(i18n.t('createRace:required')),

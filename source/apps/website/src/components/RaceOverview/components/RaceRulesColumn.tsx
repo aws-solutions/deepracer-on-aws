@@ -30,6 +30,7 @@ const RaceRulesColumn = ({ leaderboard }: RaceRulesColumnProps) => {
           </RuleLabelWithPopover>
           <Box margin={{ bottom: 'xxxs' }}>{t('raceRulesColumn.style')}</Box>
           <Box margin={{ bottom: 'xxxs' }}>{t('raceRulesColumn.entryCriteria')}</Box>
+          <Box margin={{ bottom: 'xxxs' }}>{t('raceRulesColumn.maximumLaps')}</Box>
           <RuleLabelWithPopover
             content={t('raceRulesColumn.resetsPopoverContent')}
             header={t('raceRulesColumn.resets')}
@@ -58,6 +59,9 @@ const RaceRulesColumn = ({ leaderboard }: RaceRulesColumnProps) => {
           <Box margin={{ bottom: 'xxxs' }}>{t('raceRulesColumn.individualLap')}</Box>
           <Box margin={{ bottom: 'xxxs' }}>
             {t('raceRulesColumn.consecutiveLapCount', { count: submissionTerminationConditions.minimumLaps })}
+          </Box>
+          <Box margin={{ bottom: 'xxxs' }}>
+            {t('raceRulesColumn.maximumLapCount', { count: submissionTerminationConditions.maximumLaps })}
           </Box>
           <Box margin={{ bottom: 'xxxs' }}>{t('raceRulesColumn.resetCountUnlimited')}</Box>
           {resettingBehaviorConfig?.offTrackPenaltySeconds && (

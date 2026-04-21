@@ -41,6 +41,7 @@ export interface CreateRaceFormValues {
   desc?: string;
   ranking: TimingMethod;
   minLap: string;
+  maxLap: string;
   offTrackPenalty: string;
   collisionPenalty: string;
   maxSubmissionsPerUser: number;
@@ -62,6 +63,7 @@ const initialRaceFormValues: CreateRaceFormValues = {
   desc: '',
   ranking: TimingMethod.TOTAL_TIME,
   minLap: '3',
+  maxLap: '5',
   offTrackPenalty: '1',
   collisionPenalty: '1',
   maxSubmissionsPerUser: 99,
@@ -147,7 +149,7 @@ const CreateRace = ({ initialFormValues = initialRaceFormValues, leaderboardId =
       },
       submissionTerminationConditions: {
         minimumLaps: Number(data.minLap),
-        maximumLaps: 5,
+        maximumLaps: Number(data.maxLap),
       },
       timingMethod: data.ranking,
       description: data.desc || undefined,
