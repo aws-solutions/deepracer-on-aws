@@ -29,6 +29,8 @@ export const TrainingInstanceQuotaCode: { [T in DeepRacerIndyAppConfig['sageMake
   'ml.c6i.4xlarge': 'L-4A20E33E',
   'ml.c6i.8xlarge': 'L-845DE61C',
   'ml.c6i.xlarge': 'L-D526E050',
+  // @ts-expect-error ml.c7i.4xlarge is a valid SageMaker instance type but not yet in the installed @aws-sdk/client-sagemaker@3.654.0 type definitions.
+  'ml.c7i.4xlarge': 'L-1EC4D7FD',
   'ml.g4dn.12xlarge': 'L-7BD2C9FA',
   'ml.g4dn.16xlarge': 'L-57998C77',
   'ml.g4dn.2xlarge': 'L-C2495BC4',

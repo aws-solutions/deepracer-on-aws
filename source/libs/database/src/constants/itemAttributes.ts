@@ -1,7 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { AvatarOptionType, DEFAULT_AVATAR } from '@deepracer-indy/config';
+import { AvatarOptionType, DEFAULT_AVATAR, DEFAULT_MIN_EVAL_TRIALS } from '@deepracer-indy/config';
 import { JobStatus, RaceType, TrackDirection, TrackId } from '@deepracer-indy/typescript-server-client';
 import { CustomAttributeType, type Attribute, type Schema } from 'electrodb';
 
@@ -126,6 +126,9 @@ export enum DynamoDBItemAttribute {
   PACKAGING_ERROR_REQUEST_ID = 'packagingErrorRequestId',
   PACKAGED_AT = 'packagedAt',
   IMPORT_ERROR_MESSAGE = 'importErrorMessage',
+
+  // Training config attributes
+  MIN_EVAL_TRIALS = 'minEvalTrials',
 
   // Ranking attributes
   RANKING_SCORE = 'rankingScore',
@@ -371,6 +374,11 @@ export const getWorkflowJobAttributes = <
       },
     },
     [Attribute.OBJECT_AVOIDANCE_CONFIG]: OBJECT_AVOIDANCE_CONFIG_ATTRIBUTE,
+    [Attribute.MIN_EVAL_TRIALS]: {
+      type: 'number',
+      readOnly: true,
+      default: DEFAULT_MIN_EVAL_TRIALS,
+    },
     [Attribute.VIDEO_STREAM_URL]: {
       type: 'string',
     },

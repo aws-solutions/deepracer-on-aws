@@ -108,6 +108,7 @@ export const CreateModelOperation: Operation<CreateModelServerInput, CreateModel
     trainingDao.create({
       modelId,
       profileId,
+      minEvalTrials: trainingConfig.minEvalTrials,
       objectAvoidanceConfig: trainingConfig.objectAvoidanceConfig,
       raceType: trainingConfig.raceType,
       status: JobStatus.QUEUED,

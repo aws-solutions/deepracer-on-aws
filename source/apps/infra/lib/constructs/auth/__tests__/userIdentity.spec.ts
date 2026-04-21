@@ -3,7 +3,7 @@
 
 import { deepRacerIndyAppConfig } from '@deepracer-indy/config';
 import { BASE_USER_POOL_NAME } from '@deepracer-indy/config/src/defaults/userPoolDefaults';
-import { App, Duration, Stack } from 'aws-cdk-lib';
+import { App, CfnCondition, Duration, Fn, Stack } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { AttributeType, TableV2 } from 'aws-cdk-lib/aws-dynamodb';
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -638,5 +638,272 @@ describe('UserIdentity Class', () => {
         FunctionName: `${TEST_NAMESPACE}-${functionNamePrefix}-ProfileRoleChangeHandler`,
       }),
     ).not.toThrow();
+  });
+});
+
+describe('UserIdentity - Conditional SES Email Configuration', () => {
+  const createSesEnabledStack = () => {
+    const app = new App();
+    const stack = new Stack(app, 'TestStack');
+
+    const table = new TableV2(stack, 'TestTable', {
+      partitionKey: { name: 'pk', type: AttributeType.STRING },
+      sortKey: { name: 'sk', type: AttributeType.STRING },
+    });
+
+    const mockGlobalSettings = new GlobalSettings(stack, 'MockGlobalSettings', {
+      namespace: TEST_NAMESPACE,
+    });
+
+    const isSesEnabled = new CfnCondition(stack, 'IsSesEnabled', {
+      expression: Fn.conditionEquals('SES', 'SES'),
+    });
+
+    new UserIdentity(stack, 'TestUserIdentity', {
+      dynamoDBTable: table,
+      globalSettings: mockGlobalSettings,
+      namespace: TEST_NAMESPACE,
+      isSesEnabled,
+      sesVerifiedEmail: 'test@example.com',
+    });
+
+    return Template.fromStack(stack);
+  };
+
+  it('CfnUserPool EmailConfiguration contains Fn::If with correct SES and COGNITO branches', () => {
+    const template = createSesEnabledStack();
+
+    template.hasResourceProperties('AWS::Cognito::UserPool', {
+      EmailConfiguration: {
+        EmailSendingAccount: {
+          'Fn::If': ['IsSesEnabled', 'DEVELOPER', 'COGNITO_DEFAULT'],
+        },
+        SourceArn: {
+          'Fn::If': Match.arrayWith(['IsSesEnabled']),
+        },
+        From: {
+          'Fn::If': Match.arrayWith(['IsSesEnabled']),
+        },
+      },
+    });
+    expect(template).toBeDefined();
+  });
+
+  it('EmailConfiguration sourceArn references the SES identity when IsSesEnabled is true', () => {
+    const template = createSesEnabledStack();
+    const templateJson = JSON.stringify(template.toJSON());
+
+    expect(templateJson).toContain('identity/test@example.com');
+    expect(templateJson).toContain('"IsSesEnabled"');
+  });
+
+  it('EmailConfiguration from references the SES verified email when IsSesEnabled is true', () => {
+    const template = createSesEnabledStack();
+
+    expect(() =>
+      template.hasResourceProperties('AWS::Cognito::UserPool', {
+        EmailConfiguration: {
+          From: {
+            'Fn::If': ['IsSesEnabled', 'test@example.com', { Ref: 'AWS::NoValue' }],
+          },
+        },
+      }),
+    ).not.toThrow();
+  });
+});
+
+describe('UserIdentity - CustomMessage Trigger', () => {
+  const createTestStack = () => {
+    const app = new App();
+    const stack = new Stack(app, 'TestStack');
+
+    const table = new TableV2(stack, 'TestTable', {
+      partitionKey: { name: 'pk', type: AttributeType.STRING },
+      sortKey: { name: 'sk', type: AttributeType.STRING },
+    });
+
+    const mockGlobalSettings = new GlobalSettings(stack, 'MockGlobalSettings', {
+      namespace: TEST_NAMESPACE,
+    });
+
+    new UserIdentity(stack, 'TestUserIdentity', {
+      dynamoDBTable: table,
+      globalSettings: mockGlobalSettings,
+      namespace: TEST_NAMESPACE,
+    });
+
+    return Template.fromStack(stack);
+  };
+
+  it('creates CustomMessage Lambda function', () => {
+    const template = createTestStack();
+
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: `${TEST_NAMESPACE}-${functionNamePrefix}-CognitoEmailMetricFn`,
+      Handler: 'index.lambdaHandler',
+      Runtime: 'nodejs22.x',
+    });
+    expect(template).toBeDefined();
+  });
+
+  it('CfnUserPool lambdaConfig includes CustomMessage trigger', () => {
+    const template = createTestStack();
+
+    template.hasResourceProperties('AWS::Cognito::UserPool', {
+      LambdaConfig: Match.objectLike({
+        CustomMessage: Match.anyValue(),
+      }),
+    });
+    expect(template).toBeDefined();
+  });
+});
+
+describe('Feature: ses-email-delivery, Property 1: User Pool logical ID stability', () => {
+  const synthesizeWithDeliveryMethod = (method: 'COGNITO' | 'SES') => {
+    const app = new App();
+    const stack = new Stack(app, 'TestStack');
+
+    const table = new TableV2(stack, 'TestTable', {
+      partitionKey: { name: 'pk', type: AttributeType.STRING },
+      sortKey: { name: 'sk', type: AttributeType.STRING },
+    });
+
+    const mockGlobalSettings = new GlobalSettings(stack, 'MockGlobalSettings', {
+      namespace: TEST_NAMESPACE,
+    });
+
+    const isSesEnabled = new CfnCondition(stack, 'IsSesEnabled', {
+      expression: Fn.conditionEquals(method, 'SES'),
+    });
+
+    new UserIdentity(stack, 'TestUserIdentity', {
+      dynamoDBTable: table,
+      globalSettings: mockGlobalSettings,
+      namespace: TEST_NAMESPACE,
+      isSesEnabled,
+      sesVerifiedEmail: 'test@example.com',
+    });
+
+    return Template.fromStack(stack);
+  };
+
+  const getUserPoolLogicalIds = (template: Template): string[] => {
+    const resources = template.findResources('AWS::Cognito::UserPool');
+    return Object.keys(resources);
+  };
+
+  it.each(['COGNITO', 'SES'] as const)('User Pool logical ID is stable when EmailDeliveryMethod is %s', (method) => {
+    const template = synthesizeWithDeliveryMethod(method);
+    const logicalIds = getUserPoolLogicalIds(template);
+    expect(logicalIds).toHaveLength(1);
+  });
+
+  it('User Pool logical ID is identical for COGNITO and SES delivery methods', () => {
+    const cognitoTemplate = synthesizeWithDeliveryMethod('COGNITO');
+    const sesTemplate = synthesizeWithDeliveryMethod('SES');
+
+    const cognitoLogicalIds = getUserPoolLogicalIds(cognitoTemplate);
+    const sesLogicalIds = getUserPoolLogicalIds(sesTemplate);
+
+    expect(cognitoLogicalIds).toEqual(sesLogicalIds);
+  });
+});
+
+describe('UserIdentity - SES Reputation Alarms', () => {
+  const createSesStack = () => {
+    const app = new App();
+    const stack = new Stack(app, 'TestStack');
+
+    const table = new TableV2(stack, 'TestTable', {
+      partitionKey: { name: 'pk', type: AttributeType.STRING },
+      sortKey: { name: 'sk', type: AttributeType.STRING },
+    });
+
+    const mockGlobalSettings = new GlobalSettings(stack, 'MockGlobalSettings', {
+      namespace: TEST_NAMESPACE,
+    });
+
+    const isSesEnabled = new CfnCondition(stack, 'IsSesEnabled', {
+      expression: Fn.conditionEquals('SES', 'SES'),
+    });
+
+    new UserIdentity(stack, 'TestUserIdentity', {
+      dynamoDBTable: table,
+      globalSettings: mockGlobalSettings,
+      namespace: TEST_NAMESPACE,
+      isSesEnabled,
+      sesVerifiedEmail: 'test@example.com',
+    });
+
+    return Template.fromStack(stack);
+  };
+
+  it('creates bounce rate alarm with 5% threshold when SES is enabled', () => {
+    const template = createSesStack();
+
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      Namespace: 'AWS/SES',
+      MetricName: 'Reputation.BounceRate',
+      Threshold: 0.05,
+      ComparisonOperator: 'GreaterThanThreshold',
+    });
+    expect(template).toBeDefined();
+  });
+
+  it('creates complaint rate alarm with 0.1% threshold when SES is enabled', () => {
+    const template = createSesStack();
+
+    template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      Namespace: 'AWS/SES',
+      MetricName: 'Reputation.ComplaintRate',
+      Threshold: 0.001,
+      ComparisonOperator: 'GreaterThanThreshold',
+    });
+    expect(template).toBeDefined();
+  });
+
+  it('SES reputation alarms are conditional on IsSesEnabled when SES is configured', () => {
+    const template = createSesStack();
+
+    const alarms = template.findResources('AWS::CloudWatch::Alarm', {
+      Properties: {
+        Namespace: 'AWS/SES',
+      },
+    });
+
+    expect(Object.keys(alarms)).toHaveLength(2);
+    // Alarms are conditional on IsSesEnabled so they only exist when SES delivery is active
+    for (const logicalId of Object.keys(alarms)) {
+      expect(alarms[logicalId].Condition).toBe('IsSesEnabled');
+    }
+  });
+
+  it('does not create SES reputation alarms when SES is not configured', () => {
+    const app = new App();
+    const stack = new Stack(app, 'TestStack');
+
+    const table = new TableV2(stack, 'TestTable', {
+      partitionKey: { name: 'pk', type: AttributeType.STRING },
+      sortKey: { name: 'sk', type: AttributeType.STRING },
+    });
+
+    const mockGlobalSettings = new GlobalSettings(stack, 'MockGlobalSettings', {
+      namespace: TEST_NAMESPACE,
+    });
+
+    new UserIdentity(stack, 'TestUserIdentity', {
+      dynamoDBTable: table,
+      globalSettings: mockGlobalSettings,
+      namespace: TEST_NAMESPACE,
+    });
+
+    const template = Template.fromStack(stack);
+    const sesAlarms = template.findResources('AWS::CloudWatch::Alarm', {
+      Properties: {
+        Namespace: 'AWS/SES',
+      },
+    });
+
+    expect(Object.keys(sesAlarms)).toHaveLength(0);
   });
 });

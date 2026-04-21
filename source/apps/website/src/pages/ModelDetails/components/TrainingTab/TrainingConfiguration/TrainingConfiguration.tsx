@@ -11,6 +11,7 @@ import Header from '@cloudscape-design/components/header';
 import KeyValuePairs from '@cloudscape-design/components/key-value-pairs';
 import Modal from '@cloudscape-design/components/modal';
 import Table from '@cloudscape-design/components/table';
+import { DEFAULT_MIN_EVAL_TRIALS } from '@deepracer-indy/config';
 import { Hyperparameters, Model } from '@deepracer-indy/typescript-client';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -69,6 +70,10 @@ const TrainingConfiguration = ({ model }: TrainingConfigurationProps) => {
               {
                 label: t('keyValueLabels.totalTrainingTime'),
                 value: t('totalTrainingTime', { count: maxTimeInMinutes }),
+              },
+              {
+                label: t('keyValueLabels.minEvalTrials'),
+                value: trainingConfig.minEvalTrials ?? DEFAULT_MIN_EVAL_TRIALS,
               },
             ]}
           />

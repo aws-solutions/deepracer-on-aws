@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-04-21
+
+### Added
+
+- Amazon SES as an alternative email delivery method for authentication emails, with CloudWatch alarms for SES reputation monitoring and email volume anomaly detection.
+- Configurable minimum evaluation trials per training iteration, with a default of 5 ([#18](https://github.com/aws-solutions/deepracer-on-aws/issues/18)).
+
+### Changed
+
+- Default SageMaker training instance type from `ml.c5.4xlarge` to `ml.c7i.4xlarge` for improved performance and reduced cost.
+- Disable MP4 video recording during training to reduce S3 storage usage ([#22](https://github.com/aws-solutions/deepracer-on-aws/issues/22)).
+- Update `aws-cdk-lib` to 2.197.0 and `aws-cdk` to 2.1005.0 to ensure custom resource providers use Node.js 22 runtime.
+- Improved node monitor service client caching and lifecycle management for better video performance and reduced CPU/memory usage - contributed by ([@larsll](https://github.com/larsll)).
+
+### Security
+
+- Update `cryptography` to 46.0.7 to mitigate [CVE-2026-39892](https://nvd.nist.gov/vuln/detail/CVE-2026-39892).
+
 ## [1.0.16] - 2026-04-16
 
 ### Security
@@ -33,8 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
-- Update dependencies to mitigate [CVE-2026-4926](https://nvd.nist.gov/vuln/detail/CVE-2026-4926), [CVE-2024-7347](https://nvd.nist.gov/vuln/detail/CVE-2024-7347), 
-[CVE-2025-23419](https://nvd.nist.gov/vuln/detail/CVE-2025-23419), [CVE-2025-53859](https://nvd.nist.gov/vuln/detail/CVE-2025-53859), [CVE-2026-1642](https://nvd.nist.gov/vuln/detail/CVE-2026-1642), [CVE-2026-27651](https://nvd.nist.gov/vuln/detail/CVE-2026-27651), [CVE-2026-27654](https://nvd.nist.gov/vuln/detail/CVE-2026-27654), [CVE-2026-27784](https://nvd.nist.gov/vuln/detail/CVE-2026-27784), [CVE-2026-28753](https://nvd.nist.gov/vuln/detail/CVE-2026-28753), and [CVE-2026-32647](https://nvd.nist.gov/vuln/detail/CVE-2026-32647).
+- Update dependencies to mitigate [CVE-2026-4926](https://nvd.nist.gov/vuln/detail/CVE-2026-4926), [CVE-2024-7347](https://nvd.nist.gov/vuln/detail/CVE-2024-7347), [CVE-2025-23419](https://nvd.nist.gov/vuln/detail/CVE-2025-23419), [CVE-2025-53859](https://nvd.nist.gov/vuln/detail/CVE-2025-53859), [CVE-2026-1642](https://nvd.nist.gov/vuln/detail/CVE-2026-1642), [CVE-2026-27651](https://nvd.nist.gov/vuln/detail/CVE-2026-27651), [CVE-2026-27654](https://nvd.nist.gov/vuln/detail/CVE-2026-27654), [CVE-2026-27784](https://nvd.nist.gov/vuln/detail/CVE-2026-27784), [CVE-2026-28753](https://nvd.nist.gov/vuln/detail/CVE-2026-28753), and [CVE-2026-32647](https://nvd.nist.gov/vuln/detail/CVE-2026-32647).
 
 ## [1.0.11] - 2026-03-23
 
@@ -110,7 +127,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Optimize GetAssetUrl Lambda function memory for new AWS account quota
-- Date pickers being disabled in non-PST timezones in race creation form ([#6](https://github.com/aws-solutions/deepracer-on-aws/issues/6) - Issue 2 and 3, [PR #7](https://github.com/aws-solutions/deepracer-on-aws/pull/7)) - contributed by ([@Iarsll](https://github.com/larsll))
+- Date pickers being disabled in non-PST timezones in race creation form ([#6](https://github.com/aws-solutions/deepracer-on-aws/issues/6) - Issue 2 and 3, [PR #7](https://github.com/aws-solutions/deepracer-on-aws/pull/7)) - contributed by ([@larsll](https://github.com/larsll))
 
 ## [1.0.1] - 2026-02-02
 

@@ -49,6 +49,7 @@ This software includes third party software subject to the following copyrights:
 @aws-sdk/client-appconfigdata under the Apache-2.0 license.
 @aws-sdk/client-cloudformation under the Apache-2.0 license.
 @aws-sdk/client-cloudfront under the Apache-2.0 license.
+@aws-sdk/client-cloudwatch under the Apache-2.0 license.
 @aws-sdk/client-cloudwatch-logs under the Apache-2.0 license.
 @aws-sdk/client-codebuild under the Apache-2.0 license.
 @aws-sdk/client-cognito-identity-provider under the Apache-2.0 license.
@@ -64,6 +65,7 @@ This software includes third party software subject to the following copyrights:
 @aws-sdk/client-s3 under the Apache-2.0 license.
 @aws-sdk/client-sagemaker under the Apache-2.0 license.
 @aws-sdk/client-service-quotas under the Apache-2.0 license.
+@aws-sdk/client-sesv2 under the Apache-2.0 license.
 @aws-sdk/client-sfn under the Apache-2.0 license.
 @aws-sdk/client-sqs under the Apache-2.0 license.
 @aws-sdk/client-sso-oidc under the Apache-2.0 license.
@@ -527,6 +529,7 @@ This software includes third party software subject to the following copyrights:
 @smithy/invalid-dependency under the Apache-2.0 license.
 @smithy/is-array-buffer under the Apache-2.0 license.
 @smithy/md5-js under the Apache-2.0 license.
+@smithy/middleware-compression under the Apache-2.0 license.
 @smithy/middleware-content-length under the Apache-2.0 license.
 @smithy/middleware-endpoint under the Apache-2.0 license.
 @smithy/middleware-retry under the Apache-2.0 license.

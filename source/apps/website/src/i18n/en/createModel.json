@@ -57,7 +57,10 @@
       "difficultyMostToLeast": "Difficulty: Most to least",
       "difficultyLeastToMost": "Difficulty: Least to most",
       "trackDirectionLabel": "Track direction",
-      "trackDirectionDescription": "Select the direction in which you wish to race"
+      "trackDirectionDescription": "Select the direction in which you wish to race",
+      "minEvalTrialsLabel": "Minimum evaluation trials",
+      "minEvalTrialsInfo": "Number of evaluation trials to run per training iteration. Lower values speed up training. Higher values slow down training and incur higher cost, but may yield better performing models. Must be at least 1.",
+      "minEvalTrialsError": "Minimum evaluation trials must be at least 1."
     },
     "objectAvoidanceConfig": {
       "box": "Box",

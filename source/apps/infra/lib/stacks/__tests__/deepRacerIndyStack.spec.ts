@@ -98,6 +98,46 @@ describe('DeepRacerIndyStack', () => {
       expect(template).toBeDefined();
     });
 
+    it('creates EmailDeliveryMethod parameter with correct configuration', () => {
+      template.hasParameter('EmailDeliveryMethod', {
+        Type: 'String',
+        Default: 'COGNITO',
+        AllowedValues: ['COGNITO', 'SES'],
+      });
+      expect(template).toBeDefined();
+    });
+
+    it('creates SesVerifiedEmail parameter with correct default', () => {
+      template.hasParameter('SesVerifiedEmail', {
+        Type: 'String',
+        Default: '',
+      });
+      expect(template).toBeDefined();
+    });
+
+    it('creates SesRequiresVerifiedEmail CfnRule in synthesized template', () => {
+      const templateJson = template.toJSON();
+      const rules = templateJson.Rules;
+      expect(rules).toBeDefined();
+      expect(rules.SesRequiresVerifiedEmail).toBeDefined();
+      const rule = rules.SesRequiresVerifiedEmail;
+      expect(rule.Assertions).toBeDefined();
+      expect(rule.Assertions).toHaveLength(1);
+      expect(rule.Assertions[0].AssertDescription).toBe(
+        'SesVerifiedEmail must not be empty when EmailDeliveryMethod is SES.',
+      );
+    });
+
+    it('creates IsSesEnabled condition in synthesized template', () => {
+      const templateJson = template.toJSON();
+      const conditions = templateJson.Conditions;
+      expect(conditions).toBeDefined();
+      expect(conditions.IsSesEnabled).toBeDefined();
+      expect(conditions.IsSesEnabled).toEqual({
+        'Fn::Equals': [{ Ref: 'EmailDeliveryMethod' }, 'SES'],
+      });
+    });
+
     it('creates multiple S3 buckets', () => {
       // The stack creates more buckets than just the 3 main ones due to CDK assets
       const bucketCount = template.findResources('AWS::S3::Bucket');

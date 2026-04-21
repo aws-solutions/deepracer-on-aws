@@ -8,6 +8,7 @@ import {
   GetAssetUrlCommand,
   NotFoundError,
   ModelStatus,
+  JobStatus,
 } from '@deepracer-indy/typescript-client';
 import type { Meta, Parameters, StoryObj } from '@storybook/react';
 
@@ -15,6 +16,7 @@ import {
   mockEvaluationCompleted,
   mockEvaluationInitializing,
   mockEvaluationInProgress,
+  mockModel,
   mockModel3,
 } from '#constants/testConstants.js';
 import ModelDetails from '#pages/ModelDetails';
@@ -60,6 +62,23 @@ export const TrainingCompleted: Story = {
   parameters: {
     deepRacerApiMocks: (mockClient) => {
       mockClient.on(GetModelCommand).resolves({ model: TrainingDetailsStories.TrainingCompleted.args?.model });
+      mockClient.on(ListEvaluationsCommand).resolves({ evaluations: [] });
+    },
+  },
+};
+
+export const TrainingCompletedWithMinEvalTrials: Story = {
+  parameters: {
+    deepRacerApiMocks: (mockClient) => {
+      mockClient.on(GetModelCommand).resolves({
+        model: {
+          ...mockModel,
+          status: ModelStatus.READY,
+          trainingStatus: JobStatus.COMPLETED,
+          trainingVideoStreamUrl: undefined,
+          trainingConfig: { ...mockModel.trainingConfig, minEvalTrials: 3 },
+        },
+      });
       mockClient.on(ListEvaluationsCommand).resolves({ evaluations: [] });
     },
   },

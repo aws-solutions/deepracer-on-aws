@@ -50,6 +50,24 @@ describe('<ModelDetails />', () => {
   });
 });
 
+describe('TrainingConfiguration', () => {
+  it('should display minimum evaluation trials with default value when not set', async () => {
+    await stories.TrainingCompleted.run();
+
+    const label = await screen.findByText(i18n.t('modelDetails:trainingConfiguration.keyValueLabels.minEvalTrials'));
+    expect(label).toBeInTheDocument();
+    // The value "5" (DEFAULT_MIN_EVAL_TRIALS) should be rendered as a sibling of the label
+    expect(label.closest('[class*="key-value"]')?.textContent).toContain('5');
+  });
+
+  it('should display explicit minimum evaluation trials value when set', async () => {
+    await stories.TrainingCompletedWithMinEvalTrials.run();
+
+    const label = await screen.findByText(i18n.t('modelDetails:trainingConfiguration.keyValueLabels.minEvalTrials'));
+    expect(label.closest('[class*="key-value"]')?.textContent).toContain('3');
+  });
+});
+
 describe('ButtonDropdown actions', () => {
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true });

@@ -2,11 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { DEFAULT_NAMESPACE } from '@deepracer-indy/config/src/defaults/commonDefaults.js';
-import { Stack, Duration, CfnParameter, Fn, CfnCondition, Token, CfnOutput } from 'aws-cdk-lib';
+import { Stack, Duration, CfnParameter, Fn, CfnCondition, CfnRule, Token, CfnOutput } from 'aws-cdk-lib';
 import { ComputeType } from 'aws-cdk-lib/aws-codebuild';
 import { Construct } from 'constructs';
 
 import { readManifest } from '#constructs/common/manifestReader.js';
+import { SesProductionAccessCheck } from '#constructs/ses/sesProductionAccessCheck.js';
 import { UsageFunctions } from '#constructs/usage/usageFunctions.js';
 
 import { ApiStack } from './apiStack.js';
@@ -20,6 +21,7 @@ import { MonitoringDashboard } from '../constructs/observability/dashboard.js';
 import { LogInsights } from '../constructs/observability/logInsights.js';
 import { ResourceGroup } from '../constructs/observability/resourceGroup.js';
 import { MonthlyQuotaReset } from '../constructs/scheduled/monthlyQuotaReset.js';
+import { EmailDeliveryMethodAudit } from '../constructs/ses/emailDeliveryMethodAudit.js';
 import { GlobalSettings } from '../constructs/storage/appConfig.js';
 import { DynamoDBTable } from '../constructs/storage/dynamoDB.js';
 import { S3Bucket } from '../constructs/storage/s3.js';
@@ -57,6 +59,38 @@ export class DeepRacerIndyStack extends Stack {
         'Custom domain URL for CORS allowlist (only if you have or plan to map a custom domain to CloudFront)',
       allowedPattern: '^(https?://([a-zA-Z0-9.-]+)(\\.([a-zA-Z0-9.-]{2,6}))?(:[0-9]+)?)?$',
       default: '',
+    });
+
+    const emailDeliveryMethodParam = new CfnParameter(this, 'EmailDeliveryMethod', {
+      type: 'String',
+      description:
+        'Method for delivering authentication emails. If choosing SES, you will need to have production access approved for your account in order to send emails. If choosing Cognito, you will need to consider the daily email limit. See the implementation guide for more information.',
+      default: 'COGNITO',
+      allowedValues: ['COGNITO', 'SES'],
+    });
+
+    const sesVerifiedEmailParam = new CfnParameter(this, 'SesVerifiedEmail', {
+      type: 'String',
+      description: 'Verified SES email address. Required when EmailDeliveryMethod is SES.',
+      default: '',
+    });
+
+    // CfnRule: block SES if no verified email provided
+    new CfnRule(this, 'SesRequiresVerifiedEmail', {
+      assertions: [
+        {
+          assert: Fn.conditionOr(
+            Fn.conditionEquals(emailDeliveryMethodParam.valueAsString, 'COGNITO'),
+            Fn.conditionNot(Fn.conditionEquals(sesVerifiedEmailParam.valueAsString, '')),
+          ),
+          assertDescription: 'SesVerifiedEmail must not be empty when EmailDeliveryMethod is SES.',
+        },
+      ],
+    });
+
+    // CfnCondition: true when SES delivery is selected
+    const isSesEnabled = new CfnCondition(this, 'IsSesEnabled', {
+      expression: Fn.conditionEquals(emailDeliveryMethodParam.valueAsString, 'SES'),
     });
 
     const { dynamoDBTable } = new DynamoDBTable(this, 'DynamoDBTable', {
@@ -119,6 +153,8 @@ export class DeepRacerIndyStack extends Stack {
       adminEmail: adminEmailParam.valueAsString,
       globalSettings,
       namespace,
+      isSesEnabled,
+      sesVerifiedEmail: sesVerifiedEmailParam.valueAsString,
     });
 
     const { userPool, userPoolClient, identityPool, userRoles } = userIdentity;
@@ -137,6 +173,19 @@ export class DeepRacerIndyStack extends Stack {
     });
 
     const { api, workflowJobQueue } = apiStack;
+
+    new SesProductionAccessCheck(this, 'SesProductionAccessCheck', {
+      namespace,
+      emailDeliveryMethod: emailDeliveryMethodParam.valueAsString,
+      sesVerifiedEmail: sesVerifiedEmailParam.valueAsString,
+      isSesEnabled,
+    });
+
+    new EmailDeliveryMethodAudit(this, 'EmailDeliveryMethodAudit', {
+      namespace,
+      emailDeliveryMethod: emailDeliveryMethodParam.valueAsString,
+      sesVerifiedEmail: sesVerifiedEmailParam.valueAsString,
+    });
 
     new UserRolePolicies(this, 'UserRolePolicies', {
       api,
@@ -211,12 +260,16 @@ export class DeepRacerIndyStack extends Stack {
       api: apiStack.api,
       dynamoDBTable,
       queues: [apiStack.workflowJobQueue],
-      alarms: [
-        userIdentity.preSignUpErrorAlarm,
-        userIdentity.postSignUpErrorAlarm,
-        apiStack.apiConstruct.assetPackagingDLQAlarm,
-        apiStack.apiConstruct.importModelWorkflow.lambdaErrorsAlarm,
-      ],
+      alarms: {
+        systemAlarms: [
+          userIdentity.preSignUpErrorAlarm,
+          userIdentity.postSignUpErrorAlarm,
+          apiStack.apiConstruct.assetPackagingDLQAlarm,
+          apiStack.apiConstruct.importModelWorkflow.lambdaErrorsAlarm,
+        ],
+        emailAlarms: userIdentity.sesAlarms,
+      },
+      isSesEnabled,
     });
 
     applyDrTag(this, namespace);

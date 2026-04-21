@@ -65,6 +65,9 @@ export interface SimulationEnvironmentVariables {
   /** numOfTrials */
   NUMBER_OF_TRIALS: number;
 
+  /** minEvalTrials */
+  MIN_EVAL_TRIALS?: number;
+
   // Kinesis Video Stream variables
   /** kvsName */
   KINESIS_VIDEO_STREAM_NAME: string;

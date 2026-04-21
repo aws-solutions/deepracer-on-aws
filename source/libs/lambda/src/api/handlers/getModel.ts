@@ -40,6 +40,7 @@ export const GetModelOperation: Operation<GetModelServerInput, GetModelServerOut
       importErrorMessage: modelItem.importErrorMessage,
       trainingConfig: {
         maxTimeInMinutes: trainingItem.terminationConditions.maxTimeInMinutes,
+        minEvalTrials: trainingItem.minEvalTrials,
         objectAvoidanceConfig: trainingItem.objectAvoidanceConfig,
         raceType: trainingItem.raceType,
         trackConfig: trainingItem.trackConfig,

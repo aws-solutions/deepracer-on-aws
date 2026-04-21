@@ -293,7 +293,16 @@ export ADMIN_EMAIL='user@example.com'
 export NAMESPACE='deepracer1'
 ```
 
-If you want to use a public image for the reward validation function (or private image with appropriate permissions)
+3. Choose which delivery method to use for sending authentication emails. DeepRacer on AWS supports both Amazon Cognito and Amazon SES as delivery methods. Amazon Cognito is the default delivery method and requires no prior service approval, but is better suited for low volume use cases due to its limit of 50 emails per day per account. Amazon SES is also supported for higher sending limits and custom sender addresses, but requires a verified email address and production status.
+
+To use SES as the delivery method for authentication emails, follow the instructions in the [Prerequisites](https://docs.aws.amazon.com/solutions/latest/deepracer-on-aws/prerequisites.html) section of the implementation guide on how to set up a verified sender email address and request production status. Then:
+
+```
+export EMAIL_DELIVERY_METHOD='SES'
+export SES_VERIFIED_EMAIL='noreply@example.com'
+```
+
+4. If you want to use a public image for the reward validation function (or private image with appropriate permissions)
 
 ```
 export  PUBLIC_ECR_REGISTRY=${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com

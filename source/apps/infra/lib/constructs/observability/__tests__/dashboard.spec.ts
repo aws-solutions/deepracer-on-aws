@@ -1,10 +1,10 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { App, Stack } from 'aws-cdk-lib';
+import { App, CfnCondition, Fn, Stack } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { ApiDefinition, SpecRestApi } from 'aws-cdk-lib/aws-apigateway';
-import { Alarm, Metric } from 'aws-cdk-lib/aws-cloudwatch';
+import { Alarm, CfnAlarm, Metric } from 'aws-cdk-lib/aws-cloudwatch';
 import { AttributeType, TableV2 } from 'aws-cdk-lib/aws-dynamodb';
 import { Queue } from 'aws-cdk-lib/aws-sqs';
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -72,7 +72,7 @@ describe('MonitoringDashboard', () => {
       namespace: TEST_NAMESPACE,
       api,
       dynamoDBTable: table,
-      alarms: [alarm],
+      alarms: { systemAlarms: [alarm], emailAlarms: [] },
     });
 
     const template = Template.fromStack(stack);
@@ -215,7 +215,7 @@ describe('MonitoringDashboard', () => {
       namespace: TEST_NAMESPACE,
       api,
       dynamoDBTable: table,
-      alarms: [alarm1, alarm2, alarm3],
+      alarms: { systemAlarms: [alarm1, alarm2, alarm3], emailAlarms: [] },
     });
 
     const template = Template.fromStack(stack);
@@ -282,5 +282,61 @@ describe('MonitoringDashboard', () => {
     const template = Template.fromStack(stack);
     expect(template).toBeDefined(); // Verify dashboard exists with workflow metrics
     template.resourceCountIs('AWS::CloudWatch::Dashboard', 1);
+  });
+
+  it('should include email volume single-value and graph widgets', () => {
+    const api = createTestApi(stack, 'TestApi');
+    const table = new TableV2(stack, 'TestTable', {
+      partitionKey: { name: 'pk', type: AttributeType.STRING },
+    });
+
+    new MonitoringDashboard(stack, 'TestDashboard', {
+      namespace: TEST_NAMESPACE,
+      api,
+      dynamoDBTable: table,
+    });
+
+    const template = Template.fromStack(stack);
+    const json = JSON.stringify(template.toJSON());
+
+    expect(json).toContain('Daily authentication email count');
+    expect(json).toContain('TransactionalEmailSent');
+    expect(json).toContain('DeepRacerOnAWS/Email');
+  });
+
+  it('should inject conditional SES alarm widget when emailAlarms and isSesEnabled are provided', () => {
+    const api = createTestApi(stack, 'TestApi');
+    const table = new TableV2(stack, 'TestTable', {
+      partitionKey: { name: 'pk', type: AttributeType.STRING },
+    });
+
+    const isSesEnabled = new CfnCondition(stack, 'IsSesEnabled', {
+      expression: Fn.conditionEquals('SES', 'SES'),
+    });
+
+    const sesAlarm = new CfnAlarm(stack, 'TestSesAlarm', {
+      comparisonOperator: 'GreaterThanThreshold',
+      evaluationPeriods: 1,
+      namespace: 'AWS/SES',
+      metricName: 'Reputation.BounceRate',
+      statistic: 'Average',
+      period: 300,
+      threshold: 0.05,
+    });
+    sesAlarm.cfnOptions.condition = isSesEnabled;
+
+    new MonitoringDashboard(stack, 'TestDashboard', {
+      namespace: TEST_NAMESPACE,
+      api,
+      dynamoDBTable: table,
+      alarms: { systemAlarms: [], emailAlarms: [sesAlarm] },
+      isSesEnabled,
+    });
+
+    const template = Template.fromStack(stack);
+    const json = JSON.stringify(template.toJSON());
+
+    expect(json).toContain('IsSesEnabled');
+    expect(json).toContain('SES Alarm Status');
   });
 });
