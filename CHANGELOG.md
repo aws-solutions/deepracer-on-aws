@@ -10,12 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Amazon SES as an alternative email delivery method for authentication emails, with CloudWatch alarms for SES reputation monitoring and email volume anomaly detection.
-- Configurable minimum evaluation trials per training iteration, with a default of 5 ([#18](https://github.com/aws-solutions/deepracer-on-aws/issues/18)) - per feedback from ([@larsll](https://github.com/larsll)).
+- Configurable minimum evaluation trials per training iteration, with a default of 5 ([#18](https://github.com/aws-solutions/deepracer-on-aws/issues/18)).
 
 ### Changed
 
 - Default SageMaker training instance type from `ml.c5.4xlarge` to `ml.c7i.4xlarge` for improved performance and reduced cost.
-- Disable MP4 video recording during training to reduce S3 storage usage ([#22](https://github.com/aws-solutions/deepracer-on-aws/issues/22)) - per feedback from ([@larsll](https://github.com/larsll)).
+- Disable MP4 video recording during training to reduce S3 storage usage ([#22](https://github.com/aws-solutions/deepracer-on-aws/issues/22)).
 - Update `aws-cdk-lib` to 2.197.0 and `aws-cdk` to 2.1005.0 to ensure custom resource providers use Node.js 22 runtime.
 - Improved node monitor service client caching and lifecycle management for better video performance and reduced CPU/memory usage - contributed by ([@larsll](https://github.com/larsll)).
 
