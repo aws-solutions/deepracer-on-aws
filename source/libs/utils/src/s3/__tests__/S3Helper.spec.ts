@@ -148,6 +148,25 @@ describe('S3Helper', () => {
         { expiresIn: mockExpiresIn },
       );
     });
+
+    it('should include ResponseContentType when contentType is provided', async () => {
+      const mockExpiresIn = 300;
+      vi.mocked(getSignedUrl).mockResolvedValueOnce(mockPresignedUrl);
+
+      await s3Helper.getPresignedUrl(mockS3Uri, mockExpiresIn, undefined, 'video/mp4');
+
+      expect(getSignedUrl).toHaveBeenCalledWith(
+        s3Client,
+        expect.objectContaining({
+          input: expect.objectContaining({
+            Bucket: mockBucket,
+            Key: mockKey,
+            ResponseContentType: 'video/mp4',
+          }),
+        }),
+        { expiresIn: mockExpiresIn },
+      );
+    });
   });
 
   describe('writeToS3()', () => {

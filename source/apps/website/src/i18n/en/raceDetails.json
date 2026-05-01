@@ -56,13 +56,33 @@
   "info": "Info",
   "yourFastestTime": "Your fastest time",
   "fastestModelSubmitted": "Fastest model submitted",
+  "videoModal": {
+    "header": "Submission video – {{title}}",
+    "watchVideo": "Watch video",
+    "downloadVideo": "Download video",
+    "noVideo": "No video available",
+    "noVideoSupport": "Your browser does not support HTML5 video.",
+    "loading": "Downloading video…",
+    "loadError": "Failed to load video. Please try again."
+  },
   "submissionsTable": {
     "tableHeader": "Your submissions",
+    "refresh": "Refresh submissions",
     "header": {
       "modelName": "Model name",
+      "submissionNumber": "#",
       "time": "Time",
       "status": "Status",
-      "date": "Date submitted to race"
+      "bestLapTime": "Best lap time",
+      "avgLapTime": "Average lap time",
+      "totalLapTime": "Total lap time",
+      "completedLaps": "Completed laps",
+      "resets": "Resets",
+      "avgResets": "Average resets",
+      "offTrack": "Off-track count",
+      "collisions": "Collision count",
+      "date": "Date submitted to race",
+      "video": "Video"
     },
     "emptySubtitle": "No submissions to display.",
     "emptyTitle": "No submissions",
@@ -94,14 +114,23 @@
     }
   },
   "raceLeaderboardTable": {
+    "refresh": "Refresh leaderboard",
     "header": {
-      "rank": "Rank",
+      "rank": "#",
       "racer": "Racer",
       "time": "Time",
       "gapToFirst": "Gap to 1st",
       "video": "Video",
       "offtrack": "Off-track",
-      "name": "{{name}} rankings"
+      "name": "{{name}} rankings",
+      "bestLapTime": "Best lap time",
+      "avgLapTime": "Average lap time",
+      "totalLapTime": "Total lap time",
+      "completedLaps": "Completed laps",
+      "resets": "Resets",
+      "avgResets": "Average resets",
+      "collisions": "Collision count",
+      "date": "Date submitted to race"
     },
     "emptySubtitle": "No racers have submitted a qualifying model to this race.",
     "emptyTitle": "No qualifying submissions",

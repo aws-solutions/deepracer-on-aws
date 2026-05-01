@@ -34,9 +34,17 @@ const RaceDetails = () => {
   const { leaderboardId = '' } = useParams();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { data: rankings = [] } = useListRankingsQuery({ leaderboardId });
+  const {
+    data: rankings = [],
+    refetch: refetchRankings,
+    isFetching: isRankingsFetching,
+  } = useListRankingsQuery({ leaderboardId });
   const { data: personalRanking } = useGetRankingQuery({ leaderboardId });
-  const { data: submissions = [] } = useListSubmissionsQuery({ leaderboardId });
+  const {
+    data: submissions = [],
+    refetch: refetchSubmissions,
+    isFetching: isSubmissionsFetching,
+  } = useListSubmissionsQuery({ leaderboardId });
   const [deleteLeaderboard] = useDeleteLeaderboardMutation();
   const {
     data: leaderboard,
@@ -114,12 +122,26 @@ const RaceDetails = () => {
             tabs={[
               {
                 label: t('tabs.raceLeaderboard'),
-                content: <RaceLeaderboardTable rankings={rankings} leaderboard={leaderboard} />,
+                content: (
+                  <RaceLeaderboardTable
+                    rankings={rankings}
+                    leaderboard={leaderboard}
+                    onRefresh={refetchRankings}
+                    isRefreshing={isRankingsFetching}
+                  />
+                ),
                 id: 'leaderboard',
               },
               {
                 label: `${t('tabs.yourSubmissions')} (${submissions?.length ?? 0})`,
-                content: <SubmissionsTable submissions={submissions} leaderboard={leaderboard} />,
+                content: (
+                  <SubmissionsTable
+                    submissions={submissions}
+                    leaderboard={leaderboard}
+                    onRefresh={refetchSubmissions}
+                    isRefreshing={isSubmissionsFetching}
+                  />
+                ),
                 id: 'yourSubmissions',
               },
             ]}
