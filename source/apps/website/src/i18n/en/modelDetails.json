@@ -17,6 +17,7 @@
   "modelDoesNotExist": "Model does not exist.",
   "notifications": {
     "deleteModelSuccess": "Successfully deleted model \"{{ modelName }}\".",
+    "deleteModelError": "Failed to delete model \"{{ modelName }}\".",
     "trainingComplete": {
       "header": "Training complete",
       "content": "You can now evaluate your model.",
@@ -272,5 +273,11 @@
     "evaluationNoCompletedLaps": "Simulation video not available.<br/>Model must complete at least one lap.",
     "evaluation": "Simulation video stream not available.<br/>Video is available after evaluation is initialized.",
     "training": "Simulation video stream not available.<br/>Video is only available during training."
+  },
+  "deleteModal": {
+    "header": "You're about to permanently delete your model",
+    "deleteButton": "Delete",
+    "cancelButton": "Cancel",
+    "content": "Are you sure you want to delete the following model: {{modelName}}"
   }
 }

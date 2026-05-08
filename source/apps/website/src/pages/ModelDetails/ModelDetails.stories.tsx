@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
+  DeleteModelCommand,
   GetEvaluationCommand,
   GetModelCommand,
   ListEvaluationsCommand,
@@ -11,6 +12,7 @@ import {
   JobStatus,
 } from '@deepracer-indy/typescript-client';
 import type { Meta, Parameters, StoryObj } from '@storybook/react';
+import { screen, userEvent } from '@storybook/test';
 
 import {
   mockEvaluationCompleted,
@@ -185,5 +187,36 @@ export const ModelImporting: Story = {
       mockClient.on(GetModelCommand).resolves({ model: { ...mockModel3, status: ModelStatus.IMPORTING } });
       mockClient.on(ListEvaluationsCommand).resolves({ evaluations: [] });
     },
+  },
+};
+
+const deleteModalApiMocks: Parameters['deepRacerApiMocks'] = (mockClient) => {
+  TrainingCompleted.parameters?.deepRacerApiMocks?.(mockClient);
+  mockClient.on(DeleteModelCommand).resolves({});
+};
+
+const openDeleteModal = async () => {
+  const actionsButton = await screen.findByText('Actions');
+  await userEvent.click(actionsButton);
+  const deleteOption = await screen.findByRole('menuitem', { name: 'Delete' });
+  await userEvent.click(deleteOption);
+};
+
+export const DeleteModalOpens: Story = {
+  parameters: { deepRacerApiMocks: deleteModalApiMocks },
+  play: async () => {
+    await openDeleteModal();
+  },
+};
+
+export const DeleteModelFails: Story = {
+  parameters: {
+    deepRacerApiMocks: (mockClient) => {
+      TrainingCompleted.parameters?.deepRacerApiMocks?.(mockClient);
+      mockClient.on(DeleteModelCommand).rejects(new Error('Delete failed'));
+    },
+  },
+  play: async () => {
+    await openDeleteModal();
   },
 };

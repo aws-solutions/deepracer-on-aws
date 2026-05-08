@@ -6,6 +6,7 @@ RUN microdnf update -y --releasever=latest \
     openssl-fips-provider-latest \
     openssl-snapsafe-libs \
     libnghttp2 \
+    glibc glibc-common \
     && microdnf clean all
 
 # Set up the program in the image

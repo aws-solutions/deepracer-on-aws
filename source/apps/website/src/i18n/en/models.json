@@ -57,7 +57,7 @@
       "header": "You're about to permanently delete your model",
       "deleteButton": "Delete",
       "cancelButton": "Cancel",
-      "content": "This will interupt any cloned model currently in training based on this model. Are you sure you want to delete the following model: {{modelName}}"
+      "content": "Are you sure you want to delete the following model: {{modelName}}"
     }
   },
   "sensors": {

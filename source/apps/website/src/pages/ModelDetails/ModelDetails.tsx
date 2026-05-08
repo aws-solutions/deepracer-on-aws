@@ -1,6 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import { Modal } from '@cloudscape-design/components';
 import Box from '@cloudscape-design/components/box';
 import Button from '@cloudscape-design/components/button';
 import ButtonDropdown from '@cloudscape-design/components/button-dropdown';
@@ -11,7 +12,7 @@ import SpaceBetween from '@cloudscape-design/components/space-between';
 import Spinner from '@cloudscape-design/components/spinner';
 import StatusIndicator from '@cloudscape-design/components/status-indicator';
 import Tabs from '@cloudscape-design/components/tabs';
-import { Evaluation, ModelStatus, AssetType } from '@deepracer-indy/typescript-client';
+import { Evaluation, ModelStatus, AssetType, Model } from '@deepracer-indy/typescript-client';
 import { skipToken } from '@reduxjs/toolkit/query/react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -27,7 +28,11 @@ import {
   useGetAssetUrlMutation,
   useGetModelQuery,
 } from '#services/deepRacer/modelsApi';
-import { displayInfoNotification, displaySuccessNotification } from '#store/notifications/notificationsSlice';
+import {
+  displayErrorNotification,
+  displayInfoNotification,
+  displaySuccessNotification,
+} from '#store/notifications/notificationsSlice';
 import { getPath } from '#utils/pageUtils';
 
 import EvaluationTab from './components/EvaluationTab';
@@ -64,6 +69,8 @@ const ModelDetails = () => {
   const { t } = useTranslation('modelDetails');
   const { t: tCommon } = useTranslation('common', { keyPrefix: 'modelStatus' });
   const [activeTabId, setActiveTabId] = useState(location.state?.activeTabId ?? 'training');
+  const [showModal, setShowModal] = useState(false);
+  const [modelToDelete, setModelToDelete] = useState<Model>();
 
   const { modelId = '' } = useParams();
   const modelStatusRef = useRef<ModelStatus>();
@@ -177,16 +184,8 @@ const ModelDetails = () => {
                       });
                       break;
                     case ActionButtonId.DELETE:
-                      await deleteModel({ modelId })
-                        .unwrap()
-                        .then(() => {
-                          dispatch(
-                            displaySuccessNotification({
-                              content: t('notifications.deleteModelSuccess', { modelName: model?.name }),
-                            }),
-                            navigate(getPath(PageId.MODELS)),
-                          );
-                        });
+                      setModelToDelete(model);
+                      setShowModal(true);
                       break;
                     case ActionButtonId.DOWNLOAD:
                       await getAssetUrl({
@@ -306,6 +305,46 @@ const ModelDetails = () => {
           },
         ]}
       />
+      <Modal
+        onDismiss={() => setShowModal(false)}
+        visible={showModal}
+        footer={
+          <Box float="right">
+            <SpaceBetween direction="horizontal" size="xs">
+              <Button variant="link" onClick={() => setShowModal(false)}>
+                {t('deleteModal.cancelButton')}
+              </Button>
+              <Button
+                variant="primary"
+                onClick={async () => {
+                  try {
+                    await deleteModel({ modelId: modelToDelete?.modelId ?? '' }).unwrap();
+                    dispatch(
+                      displaySuccessNotification({
+                        content: t('notifications.deleteModelSuccess', { modelName: modelToDelete?.name }),
+                      }),
+                    );
+                    navigate(getPath(PageId.MODELS));
+                  } catch {
+                    dispatch(
+                      displayErrorNotification({
+                        content: t('notifications.deleteModelError', { modelName: modelToDelete?.name }),
+                      }),
+                    );
+                  } finally {
+                    setShowModal(false);
+                  }
+                }}
+              >
+                {t('deleteModal.deleteButton')}
+              </Button>
+            </SpaceBetween>
+          </Box>
+        }
+        header={t('deleteModal.header')}
+      >
+        {t('deleteModal.content', { modelName: modelToDelete?.name })}
+      </Modal>
     </ContentLayout>
   );
 };
