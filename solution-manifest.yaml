@@ -11,3 +11,4 @@ container_images:
   - deepracer-on-aws-reward-function-validation
   - deepracer-on-aws-simapp
   - deepracer-on-aws-model-validation
+auto_create_github_pr: true
