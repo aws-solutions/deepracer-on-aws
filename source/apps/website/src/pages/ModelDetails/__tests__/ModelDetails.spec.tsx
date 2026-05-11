@@ -1,16 +1,24 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import { DeleteModelCommand } from '@deepracer-indy/typescript-client';
 import { composeStories } from '@storybook/react';
-import { userEvent } from '@storybook/test';
+import { userEvent, within } from '@storybook/test';
 
 import i18n from '#i18n';
 import { POLLING_INTERVAL_TIME } from '#pages/ModelDetails/constants';
 import * as ModelDetailsStories from '#pages/ModelDetails/ModelDetails.stories';
-import { screen } from '#utils/testUtils';
+import { mockDeepRacerClient, screen, waitFor } from '#utils/testUtils';
 
-const { ModelNotFound, ModelWithImportError, ModelQueued, ModelImporting, ...stories } =
-  composeStories(ModelDetailsStories);
+const {
+  ModelNotFound,
+  ModelWithImportError,
+  ModelQueued,
+  ModelImporting,
+  DeleteModalOpens,
+  DeleteModelFails,
+  ...stories
+} = composeStories(ModelDetailsStories);
 
 let mockDispatch = vi.fn();
 describe('<ModelDetails />', () => {
@@ -236,5 +244,57 @@ describe('Submit Model button', () => {
     const submitButton = buttonText.closest('button');
 
     expect(submitButton).not.toBeDisabled();
+  });
+});
+
+describe('Delete modal', () => {
+  beforeEach(() => {
+    mockDeepRacerClient.reset();
+    mockDispatch = vi.fn();
+  });
+
+  const getDeleteModal = () => screen.getByRole('dialog', { name: i18n.t('modelDetails:deleteModal.header') });
+
+  it('should show the delete confirmation modal when Delete is clicked from Actions dropdown', async () => {
+    await DeleteModalOpens.run();
+
+    const modal = getDeleteModal();
+    expect(modal).toBeInTheDocument();
+    expect(within(modal).getByText(/permanently delete your model/)).toBeInTheDocument();
+  });
+
+  it('should close the modal without deleting when Cancel is clicked', async () => {
+    await DeleteModalOpens.run();
+
+    const modal = getDeleteModal();
+    await userEvent.click(within(modal).getByText(i18n.t('modelDetails:deleteModal.cancelButton')));
+
+    expect(modal.className).toContain('hidden');
+    expect(mockDeepRacerClient.commandCalls(DeleteModelCommand)).toHaveLength(0);
+  });
+
+  it('should close the modal and delete the model when Delete is clicked', async () => {
+    await DeleteModalOpens.run();
+
+    const modal = getDeleteModal();
+    await userEvent.click(within(modal).getByText(i18n.t('modelDetails:deleteModal.deleteButton')));
+
+    await waitFor(() => expect(mockDeepRacerClient.commandCalls(DeleteModelCommand)).toHaveLength(1));
+  });
+
+  it('should close the modal and dispatch an error notification when delete fails', async () => {
+    await DeleteModelFails.run();
+
+    const modal = getDeleteModal();
+    await userEvent.click(within(modal).getByText(i18n.t('modelDetails:deleteModal.deleteButton')));
+
+    expect(modal.className).toContain('hidden');
+    expect(mockDispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          content: expect.stringContaining('Failed to delete model'),
+        }),
+      }),
+    );
   });
 });

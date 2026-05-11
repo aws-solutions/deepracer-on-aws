@@ -1,6 +1,6 @@
 id: SO0310
 name: deepracer-on-aws
-version: v1.1.0
+version: v1.1.1
 cloudformation_templates:
   - template: deepracer-on-aws.template
     main_template: true
@@ -11,3 +11,4 @@ container_images:
   - deepracer-on-aws-reward-function-validation
   - deepracer-on-aws-simapp
   - deepracer-on-aws-model-validation
+auto_create_github_pr: true
