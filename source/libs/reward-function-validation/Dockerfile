@@ -20,8 +20,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Remove unused aws-lambda-rie to fix CVE-2025-61726
 RUN rm -f /usr/local/bin/aws-lambda-rie
 
-# Upgrade Pillow to fix CVEs
-RUN pip install --no-cache-dir --upgrade pillow==12.2.0
+# Upgrade packages to fix CVEs
+RUN pip install --no-cache-dir --upgrade pillow==12.2.0 urllib3==2.7.0
 
 # Pass the name of the function handler as an argument to the runtime
 CMD [ "lambda_function.lambda_handler" ]
