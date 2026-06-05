@@ -27,17 +27,19 @@ const mockSubmissionsEntity = vi.hoisted(() => ({
 
 vi.mock('electrodb', async () => ({
   ...(await vi.importActual('electrodb')),
-  Service: vi.fn(() => ({
-    entities: {
-      leaderboards: mockLeaderboardsEntity,
-      submissions: mockSubmissionsEntity,
-    },
-    transaction: {
-      write: vi.fn(() => ({
-        go: vi.fn(),
-      })),
-    },
-  })),
+  Service: vi.fn(function () {
+    return {
+      entities: {
+        leaderboards: mockLeaderboardsEntity,
+        submissions: mockSubmissionsEntity,
+      },
+      transaction: {
+        write: vi.fn(function () {
+          return { go: vi.fn() };
+        }),
+      },
+    };
+  }),
 }));
 
 vi.mock('#entities/LeaderboardsEntity.js', () => ({
@@ -112,7 +114,8 @@ describe('SubmissionDao', () => {
             where: vi.fn(),
           })),
         })),
-      });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
 
       const result = await submissionDao.getStoppableSubmission(
         TEST_SUBMISSION_ITEM.modelId,
@@ -144,7 +147,8 @@ describe('SubmissionDao', () => {
             where: vi.fn(),
           })),
         })),
-      });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
 
       const result = await submissionDao.getStoppableSubmission(
         TEST_SUBMISSION_ITEM.modelId,

@@ -4,13 +4,13 @@
 /// <reference types='vitest' />
 import { nxViteTsPaths } from '@nx/vite/plugins/nx-tsconfig-paths.plugin';
 import react from '@vitejs/plugin-react-swc';
-import { defineConfig, mergeConfig } from 'vite';
+import { defineConfig, mergeConfig, type UserConfig } from 'vite';
 
 import sharedConfig from '../../vitest.config';
 
 // https://vitejs.dev/config/
 export default mergeConfig(
-  sharedConfig,
+  sharedConfig as UserConfig,
   defineConfig({
     root: __dirname,
     cacheDir: '../../node_modules/.vite/apps/website',

@@ -28,14 +28,18 @@ vi.mock('#hooks/useAppDispatch.js', () => ({
 }));
 
 // Mock react-router-dom
-vi.mock('react-router-dom', () => ({
-  useNavigate: () => vi.fn(),
-  Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
-    <a href={to} data-testid="return-home-link">
-      {children}
-    </a>
-  ),
-}));
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => vi.fn(),
+    Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
+      <a href={to} data-testid="return-home-link">
+        {children}
+      </a>
+    ),
+  };
+});
 
 describe('<CreateRace />', () => {
   beforeEach(() => {

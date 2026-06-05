@@ -25,9 +25,13 @@ vi.mock('#services/deepRacer/leaderboardsApi.js', () => ({
   useGetLeaderboardQuery: () => mockUseGetLeaderboardQuery(),
 }));
 
-vi.mock('react-router-dom', () => ({
-  useParams: () => ({ leaderboardId: 'test-leaderboard-id' }),
-}));
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useParams: () => ({ leaderboardId: 'test-leaderboard-id' }),
+  };
+});
 
 vi.mock('#pages/CreateRace/CreateRace', () => ({
   default: ({ initialFormValues }: { initialFormValues: MockInitialFormValues }) => (

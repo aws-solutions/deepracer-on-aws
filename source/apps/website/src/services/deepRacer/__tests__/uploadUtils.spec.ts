@@ -70,8 +70,12 @@ describe('uploadModelFiles', () => {
       done: vi.fn().mockResolvedValue({}),
       on: vi.fn().mockReturnThis(),
     };
-    vi.mocked(S3Client).mockImplementation(() => mockS3Client as unknown as S3Client);
-    vi.mocked(Upload).mockImplementation(() => mockUpload as unknown as Upload);
+    vi.mocked(S3Client).mockImplementation(function () {
+      return mockS3Client as unknown as S3Client;
+    } as unknown as typeof S3Client);
+    vi.mocked(Upload).mockImplementation(function () {
+      return mockUpload as unknown as Upload;
+    } as unknown as typeof Upload);
     vi.mocked(fetchAuthSession).mockResolvedValue({
       credentials: {
         accessKeyId: 'test',

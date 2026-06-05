@@ -27,15 +27,19 @@ vi.mock('#hooks/useAppDispatch.js', () => ({
   useAppDispatch: () => vi.fn(),
 }));
 
-vi.mock('react-router-dom', () => ({
-  useParams: () => ({ leaderboardId: 'test-leaderboard-id' }),
-  useNavigate: () => vi.fn(),
-  Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
-    <a href={to} data-testid="return-home-link">
-      {children}
-    </a>
-  ),
-}));
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useParams: () => ({ leaderboardId: 'test-leaderboard-id' }),
+    useNavigate: () => vi.fn(),
+    Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
+      <a href={to} data-testid="return-home-link">
+        {children}
+      </a>
+    ),
+  };
+});
 
 describe('<EditRace />', () => {
   beforeEach(() => {

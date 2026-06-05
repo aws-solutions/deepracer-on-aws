@@ -46,8 +46,8 @@
     "@types/react-dom": "18.3.0",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
-    "@vitest/coverage-v8": "3.0.8",
-    "@vitest/ui": "3.0.8",
+    "@vitest/coverage-v8": "4.1.6",
+    "@vitest/ui": "4.1.6",
     "aws-sdk-client-mock": "^4.1.0",
     "aws-sdk-client-mock-vitest": "^6.2.1",
     "esbuild": "0.25.0",
@@ -68,7 +68,7 @@
     "tsx": "^4.21.0",
     "typescript": "5.8.2",
     "vite": "6.4.2",
-    "vitest": "3.0.8"
+    "vitest": "4.1.6"
   },
   "dependencies": {
     "@aws-lambda-powertools/logger": "^2.32.0",

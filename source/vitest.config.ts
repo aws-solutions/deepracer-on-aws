@@ -10,6 +10,7 @@ export default defineConfig({
   plugins: [nxViteTsPaths()],
 
   test: {
+    projects: ['{apps,libs}/*/{vite,vitest}.config.ts'],
     globals: true,
     passWithNoTests: true,
     silent: true,
@@ -26,7 +27,6 @@ export default defineConfig({
     setupFiles: [path.join(__dirname, 'setupTests.js')],
 
     environment: 'node',
-    environmentMatchGlobs: [['**/*.tsx', 'jsdom']],
     env: {
       TZ: 'UTC',
       /**

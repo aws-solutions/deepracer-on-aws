@@ -35,10 +35,12 @@ vi.mock('../../../utils/S3Archiver.js');
 vi.mock('#workflow/utils/WorkflowHelper.js');
 vi.mock('@deepracer-indy/utils', async (importOriginal) => ({
   ...(await importOriginal()),
-  AmazonS3URI: vi.fn(() => ({
-    key: 'mock-key',
-    bucket: 'modelBucket',
-  })),
+  AmazonS3URI: vi.fn(function () {
+    return {
+      key: 'mock-key',
+      bucket: 'modelBucket',
+    };
+  }),
 }));
 
 describe('GetAssetUrlOperation', () => {
@@ -235,26 +237,34 @@ describe('GetAssetUrlOperation', () => {
       vi.spyOn(s3PathHelper, 'getLogsArchiveS3Location').mockReturnValueOnce(mockLogsArchiveS3Location);
       vi.mocked(s3Archiver.createS3Archive).mockResolvedValueOnce({} as CompleteMultipartUploadCommandOutput);
       vi.mocked(workflowHelper.updateJob).mockResolvedValueOnce(mockTrainingItem);
-      vi.mocked(AmazonS3URI).mockReturnValueOnce({
-        key: mockMetricsKey,
-        bucket: 'bucket',
-        uri: mockTrainingItem.assetS3Locations.metricsS3Location,
-      });
-      vi.mocked(AmazonS3URI).mockReturnValueOnce({
-        key: mockSimTraceKey,
-        bucket: 'bucket',
-        uri: mockTrainingItem.assetS3Locations.simTraceS3Location,
-      });
-      vi.mocked(AmazonS3URI).mockReturnValueOnce({
-        key: mockSimulationLogsKey,
-        bucket: 'bucket',
-        uri: mockTrainingItem.assetS3Locations.simulationLogsS3Location as string,
-      });
-      vi.mocked(AmazonS3URI).mockReturnValueOnce({
-        key: mockTrainingLogsKey,
-        bucket: 'bucket',
-        uri: mockTrainingItem.assetS3Locations.trainingLogsS3Location as string,
-      });
+      vi.mocked(AmazonS3URI).mockImplementationOnce(function () {
+        return {
+          key: mockMetricsKey,
+          bucket: 'bucket',
+          uri: mockTrainingItem.assetS3Locations.metricsS3Location,
+        } as unknown as AmazonS3URI;
+      } as unknown as typeof AmazonS3URI);
+      vi.mocked(AmazonS3URI).mockImplementationOnce(function () {
+        return {
+          key: mockSimTraceKey,
+          bucket: 'bucket',
+          uri: mockTrainingItem.assetS3Locations.simTraceS3Location,
+        } as unknown as AmazonS3URI;
+      } as unknown as typeof AmazonS3URI);
+      vi.mocked(AmazonS3URI).mockImplementationOnce(function () {
+        return {
+          key: mockSimulationLogsKey,
+          bucket: 'bucket',
+          uri: mockTrainingItem.assetS3Locations.simulationLogsS3Location as string,
+        } as unknown as AmazonS3URI;
+      } as unknown as typeof AmazonS3URI);
+      vi.mocked(AmazonS3URI).mockImplementationOnce(function () {
+        return {
+          key: mockTrainingLogsKey,
+          bucket: 'bucket',
+          uri: mockTrainingItem.assetS3Locations.trainingLogsS3Location as string,
+        } as unknown as AmazonS3URI;
+      } as unknown as typeof AmazonS3URI);
 
       const result = await getAssetUrlOperation.getLogsArchiveAssetUrl(TEST_MODEL_ITEM, mockTrainingItem);
 

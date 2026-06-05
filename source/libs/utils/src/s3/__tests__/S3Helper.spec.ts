@@ -22,7 +22,11 @@ import { AmazonS3URI } from '#s3/AmazonS3URI.js';
 
 import { s3Helper } from '../S3Helper.js';
 
-vi.mock('@aws-sdk/lib-storage');
+vi.mock('@aws-sdk/lib-storage', () => ({
+  Upload: vi.fn(function () {
+    return { done: vi.fn(), on: vi.fn() };
+  }),
+}));
 
 vi.mock('@aws-sdk/s3-request-presigner', () => ({
   getSignedUrl: vi.fn(),
@@ -159,10 +163,12 @@ describe('S3Helper', () => {
     } as CompleteMultipartUploadCommandOutput;
 
     beforeEach(() => {
-      vi.mocked(Upload).mockReturnValueOnce({
-        done: () => Promise.resolve(mockUploadDoneResponse),
-        on: vi.fn(),
-      } as unknown as Upload);
+      vi.mocked(Upload).mockImplementation(function () {
+        return {
+          done: () => Promise.resolve(mockUploadDoneResponse),
+          on: vi.fn(),
+        } as unknown as Upload;
+      });
     });
 
     it('should create a new upload and wait for completion when given an s3 URI', async () => {

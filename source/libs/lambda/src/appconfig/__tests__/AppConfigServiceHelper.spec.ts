@@ -23,9 +23,9 @@ import { AppConfigServiceHelper } from '../AppConfigServiceHelper';
 
 vi.mock('@aws-sdk/client-appconfig', () => {
   return {
-    AppConfigClient: vi.fn(() => ({
-      send: vi.fn(),
-    })),
+    AppConfigClient: vi.fn(function () {
+      return { send: vi.fn() };
+    }),
     CreateHostedConfigurationVersionCommand: vi.fn(),
     StartDeploymentCommand: vi.fn(),
   };
@@ -33,9 +33,9 @@ vi.mock('@aws-sdk/client-appconfig', () => {
 
 vi.mock('@aws-sdk/client-appconfigdata', () => {
   return {
-    AppConfigDataClient: vi.fn(() => ({
-      send: vi.fn(),
-    })),
+    AppConfigDataClient: vi.fn(function () {
+      return { send: vi.fn() };
+    }),
     GetLatestConfigurationCommand: vi.fn(),
     StartConfigurationSessionCommand: vi.fn(),
   };
