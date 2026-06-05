@@ -381,6 +381,7 @@ This software includes third party software subject to the following copyrights:
 @napi-rs/nice-win32-x64-msvc under the MIT license.
 @napi-rs/nice under the MIT license.
 @napi-rs/wasm-runtime under the MIT license.
+@nodable/entities under the MIT license.
 @nodelib/fs.scandir under the MIT license.
 @nodelib/fs.stat under the MIT license.
 @nodelib/fs.walk under the MIT license.

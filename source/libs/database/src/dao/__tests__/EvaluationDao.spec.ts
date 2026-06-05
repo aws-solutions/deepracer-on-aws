@@ -30,7 +30,8 @@ describe('EvaluationDao', () => {
           params: vi.fn(),
           where: vi.fn(),
         })),
-      });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
 
       const result = await evaluationDao.getStoppableEvaluation(TEST_EVALUATION_ITEM.modelId);
 
@@ -53,7 +54,8 @@ describe('EvaluationDao', () => {
           params: vi.fn(),
           where: vi.fn(),
         })),
-      });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
 
       const result = await evaluationDao.getStoppableEvaluation(TEST_EVALUATION_ITEM.modelId);
 

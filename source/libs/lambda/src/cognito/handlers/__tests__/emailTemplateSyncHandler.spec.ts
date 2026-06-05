@@ -24,7 +24,9 @@ const mockCloudFormationClient = {
 
 // Mock the CloudFormation client import
 vi.mock('@aws-sdk/client-cloudformation', () => ({
-  CloudFormationClient: vi.fn(() => mockCloudFormationClient),
+  CloudFormationClient: vi.fn(function () {
+    return mockCloudFormationClient;
+  }),
   DescribeStacksCommand: vi.fn(),
 }));
 

@@ -25,10 +25,12 @@ vi.mock('@deepracer-indy/utils', async (importOriginal) => ({
     error: vi.fn(),
     warn: vi.fn(),
   },
-  AmazonS3URI: vi.fn(() => ({
-    bucket: 'test-bucket',
-    key: 'archive.tar.gz',
-  })),
+  AmazonS3URI: vi.fn(function () {
+    return {
+      bucket: 'test-bucket',
+      key: 'archive.tar.gz',
+    };
+  }),
 }));
 
 describe('S3Archiver', () => {
@@ -49,7 +51,9 @@ describe('S3Archiver', () => {
     } as unknown as Upload;
 
     vi.mocked(archiver).mockReturnValue(mockArchive);
-    vi.mocked(Upload).mockReturnValue(mockUpload);
+    vi.mocked(Upload).mockImplementation(function () {
+      return mockUpload;
+    } as unknown as typeof Upload);
   });
 
   const mockFilesToArchive: FileToArchive[] = [

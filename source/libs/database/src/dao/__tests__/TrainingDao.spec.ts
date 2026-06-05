@@ -24,7 +24,8 @@ describe('TrainingDao', () => {
           params: vi.fn(),
           where: vi.fn(),
         })),
-      });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
 
       const result = await trainingDao.getStoppableTraining(TEST_TRAINING_ITEM.modelId);
 
@@ -41,7 +42,8 @@ describe('TrainingDao', () => {
           params: vi.fn(),
           where: vi.fn(),
         })),
-      });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
 
       const result = await trainingDao.getStoppableTraining(TEST_TRAINING_ITEM.modelId);
 

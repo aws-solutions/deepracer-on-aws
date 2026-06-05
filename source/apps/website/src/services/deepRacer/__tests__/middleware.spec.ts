@@ -35,15 +35,26 @@ describe('middleware', () => {
     logger: console,
     operation: { name: 'TestOperation' },
   };
-  const mockSignedRequest = { headers: { Authorization: 'AWS4-HMAC-SHA256...' } };
+  const mockSignedRequest = {
+    headers: {
+      authorization: 'AWS4-HMAC-SHA256...',
+      'Content-Type': 'application/json',
+      'x-amz-content-sha256': 'sha256hash',
+      'x-amz-date': '20240101T000000Z',
+      'x-amz-security-token': 'test-session-token',
+    },
+  };
   const mockSignatureV4Instance = {
-    sign: vi.fn().mockResolvedValue(mockSignedRequest),
+    sign: vi.fn(),
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockSignatureV4Instance.sign.mockResolvedValue(mockSignedRequest);
     // Mock SignatureV4 instance
-    (SignatureV4 as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => mockSignatureV4Instance);
+    (SignatureV4 as unknown as ReturnType<typeof vi.fn>).mockImplementation(function () {
+      return mockSignatureV4Instance;
+    });
   });
 
   describe('httpSigningMiddleware', () => {

@@ -75,7 +75,9 @@ describe('getCognitoUserId', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockCognitoClientForGetUserId = { send: vi.fn() };
-    (CognitoIdentityProviderClient as Mock).mockReturnValue(mockCognitoClientForGetUserId);
+    (CognitoIdentityProviderClient as Mock).mockImplementation(function () {
+      return mockCognitoClientForGetUserId;
+    });
   });
 
   it('should throw error if cognitoAuthProvider is missing', async () => {

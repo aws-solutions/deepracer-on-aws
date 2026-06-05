@@ -67,7 +67,9 @@ describe('Security integration tests', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     mockCognitoClient = { send: vi.fn() };
-    (CognitoIdentityProviderClient as Mock).mockReturnValue(mockCognitoClient);
+    (CognitoIdentityProviderClient as Mock).mockImplementation(function () {
+      return mockCognitoClient;
+    });
 
     // Re-establish default mock behavior for getUsernameFromSub after clearAllMocks
     const { cognitoHelper } = await import('../../utils/CognitoHelper.js');

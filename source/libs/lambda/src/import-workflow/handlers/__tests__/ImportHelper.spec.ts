@@ -222,11 +222,13 @@ describe('ImportHelper', () => {
 
   describe('parseMetrics', () => {
     beforeEach(() => {
-      vi.mocked(AmazonS3URI).mockImplementation(() => ({
-        bucket: testConstants.s3.sourceBucket,
-        key: testConstants.s3.sourcePrefix,
-        uri: 'test-uri',
-      }));
+      vi.mocked(AmazonS3URI).mockImplementation(function () {
+        return {
+          bucket: testConstants.s3.sourceBucket,
+          key: testConstants.s3.sourcePrefix,
+          uri: 'test-uri',
+        };
+      });
     });
 
     it('should parse metrics file when found', async () => {
@@ -305,16 +307,20 @@ describe('ImportHelper', () => {
 
     beforeEach(() => {
       vi.mocked(AmazonS3URI)
-        .mockImplementationOnce(() => ({
-          bucket: testConstants.s3.sourceBucket,
-          key: testConstants.s3.sourcePrefix,
-          uri: 'source-uri',
-        }))
-        .mockImplementationOnce(() => ({
-          bucket: testConstants.s3.destBucket,
-          key: testConstants.s3.destPrefix,
-          uri: 'dest-uri',
-        }));
+        .mockImplementationOnce(function () {
+          return {
+            bucket: testConstants.s3.sourceBucket,
+            key: testConstants.s3.sourcePrefix,
+            uri: 'source-uri',
+          };
+        })
+        .mockImplementationOnce(function () {
+          return {
+            bucket: testConstants.s3.destBucket,
+            key: testConstants.s3.destPrefix,
+            uri: 'dest-uri',
+          };
+        });
     });
 
     it('should copy metrics file when found', async () => {
@@ -388,11 +394,13 @@ describe('ImportHelper', () => {
 
   describe('copyModelFiles', () => {
     beforeEach(() => {
-      vi.mocked(AmazonS3URI).mockImplementation(() => ({
-        bucket: testConstants.s3.sourceBucket,
-        key: `${testConstants.s3.sourcePrefix}/`,
-        uri: 'source-uri',
-      }));
+      vi.mocked(AmazonS3URI).mockImplementation(function () {
+        return {
+          bucket: testConstants.s3.sourceBucket,
+          key: `${testConstants.s3.sourcePrefix}/`,
+          uri: 'source-uri',
+        };
+      });
     });
 
     it('should copy model files from source to destination with file mapping expected in User Data S3 Bucket', async () => {

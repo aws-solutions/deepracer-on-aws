@@ -12,9 +12,13 @@ vi.mock('aws-amplify/auth', () => ({
   confirmSignIn: vi.fn(),
 }));
 
-vi.mock('react-router-dom', () => ({
-  useNavigate: () => vi.fn(),
-}));
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => vi.fn(),
+  };
+});
 
 vi.mock('#hooks/useAppDispatch.js', () => ({
   useAppDispatch: () => vi.fn(),
