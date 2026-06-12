@@ -15,7 +15,7 @@
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
     "aws-cdk": "2.1005.0",
-    "esbuild": "0.25.0"
+    "esbuild": "0.28.1"
   },
   "dependencies": {
     "@aws-smithy/server-apigateway": "1.0.0-alpha.10",
