@@ -1,6 +1,6 @@
 id: SO0310
 name: deepracer-on-aws
-version: v1.1.6
+version: v1.1.7
 cloudformation_templates:
   - template: deepracer-on-aws.template
     main_template: true
