@@ -37,6 +37,7 @@ const defaultFormValues: CreateRaceFormValues = {
   desc: '',
   ranking: TimingMethod.TOTAL_TIME,
   minLap: '3',
+  maxLap: '5',
   offTrackPenalty: '1',
   collisionPenalty: '1',
   maxSubmissionsPerUser: 99,
@@ -48,9 +49,19 @@ const defaultFormValues: CreateRaceFormValues = {
     ],
   },
   randomizeObstacles: false,
+  isLive: false,
+  liveEventDate: '',
+  liveEventTime: '',
+  maxResets: 3,
 };
 
-const TestWrapper = ({ initialValues = defaultFormValues }: { initialValues?: CreateRaceFormValues }) => {
+const TestWrapper = ({
+  initialValues = defaultFormValues,
+  isEditMode,
+}: {
+  initialValues?: CreateRaceFormValues;
+  isEditMode?: boolean;
+}) => {
   const { control, setValue } = useForm<CreateRaceFormValues>({
     defaultValues: initialValues,
   });
@@ -60,6 +71,7 @@ const TestWrapper = ({ initialValues = defaultFormValues }: { initialValues?: Cr
     setValue,
     nameRef,
     control,
+    isEditMode,
   };
 
   return <AddRaceDetails {...props} />;
@@ -454,6 +466,27 @@ describe('AddRaceDetails', () => {
       // End date should be enabled when start date is provided
       expect(endDateInput).not.toBeDisabled();
       expect(endDateInput).toHaveAttribute('name', 'endDate');
+    });
+  });
+
+  describe('live race selection', () => {
+    it('renders the race mode tiles', () => {
+      render(<TestWrapper />);
+
+      expect(screen.getByText(i18n.t('createRace:addRaceDetails.communityRace'))).toBeInTheDocument();
+      expect(screen.getByText(i18n.t('createRace:addRaceDetails.liveRace'))).toBeInTheDocument();
+    });
+
+    it('does not show live event time fields when community is selected', () => {
+      render(<TestWrapper />);
+
+      expect(screen.queryByText(i18n.t('createRace:addRaceDetails.liveEventTime'))).not.toBeInTheDocument();
+    });
+
+    it('shows live event time fields when live is selected', () => {
+      render(<TestWrapper initialValues={{ ...defaultFormValues, isLive: true }} />);
+
+      expect(screen.getByText(i18n.t('createRace:addRaceDetails.liveEventTime'))).toBeInTheDocument();
     });
   });
 });

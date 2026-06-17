@@ -28,6 +28,7 @@
     "ace-builds": "1.39.0",
     "avataaars": "^2.0.0",
     "aws-amplify": "6.13.2",
+    "aws-iot-device-sdk-v2": "1.26.0",
     "hls.js": "^1.5.15",
     "humanize-duration": "^3.32.1",
     "i18next": "^24.2.2",

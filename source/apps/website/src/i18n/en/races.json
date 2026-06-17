@@ -1,6 +1,8 @@
 {
-  "welcome": "Welcome to community races",
+  "welcome": "Races",
   "communityRaces": "Community races",
+  "liveRaces": "Live races",
+  "openRaces": "Open races",
   "createRace": "Create race",
   "actions": "Actions",
   "manageRace": "Manage race",
@@ -38,6 +40,11 @@
   "open": "LIVE",
   "closed": "Closed",
   "toRace": "until open",
+  "untilLiveEvent": "until event",
+  "startingSoon": "Starting soon",
+  "liveInProgress": "Live — In Progress",
+  "liveEventTime": "Live event",
+  "liveRace": "Live Race",
   "raceName": "Race name",
   "raceType": "Race type",
   "remaining": "remaining"

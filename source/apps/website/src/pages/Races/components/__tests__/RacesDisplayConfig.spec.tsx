@@ -1,9 +1,11 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { renderHook } from '@testing-library/react';
+import { LiveEventStatus } from '@deepracer-indy/typescript-client';
+import { render, renderHook } from '@testing-library/react';
 
-import { mockLeaderboards } from '#constants/testConstants.js';
+import { mockLeaderboards, mockLeaderboardTTFuture } from '#constants/testConstants.js';
+import i18n from '#i18n/index.js';
 
 import useRacesDisplayConfig from '../RacesDisplayConfig';
 
@@ -280,6 +282,113 @@ describe('useRacesDisplayConfig', () => {
       expect(result.current.collectionProps).toBeDefined();
       expect(result.current.cardDefinitions).toBeDefined();
       expect(result.current.items).toBeDefined();
+    });
+  });
+
+  describe('live race card status', () => {
+    it('renders fallback when liveEventTime is undefined', () => {
+      const liveLeaderboard = {
+        ...mockLeaderboardTTFuture,
+        isLive: true,
+        liveEventStatus: LiveEventStatus.SCHEDULED,
+      };
+      const { result } = renderHook(() => useRacesDisplayConfig([liveLeaderboard], false, true));
+
+      const header = result.current.cardDefinitions.header?.(liveLeaderboard);
+      const { container } = render(header as React.ReactElement);
+      expect(container).toHaveTextContent(i18n.t('races:untilLiveEvent'));
+    });
+
+    it('renders starting soon when liveEventTime is in the past', () => {
+      const liveLeaderboard = {
+        ...mockLeaderboardTTFuture,
+        isLive: true,
+        liveEventStatus: LiveEventStatus.SCHEDULED,
+        liveEventTime: new Date('2020-01-01'),
+      };
+      const { result } = renderHook(() => useRacesDisplayConfig([liveLeaderboard], false, true));
+
+      const header = result.current.cardDefinitions.header?.(liveLeaderboard);
+      const { container } = render(header as React.ReactElement);
+      expect(container).toHaveTextContent(i18n.t('races:startingSoon'));
+    });
+
+    it('renders countdown for a scheduled live race', () => {
+      const liveLeaderboard = {
+        ...mockLeaderboardTTFuture,
+        isLive: true,
+        liveEventStatus: LiveEventStatus.SCHEDULED,
+        liveEventTime: new Date('2099-01-01T14:00:00Z'),
+      };
+      const { result } = renderHook(() => useRacesDisplayConfig([liveLeaderboard], false, true));
+
+      const header = result.current.cardDefinitions.header?.(liveLeaderboard);
+      const { container } = render(header as React.ReactElement);
+      expect(container).toHaveTextContent(i18n.t('races:untilLiveEvent'));
+    });
+
+    it('renders in-progress status for an in-progress live race', () => {
+      const liveLeaderboard = {
+        ...mockLeaderboardTTFuture,
+        isLive: true,
+        liveEventStatus: LiveEventStatus.IN_PROGRESS,
+      };
+      const { result } = renderHook(() => useRacesDisplayConfig([liveLeaderboard], false, true));
+
+      const header = result.current.cardDefinitions.header?.(liveLeaderboard);
+      const { container } = render(header as React.ReactElement);
+      expect(container).toHaveTextContent(i18n.t('races:liveInProgress'));
+    });
+
+    it('renders closed status for a completed live race', () => {
+      const liveLeaderboard = {
+        ...mockLeaderboardTTFuture,
+        isLive: true,
+        liveEventStatus: LiveEventStatus.COMPLETED,
+      };
+      const { result } = renderHook(() => useRacesDisplayConfig([liveLeaderboard], false, true));
+
+      const header = result.current.cardDefinitions.header?.(liveLeaderboard);
+      const { container } = render(header as React.ReactElement);
+      expect(container).toHaveTextContent(i18n.t('races:closed'));
+    });
+  });
+
+  describe('race dates card section', () => {
+    it('renders live event time for live races', () => {
+      const liveLeaderboard = {
+        ...mockLeaderboardTTFuture,
+        isLive: true,
+        liveEventStatus: LiveEventStatus.IN_PROGRESS,
+        liveEventTime: new Date('2026-05-08T14:00:00Z'),
+      };
+      const { result } = renderHook(() => useRacesDisplayConfig([liveLeaderboard], false, true));
+
+      const section = result.current.cardDefinitions.sections?.find((s) => s.id === 'raceDates');
+      const { container } = render(section?.content?.(liveLeaderboard) as React.ReactElement);
+      expect(container).toHaveTextContent(i18n.t('races:liveEventTime'));
+    });
+
+    it('renders "Live Race" when live race has no liveEventTime', () => {
+      const liveLeaderboard = {
+        ...mockLeaderboardTTFuture,
+        isLive: true,
+        liveEventStatus: LiveEventStatus.SCHEDULED,
+        liveEventTime: undefined,
+      };
+      const { result } = renderHook(() => useRacesDisplayConfig([liveLeaderboard], false, true));
+
+      const section = result.current.cardDefinitions.sections?.find((s) => s.id === 'raceDates');
+      const { container } = render(section?.content?.(liveLeaderboard) as React.ReactElement);
+      expect(container).toHaveTextContent(i18n.t('races:liveRace'));
+    });
+
+    it('renders start/end dates for community races', () => {
+      const { result } = renderHook(() => useRacesDisplayConfig([mockLeaderboardTTFuture], false, true));
+
+      const section = result.current.cardDefinitions.sections?.find((s) => s.id === 'raceDates');
+      const { container } = render(section?.content?.(mockLeaderboardTTFuture) as React.ReactElement);
+      expect(container).toHaveTextContent(i18n.t('races:raceDates'));
     });
   });
 });

@@ -7,24 +7,28 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import { checkUserGroupMembership } from '#utils/authUtils.js';
+import { PageId } from '#constants/pages.js';
+import { getUserGroups } from '#utils/authUtils.js';
+import { getPageBasePath, getPath } from '#utils/pageUtils.js';
 
-import { PageId } from '../../../../constants/pages.js';
-import { getPageBasePath, getPath } from '../../../../utils/pageUtils.js';
+import { getAdminNavigationItems, getModelManagementNavigationItems } from './itemsUtils.js';
+import { useVersionCheck } from '../../../../hooks/useVersionCheck.js';
+import VersionAlert from '../VersionAlert/VersionAlert.js';
 
 const SideNavigation = () => {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { t } = useTranslation(['common', 'navigation']);
 
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [userGroups, setUserGroups] = useState<UserGroups[]>([]);
 
   useEffect(() => {
-    const checkAdminStatus = async () => {
-      setIsAdmin(await checkUserGroupMembership([UserGroups.ADMIN]));
+    const getUserGroupsFn = async () => {
+      const groups = await getUserGroups();
+      setUserGroups(groups);
     };
 
-    void checkAdminStatus();
+    void getUserGroupsFn();
   }, []);
 
   const baseNavigationItems: SideNavigationProps.Item[] = [
@@ -57,28 +61,28 @@ const SideNavigation = () => {
     },
   ];
 
-  const adminNavigationItem: SideNavigationProps.Item = {
-    type: 'section',
-    text: t('sections.admin', { ns: 'navigation' }),
-    items: [
-      {
-        type: 'link',
-        text: t(`breadcrumbs.${PageId.MANAGE_INSTANCE}`, { ns: 'navigation' }),
-        href: getPath(PageId.MANAGE_INSTANCE),
-      },
-    ],
-  };
+  const isAdmin = userGroups.includes(UserGroups.ADMIN);
+  const { data: versionData } = useVersionCheck({ enabled: isAdmin });
 
   return (
-    <CloudscapeSideNavigation
-      activeHref={getPageBasePath(pathname)}
-      header={{ href: getPath(PageId.HOME), text: t('serviceName', { ns: 'common' }) }}
-      onFollow={(e) => {
-        e.preventDefault();
-        navigate(e.detail.href);
-      }}
-      items={[...baseNavigationItems, ...(isAdmin ? [adminNavigationItem] : [])]}
-    />
+    <div>
+      <CloudscapeSideNavigation
+        activeHref={getPageBasePath(pathname)}
+        header={{ href: getPath(PageId.HOME), text: t('serviceName', { ns: 'common' }) }}
+        onFollow={(e) => {
+          e.preventDefault();
+          navigate(e.detail.href);
+        }}
+        items={[
+          ...baseNavigationItems,
+          ...getAdminNavigationItems(userGroups, t),
+          ...getModelManagementNavigationItems(userGroups, t),
+        ]}
+      />
+      {isAdmin && (
+        <VersionAlert latestVersion={versionData?.latestVersion} isNewestVersion={versionData?.isNewestVersion} />
+      )}
+    </div>
   );
 };
 

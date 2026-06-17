@@ -3,6 +3,7 @@
 
 export type { EvaluationItem } from './EvaluationsEntity.js';
 export type { LeaderboardItem } from './LeaderboardsEntity.js';
+export type { LiveQueueItem } from './LiveQueueItemEntity.js';
 export type { ModelItem } from './ModelsEntity.js';
 
 export type { ProfileItem } from './ProfilesEntity.js';

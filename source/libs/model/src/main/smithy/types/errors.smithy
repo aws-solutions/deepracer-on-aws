@@ -40,3 +40,12 @@ structure NotAuthorizedError {
     @required
     message: ErrorMessage
 }
+
+/// An error due to a conflict with the current state of the resource
+@error("client")
+@httpError(409)
+structure ConflictError {
+    /// Message with details about the error
+    @required
+    message: ErrorMessage
+}

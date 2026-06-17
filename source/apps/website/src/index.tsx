@@ -10,10 +10,12 @@ import '#i18n';
 import '@cloudscape-design/global-styles/index.css';
 
 import AppLayout from '#components/AppLayout';
+import RequiresAdminOrFacilitator from '#components/RequiresAdminOrFacilitator';
 import RequiresAuth from '#components/RequiresAuth';
 import { AuthState } from '#constants/auth.js';
 import { PageId, pages } from '#constants/pages';
 import Account from '#pages/Account';
+import AdminModelDownload from '#pages/AdminModelDownload';
 import Auth from '#pages/Auth';
 import CloneRace from '#pages/CloneRace';
 import CreateEvaluation from '#pages/CreateEvaluation';
@@ -24,6 +26,7 @@ import EnterRace from '#pages/EnterRace';
 import GetStarted from '#pages/GetStarted';
 import Home from '#pages/Home';
 import ImportModel from '#pages/ImportModel';
+import LiveRace from '#pages/LiveRace';
 import ManageInstance from '#pages/ManageInstance/ManageInstance.js';
 import ManageRaces from '#pages/ManageRaces';
 import ModelDetails from '#pages/ModelDetails';
@@ -42,6 +45,9 @@ const router = createBrowserRouter(
     <Route element={<AppLayout />}>
       <Route element={<RequiresAuth />}>
         <Route path={pages[PageId.ACCOUNT].path} element={<Account />} />
+        <Route element={<RequiresAdminOrFacilitator />}>
+          <Route path={pages[PageId.ADMIN_MODEL_DOWNLOAD].path} element={<AdminModelDownload />} />
+        </Route>
         <Route path={pages[PageId.CLONE_RACE].path} element={<CloneRace />} />
         <Route path={pages[PageId.CREATE_EVALUATION].path} element={<CreateEvaluation />} />
         <Route path={pages[PageId.CREATE_MODEL].path} element={<CreateModel />} />
@@ -52,6 +58,7 @@ const router = createBrowserRouter(
         <Route path={pages[PageId.GET_STARTED].path} element={<GetStarted />} />
         <Route path={pages[PageId.HOME].path} element={<Home />} />
         <Route path={pages[PageId.IMPORT_MODEL].path} element={<ImportModel />} />
+        <Route path={pages[PageId.LIVE_RACE].path} element={<LiveRace />} />
         <Route path={pages[PageId.MANAGE_INSTANCE].path} element={<ManageInstance />} />
         <Route path={pages[PageId.MANAGE_RACES].path} element={<ManageRaces />} />
         <Route path={pages[PageId.MODEL_DETAILS].path} element={<ModelDetails />} />

@@ -36,6 +36,17 @@ structure BaseLeaderboard {
 
     @required
     timingMethod: TimingMethod
+
+    liveEventStatus: LiveEventStatus
+
+    isLive: Boolean
+
+    @timestampFormat("date-time")
+    liveEventTime: Timestamp
+
+    maxResets: NonNegativeInteger
+
+    submissionPeriodOpen: Boolean
 }
 
 structure LeaderboardDefinition with [BaseLeaderboard] {}

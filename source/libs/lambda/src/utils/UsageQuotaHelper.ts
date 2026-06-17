@@ -10,6 +10,7 @@ export interface ProfileQuotaUsage {
   maxTotalComputeMinutes: number | undefined;
   modelCount: number;
   maxModelCount: number | undefined;
+  totalModelCount?: number;
 }
 
 /**

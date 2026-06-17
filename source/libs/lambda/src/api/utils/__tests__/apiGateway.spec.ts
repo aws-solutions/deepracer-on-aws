@@ -9,7 +9,7 @@ import { type Mock, vi } from 'vitest';
 
 import { cognitoClient } from '#utils/clients/cognitoClient.js';
 
-import { getCognitoUserId, getApiGatewayHandler, isUserAdmin } from '../apiGateway';
+import { getCognitoUserId, getApiGatewayHandler, isUserAdmin, isUserAdminOrFacilitator } from '../apiGateway';
 
 class MockListUsersCommand {
   constructor(public input: unknown) {}
@@ -203,6 +203,73 @@ describe('isUserAdmin', () => {
     (cognitoClient.send as Mock).mockRejectedValueOnce(new Error('Cognito API error'));
 
     await expect(isUserAdmin('testuser' as ResourceId)).rejects.toThrow('Failed to verify user permissions.');
+  });
+});
+
+describe('isUserAdminOrFacilitator', () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env = { ...originalEnv };
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+  });
+
+  it('should throw error if USER_POOL_ID is not set', async () => {
+    delete process.env.USER_POOL_ID;
+
+    await expect(isUserAdminOrFacilitator('testuser' as ResourceId)).rejects.toThrow('Service configuration error.');
+  });
+
+  it('should return true if user is in ADMIN group', async () => {
+    process.env.USER_POOL_ID = 'us-east-1_test123';
+
+    (cognitoClient.send as Mock).mockResolvedValueOnce({
+      Groups: [{ GroupName: UserGroups.ADMIN }],
+    });
+
+    expect(await isUserAdminOrFacilitator('testuser' as ResourceId)).toBe(true);
+  });
+
+  it('should return true if user is in RACE_FACILITATORS group', async () => {
+    process.env.USER_POOL_ID = 'us-east-1_test123';
+
+    (cognitoClient.send as Mock).mockResolvedValueOnce({
+      Groups: [{ GroupName: UserGroups.RACE_FACILITATORS }],
+    });
+
+    expect(await isUserAdminOrFacilitator('testuser' as ResourceId)).toBe(true);
+  });
+
+  it('should return false if user is only in racer group', async () => {
+    process.env.USER_POOL_ID = 'us-east-1_test123';
+
+    (cognitoClient.send as Mock).mockResolvedValueOnce({
+      Groups: [{ GroupName: UserGroups.RACERS }],
+    });
+
+    expect(await isUserAdminOrFacilitator('testuser' as ResourceId)).toBe(false);
+  });
+
+  it('should return false if user has no groups', async () => {
+    process.env.USER_POOL_ID = 'us-east-1_test123';
+
+    (cognitoClient.send as Mock).mockResolvedValueOnce({ Groups: [] });
+
+    expect(await isUserAdminOrFacilitator('testuser' as ResourceId)).toBe(false);
+  });
+
+  it('should throw InternalFailureError if Cognito API call fails', async () => {
+    process.env.USER_POOL_ID = 'us-east-1_test123';
+
+    (cognitoClient.send as Mock).mockRejectedValueOnce(new Error('Cognito API error'));
+
+    await expect(isUserAdminOrFacilitator('testuser' as ResourceId)).rejects.toThrow(
+      'Failed to verify user permissions.',
+    );
   });
 });
 

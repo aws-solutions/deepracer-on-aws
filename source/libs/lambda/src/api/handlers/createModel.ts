@@ -123,7 +123,10 @@ export const CreateModelOperation: Operation<CreateModelServerInput, CreateModel
     ),
     profileDao.update(
       { profileId },
-      { computeMinutesQueued: profileQuotaUsage.computeMinutesQueued + trainingConfig.maxTimeInMinutes },
+      {
+        computeMinutesQueued: profileQuotaUsage.computeMinutesQueued + trainingConfig.maxTimeInMinutes,
+        modelCount: (profileQuotaUsage.modelCount ?? 0) + 1,
+      },
     ),
   ]);
 

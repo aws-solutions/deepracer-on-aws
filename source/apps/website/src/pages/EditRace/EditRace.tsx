@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 
 import CreateRace, { CreateRaceFormValues } from '#pages/CreateRace/CreateRace.js';
+import { DEFAULT_MAX_RESETS } from '#pages/CreateRace/validation.js';
 import { useGetLeaderboardQuery } from '#services/deepRacer/leaderboardsApi.js';
 
 const EditRace = () => {
@@ -39,6 +40,7 @@ const EditRace = () => {
     desc: leaderboard.description || '',
     ranking: leaderboard.timingMethod,
     minLap: leaderboard.submissionTerminationConditions.minimumLaps.toString(),
+    maxLap: leaderboard.submissionTerminationConditions.maximumLaps.toString(),
     offTrackPenalty: leaderboard.resettingBehaviorConfig.offTrackPenaltySeconds?.toString() || '1',
     collisionPenalty: leaderboard.resettingBehaviorConfig.collisionPenaltySeconds?.toString() || '1',
     maxSubmissionsPerUser: leaderboard.maxSubmissionsPerUser,
@@ -47,6 +49,14 @@ const EditRace = () => {
       objectPositions: leaderboard.objectAvoidanceConfig?.objectPositions,
     },
     randomizeObstacles: !leaderboard.objectAvoidanceConfig?.objectPositions?.length,
+    isLive: leaderboard.isLive ?? false,
+    liveEventDate: leaderboard.liveEventTime
+      ? `${leaderboard.liveEventTime.getFullYear()}-${String(leaderboard.liveEventTime.getMonth() + 1).padStart(2, '0')}-${String(leaderboard.liveEventTime.getDate()).padStart(2, '0')}`
+      : '',
+    liveEventTime: leaderboard.liveEventTime
+      ? `${String(leaderboard.liveEventTime.getHours()).padStart(2, '0')}:${String(leaderboard.liveEventTime.getMinutes()).padStart(2, '0')}`
+      : '',
+    maxResets: leaderboard.maxResets ?? DEFAULT_MAX_RESETS,
   };
   return <CreateRace initialFormValues={initialRaceFormValues} leaderboardId={leaderboardId} />;
 };

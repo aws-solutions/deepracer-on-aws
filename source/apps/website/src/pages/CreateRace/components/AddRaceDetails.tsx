@@ -7,6 +7,7 @@ import ExpandableSection from '@cloudscape-design/components/expandable-section'
 import FormField from '@cloudscape-design/components/form-field';
 import Header from '@cloudscape-design/components/header';
 import SpaceBetween from '@cloudscape-design/components/space-between';
+import Tiles from '@cloudscape-design/components/tiles';
 import { RaceType, TimingMethod } from '@deepracer-indy/typescript-client';
 import { MutableRefObject, useEffect, useMemo } from 'react';
 import { Control, useFieldArray, UseFormSetValue, useWatch } from 'react-hook-form';
@@ -24,25 +25,59 @@ import { DEFAULT_OBJECT_POSITIONS, TRACKS } from '#constants/tracks';
 import { getUTCOffsetTimeZoneText, isDateRangeInvalid } from '#utils/dateTimeUtils';
 
 import { CreateRaceFormValues } from '../CreateRace';
+import { parseDateTimeLocal } from '../validation';
 
 export interface AddRaceDetailsProps {
   setValue: UseFormSetValue<CreateRaceFormValues>;
   nameRef: MutableRefObject<HTMLDivElement | null>;
   control: Control<CreateRaceFormValues>;
+  isEditMode?: boolean;
 }
 
 const AddRaceDetails = (props: AddRaceDetailsProps) => {
-  const { setValue, nameRef, control } = props;
+  const { setValue, nameRef, control, isEditMode } = props;
   const { t } = useTranslation('createRace');
   const { fields, append, remove } = useFieldArray({
     control,
     name: 'objectAvoidanceConfig.objectPositions',
   });
-  // For validation as user is typing dates
-  const [startDate, startTime, endDate, endTime, raceType, objectAvoidanceConfig, randomizeObstacles] = useWatch({
-    name: ['startDate', 'startTime', 'endDate', 'endTime', 'raceType', 'objectAvoidanceConfig', 'randomizeObstacles'],
+  const [
+    startDate,
+    startTime,
+    endDate,
+    endTime,
+    raceType,
+    objectAvoidanceConfig,
+    randomizeObstacles,
+    isLive,
+    liveEventDate,
+    liveEventTime,
+    ranking,
+    maxLap,
+  ] = useWatch({
+    name: [
+      'startDate',
+      'startTime',
+      'endDate',
+      'endTime',
+      'raceType',
+      'objectAvoidanceConfig',
+      'randomizeObstacles',
+      'isLive',
+      'liveEventDate',
+      'liveEventTime',
+      'ranking',
+      'maxLap',
+    ],
     control,
   });
+
+  // For TOTAL_TIME, minimum laps must equal maximum laps — keep them in sync
+  useEffect(() => {
+    if (ranking === TimingMethod.TOTAL_TIME) {
+      setValue('minLap', maxLap);
+    }
+  }, [ranking, maxLap, setValue]);
 
   useEffect(() => {
     const objectDiff = fields.length - objectAvoidanceConfig.numberOfObjects;
@@ -73,6 +108,26 @@ const AddRaceDetails = (props: AddRaceDetailsProps) => {
         }
       >
         <SpaceBetween size={'m'} direction="vertical">
+          <FormField description={t('addRaceDetails.liveRaceToggleDesc')} label={t('addRaceDetails.raceMode')} stretch>
+            <Tiles
+              items={[
+                {
+                  label: t('addRaceDetails.communityRace'),
+                  description: t('addRaceDetails.communityRaceDesc'),
+                  value: 'community',
+                },
+                {
+                  label: t('addRaceDetails.liveRace'),
+                  description: t('addRaceDetails.liveRaceDesc'),
+                  value: 'live',
+                },
+              ]}
+              value={isLive ? 'live' : 'community'}
+              onChange={({ detail }) => setValue('isLive', detail.value === 'live')}
+              readOnly={isEditMode}
+            />
+          </FormField>
+
           <TilesField
             description={t('addRaceDetails.chooseRaceTypeDesc')}
             label={t('addRaceDetails.chooseRaceType')}
@@ -104,49 +159,98 @@ const AddRaceDetails = (props: AddRaceDetailsProps) => {
               stretch
             />
           </div>
-          <div>
+
+          {isLive && (
             <FormField
-              description={t('addRaceDetails.chooseRaceDatesDesc', { timezone: getUTCOffsetTimeZoneText() })}
-              label={t('addRaceDetails.chooseRaceDates')}
+              description={t('addRaceDetails.liveEventTimeDesc', { timezone: getUTCOffsetTimeZoneText() })}
+              label={t('addRaceDetails.liveEventTime')}
               stretch
             >
               <SpaceBetween direction="horizontal" size={'xxl'}>
                 <DatePickerField
-                  name="startDate"
+                  name="liveEventDate"
                   control={control}
                   placeholder="YYYY/MM/DD"
                   isDateEnabled={(date) => date >= currentDateOnly}
                 />
                 <TimeInputField
-                  name="startTime"
+                  name="liveEventTime"
                   control={control}
                   format="hh:mm"
                   placeholder="hh:mm"
                   use24Hour
-                  invalid={startTime !== '' && new Date(startDate + ' ' + startTime) < currentDate}
-                />
-              </SpaceBetween>
-              <Box margin={{ top: 'xs' }} />
-              <SpaceBetween direction="horizontal" size={'xxl'}>
-                <DatePickerField
-                  name="endDate"
-                  control={control}
-                  placeholder="YYYY/MM/DD"
-                  isDateEnabled={(date) => date >= startDateOnly && date >= currentDateOnly}
-                  disabled={startDate === ''}
-                />
-                <TimeInputField
-                  name="endTime"
-                  control={control}
-                  format="hh:mm"
-                  placeholder="hh:mm"
-                  use24Hour
-                  invalid={isDateRangeInvalid({ startDate, startTime, endDate, endTime })}
-                  disabled={startDate === ''}
+                  invalid={
+                    liveEventTime !== '' &&
+                    liveEventDate !== '' &&
+                    parseDateTimeLocal(liveEventDate, liveEventTime) < currentDate
+                  }
                 />
               </SpaceBetween>
             </FormField>
-          </div>
+          )}
+
+          {isLive && (
+            <SelectField
+              name="maxResets"
+              control={control}
+              label={t('addRaceDetails.maxResets')}
+              description={t('addRaceDetails.maxResetsDesc')}
+              type="number"
+              options={[
+                { label: '1', value: 1 },
+                { label: '2', value: 2 },
+                { label: '3', value: 3 },
+                { label: '5', value: 5 },
+                { label: '10', value: 10 },
+              ]}
+            />
+          )}
+
+          {!isLive && (
+            <div>
+              <FormField
+                description={t('addRaceDetails.chooseRaceDatesDesc', { timezone: getUTCOffsetTimeZoneText() })}
+                label={t('addRaceDetails.chooseRaceDates')}
+                stretch
+              >
+                <SpaceBetween direction="horizontal" size={'xxl'}>
+                  <DatePickerField
+                    name="startDate"
+                    control={control}
+                    placeholder="YYYY/MM/DD"
+                    isDateEnabled={(date) => date >= currentDateOnly}
+                  />
+                  <TimeInputField
+                    name="startTime"
+                    control={control}
+                    format="hh:mm"
+                    placeholder="hh:mm"
+                    use24Hour
+                    invalid={startTime !== '' && new Date(startDate + ' ' + startTime) < currentDate}
+                  />
+                </SpaceBetween>
+                <Box margin={{ top: 'xs' }} />
+                <SpaceBetween direction="horizontal" size={'xxl'}>
+                  <DatePickerField
+                    name="endDate"
+                    control={control}
+                    placeholder="YYYY/MM/DD"
+                    isDateEnabled={(date) => date >= startDateOnly && date >= currentDateOnly}
+                    disabled={startDate === ''}
+                  />
+                  <TimeInputField
+                    name="endTime"
+                    control={control}
+                    format="hh:mm"
+                    placeholder="hh:mm"
+                    use24Hour
+                    invalid={isDateRangeInvalid({ startDate, startTime, endDate, endTime })}
+                    disabled={startDate === ''}
+                  />
+                </SpaceBetween>
+              </FormField>
+            </div>
+          )}
         </SpaceBetween>
       </Container>
       <Container
@@ -195,14 +299,41 @@ const AddRaceDetails = (props: AddRaceDetailsProps) => {
             />
 
             <SelectField
-              description={t('addRaceDetails.minimumLapsDesc')}
-              label={t('addRaceDetails.minimumLaps')}
+              description={
+                ranking === TimingMethod.AVG_LAP_TIME
+                  ? t('addRaceDetails.minimumLapsAvgLapDesc')
+                  : ranking === TimingMethod.TOTAL_TIME
+                    ? t('addRaceDetails.minimumLapsTotalTimeDesc')
+                    : t('addRaceDetails.minimumLapsBestLapDesc')
+              }
+              label={
+                ranking === TimingMethod.AVG_LAP_TIME
+                  ? t('addRaceDetails.minimumLapsAvgLapLabel')
+                  : t('addRaceDetails.minimumLaps')
+              }
               name="minLap"
+              control={control}
+              disabled={ranking === TimingMethod.TOTAL_TIME}
+              options={[
+                { label: '1 lap', value: '1' },
+                { label: `2 ${t('addRaceDetails.consecutiveLaps')}`, value: '2' },
+                { label: `3 ${t('addRaceDetails.consecutiveLaps')}`, value: '3' },
+                { label: `5 ${t('addRaceDetails.consecutiveLaps')}`, value: '5' },
+                { label: `10 ${t('addRaceDetails.consecutiveLaps')}`, value: '10' },
+              ]}
+            />
+
+            <SelectField
+              description={t('addRaceDetails.maximumLapsDesc')}
+              label={t('addRaceDetails.maximumLaps')}
+              name="maxLap"
               control={control}
               options={[
                 { label: '1 lap', value: '1' },
                 { label: `2 ${t('addRaceDetails.consecutiveLaps')}`, value: '2' },
                 { label: `3 ${t('addRaceDetails.consecutiveLaps')}`, value: '3' },
+                { label: `5 ${t('addRaceDetails.consecutiveLaps')}`, value: '5' },
+                { label: `10 ${t('addRaceDetails.consecutiveLaps')}`, value: '10' },
               ]}
             />
 

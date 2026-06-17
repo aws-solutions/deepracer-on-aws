@@ -22,6 +22,7 @@ export enum DynamoDBItemAttribute {
   MODEL_COUNT = 'modelCount',
   MAX_MODEL_COUNT = 'maxModelCount',
   MODEL_STORAGE_USAGE = 'modelStorageUsage',
+  TOTAL_MODEL_COUNT = 'totalModelCount',
   ROLE_NAME = 'roleName',
   COMPUTE_MINUTES_USED = 'computeMinutesUsed',
   COMPUTE_MINUTES_QUEUED = 'computeMinutesQueued',
@@ -73,6 +74,8 @@ export enum DynamoDBItemAttribute {
   COMPLETED_LAP_COUNT = 'completedLapCount',
   MODEL_NAME = 'modelName',
   OFF_TRACK_COUNT = 'offTrackCount',
+  BEST_LAP_OFF_TRACK_COUNT = 'bestLapOffTrackCount',
+  AVG_LAP_OFF_TRACK_COUNT = 'avgLapOffTrackCount',
   RESET_COUNT = 'resetCount',
   STATS = 'stats',
   TOTAL_LAP_TIME = 'totalLapTime',
@@ -104,6 +107,21 @@ export enum DynamoDBItemAttribute {
   TRACK_PERCENTAGE = 'trackPercentage',
   /** Set of profileIds that have submitted to this leaderboard */
   SUBMITTED_PROFILES = 'submittedProfiles',
+  /** Distinguishes live vs community race */
+  IS_LIVE = 'isLive',
+  MAX_RESETS = 'maxResets',
+  SUBMISSION_PERIOD_OPEN = 'submissionPeriodOpen',
+  QUEUE_POSITION = 'queuePosition',
+  SUBMITTED_AT = 'submittedAt',
+  LAST_TRIGGERED_AT = 'lastTriggeredAt',
+  LIVE_EVENT_TIME = 'liveEventTime',
+  LIVE_EVENT_STATUS = 'liveEventStatus',
+  AUTO_LAUNCH_ENABLED = 'autoLaunchEnabled',
+  CURRENT_EXECUTION_ARN = 'currentExecutionArn',
+  WINNER_ID = 'winnerId',
+  WINNER_DECLARED_AT = 'winnerDeclaredAt',
+  LAST_SF_FAILURE_AT = 'lastSFFailureAt',
+  PARTICIPANT_NAME = 'participantName',
 
   // Model attributes
   ACTION_SPACE = 'actionSpace',
@@ -418,6 +436,12 @@ export const getSubmissionAndRankingSharedAttributes = <
         [Attribute.OFF_TRACK_COUNT]: {
           type: 'number',
           required: true,
+        },
+        [Attribute.BEST_LAP_OFF_TRACK_COUNT]: {
+          type: 'number',
+        },
+        [Attribute.AVG_LAP_OFF_TRACK_COUNT]: {
+          type: 'number',
         },
         [Attribute.RESET_COUNT]: {
           type: 'number',

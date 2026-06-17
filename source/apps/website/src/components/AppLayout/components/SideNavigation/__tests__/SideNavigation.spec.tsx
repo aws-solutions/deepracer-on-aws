@@ -1,14 +1,17 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import { UserGroups } from '@deepracer-indy/typescript-client';
 import { render, screen, waitFor } from '@testing-library/react';
 import { fetchAuthSession } from 'aws-amplify/auth';
+import { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { BrowserRouter, useLocation, useNavigate } from 'react-router-dom';
 import { vi } from 'vitest';
 
 import { PageId } from '../../../../../constants/pages.js';
 import { getPath } from '../../../../../utils/pageUtils.js';
+import { getAdminNavigationItems, getModelManagementNavigationItems } from '../itemsUtils.js';
 import SideNavigation from '../SideNavigation';
 
 // Mock dependencies
@@ -46,7 +49,7 @@ describe('SideNavigation', () => {
 
   it('should render base navigation items for non-admin users', async () => {
     // Mock non-admin auth response
-    (fetchAuthSession as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+    (fetchAuthSession as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
       tokens: {
         accessToken: {
           payload: {
@@ -77,11 +80,12 @@ describe('SideNavigation', () => {
 
     // Verify admin section is not present
     expect(screen.queryByText('sections.admin')).not.toBeInTheDocument();
+    expect(screen.queryByText(`breadcrumbs.${PageId.ADMIN_MODEL_DOWNLOAD}`)).not.toBeInTheDocument();
   });
 
   it('should render admin navigation items for admin users', async () => {
     // Mock admin auth response
-    (fetchAuthSession as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+    (fetchAuthSession as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
       tokens: {
         accessToken: {
           payload: {
@@ -102,13 +106,43 @@ describe('SideNavigation', () => {
       expect(screen.getByText('sections.admin')).toBeInTheDocument();
     });
 
-    // Verify manage instance link is present
+    // Verify manage instance link is present (admin-only)
     expect(screen.getByText(`breadcrumbs.${PageId.MANAGE_INSTANCE}`)).toBeInTheDocument();
+    // Verify model download is under Model Management section
+    expect(screen.getByText('sections.modelManagement')).toBeInTheDocument();
+    expect(screen.getByText(`breadcrumbs.${PageId.ADMIN_MODEL_DOWNLOAD}`)).toBeInTheDocument();
+  });
+
+  it('should render model management navigation items for race facilitator users', async () => {
+    // Mock facilitator auth response
+    (fetchAuthSession as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+      tokens: {
+        accessToken: {
+          payload: {
+            'cognito:groups': ['dr-race-facilitators'],
+          },
+        },
+      },
+    });
+
+    render(
+      <BrowserRouter>
+        <SideNavigation />
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('sections.modelManagement')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText(`breadcrumbs.${PageId.ADMIN_MODEL_DOWNLOAD}`)).toBeInTheDocument();
+    // Admin section and MANAGE_INSTANCE are admin-only; facilitators should not see them
+    expect(screen.queryByText('sections.admin')).not.toBeInTheDocument();
+    expect(screen.queryByText(`breadcrumbs.${PageId.MANAGE_INSTANCE}`)).not.toBeInTheDocument();
   });
 
   it('should handle navigation when clicking links', async () => {
-    // Mock non-admin auth response
-    (fetchAuthSession as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+    (fetchAuthSession as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
       tokens: {
         accessToken: {
           payload: {
@@ -133,8 +167,6 @@ describe('SideNavigation', () => {
   });
 
   it('should handle auth check errors gracefully', async () => {
-    // Mock auth error
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(vi.fn());
     (fetchAuthSession as unknown as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('Auth error'));
 
     render(
@@ -143,15 +175,11 @@ describe('SideNavigation', () => {
       </BrowserRouter>,
     );
 
-    // Verify error is logged
     await waitFor(() => {
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Error determining user group memebership');
+      expect(screen.queryByText('sections.admin')).not.toBeInTheDocument();
     });
 
-    // Verify only base navigation is shown (no admin items)
-    expect(screen.queryByText('sections.admin')).not.toBeInTheDocument();
-
-    consoleErrorSpy.mockRestore();
+    expect(screen.queryByText('sections.modelManagement')).not.toBeInTheDocument();
   });
 
   it('should handle missing auth groups gracefully', async () => {
@@ -174,5 +202,45 @@ describe('SideNavigation', () => {
     await waitFor(() => {
       expect(screen.queryByText('sections.admin')).not.toBeInTheDocument();
     });
+  });
+});
+
+const t = ((key: string) => key) as unknown as TFunction;
+
+describe('getAdminNavigationItems()', () => {
+  it('returns a section item when groups includes ADMIN', () => {
+    const result = getAdminNavigationItems([UserGroups.ADMIN], t);
+    expect(result).toHaveLength(1);
+    expect(result[0].type).toBe('section');
+  });
+
+  it('returns empty array for RACE_FACILITATORS', () => {
+    expect(getAdminNavigationItems([UserGroups.RACE_FACILITATORS], t)).toEqual([]);
+  });
+
+  it('returns empty array for empty groups', () => {
+    expect(getAdminNavigationItems([], t)).toEqual([]);
+  });
+});
+
+describe('getModelManagementNavigationItems()', () => {
+  it('returns a section item when groups includes ADMIN', () => {
+    const result = getModelManagementNavigationItems([UserGroups.ADMIN], t);
+    expect(result).toHaveLength(1);
+    expect(result[0].type).toBe('section');
+  });
+
+  it('returns a section item when groups includes RACE_FACILITATORS', () => {
+    const result = getModelManagementNavigationItems([UserGroups.RACE_FACILITATORS], t);
+    expect(result).toHaveLength(1);
+    expect(result[0].type).toBe('section');
+  });
+
+  it('returns empty array for non-admin, non-facilitator groups', () => {
+    expect(getModelManagementNavigationItems([UserGroups.RACERS], t)).toEqual([]);
+  });
+
+  it('returns empty array for empty groups', () => {
+    expect(getModelManagementNavigationItems([], t)).toEqual([]);
   });
 });

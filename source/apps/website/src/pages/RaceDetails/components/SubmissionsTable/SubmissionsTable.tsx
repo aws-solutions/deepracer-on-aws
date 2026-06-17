@@ -13,9 +13,10 @@ import { useSubmissionsTableConfig } from './SubmissionsTableConfig';
 interface SubmissionsTableProps {
   leaderboard: Leaderboard;
   submissions: Submission[];
+  submissionPeriodOpen?: boolean;
 }
 
-const SubmissionsTable = ({ leaderboard, submissions }: SubmissionsTableProps) => {
+const SubmissionsTable = ({ leaderboard, submissions, submissionPeriodOpen }: SubmissionsTableProps) => {
   const { t } = useTranslation('raceDetails');
 
   const {
@@ -27,7 +28,7 @@ const SubmissionsTable = ({ leaderboard, submissions }: SubmissionsTableProps) =
     paginationProps,
     filterProps,
     filteredItemsCount,
-  } = useSubmissionsTableConfig(submissions, leaderboard);
+  } = useSubmissionsTableConfig(submissions, leaderboard, submissionPeriodOpen);
 
   return (
     <Table

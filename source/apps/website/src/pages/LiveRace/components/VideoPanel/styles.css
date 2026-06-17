@@ -1,0 +1,30 @@
+/*
+Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+SPDX-License-Identifier: Apache-2.0
+*/
+
+.videoPanel {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  position: relative;
+}
+
+.transitionScreen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #0f1b2a;
+  color: #ffffff;
+  height: 100%;
+  border-radius: 8px;
+  padding: 2rem;
+}
+
+.transitionScreen h2 {
+  margin-bottom: 0.5rem;
+}
+
+.transitionScreen p {
+  color: #8d9baa;
+}

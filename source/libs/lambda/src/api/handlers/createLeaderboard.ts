@@ -7,6 +7,7 @@ import {
   getCreateLeaderboardHandler,
   CreateLeaderboardServerInput,
   CreateLeaderboardServerOutput,
+  LiveEventStatus,
   RaceType,
   BadRequestError,
 } from '@deepracer-indy/typescript-server-client';
@@ -42,13 +43,20 @@ export const CreateLeaderboardOperation: Operation<
     validateObjectAvoidanceConfig(leaderboardDefinition?.objectAvoidanceConfig);
   }
 
+  if (leaderboardDefinition.isLive) {
+    if (!leaderboardDefinition.liveEventTime) {
+      throw new BadRequestError({ message: 'liveEventTime is required for live races.' });
+    }
+    if (leaderboardDefinition.liveEventTime <= new Date()) {
+      throw new BadRequestError({ message: 'Event time must be in the future.' });
+    }
+  }
+
   const leaderboardItem = await leaderboardDao.create({
     name: leaderboardDefinition.name,
     resettingBehaviorConfig: leaderboardDefinition.resettingBehaviorConfig,
     raceType: leaderboardDefinition.raceType,
     trackConfig: leaderboardDefinition.trackConfig,
-    closeTime: leaderboardDefinition.closeTime.toISOString(),
-    openTime: leaderboardDefinition.openTime.toISOString(),
     maxSubmissionsPerUser: leaderboardDefinition.maxSubmissionsPerUser,
     submissionTerminationConditions: {
       maxLaps: leaderboardDefinition.submissionTerminationConditions.maximumLaps,
@@ -57,9 +65,18 @@ export const CreateLeaderboardOperation: Operation<
     minimumLaps: leaderboardDefinition.submissionTerminationConditions.minimumLaps,
     timingMethod: leaderboardDefinition.timingMethod,
     objectAvoidanceConfig: leaderboardDefinition.objectAvoidanceConfig,
+    closeTime: leaderboardDefinition.closeTime.toISOString(),
+    openTime: leaderboardDefinition.openTime.toISOString(),
+    ...(leaderboardDefinition.isLive && {
+      isLive: true,
+      liveEventTime: leaderboardDefinition.liveEventTime?.toISOString(),
+      liveEventStatus: LiveEventStatus.SCHEDULED,
+      submissionPeriodOpen: false,
+      maxResets: leaderboardDefinition.maxResets ?? 3,
+    }),
   });
 
-  metricsLogger.logCreateLeaderboard();
+  metricsLogger.logCreateLeaderboard({ isLive: leaderboardDefinition.isLive ?? false });
 
   return {
     leaderboardId: leaderboardItem.leaderboardId,

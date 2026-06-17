@@ -87,6 +87,10 @@ structure SubmissionStats {
 
     @required
     totalLapTime: PositiveInteger
+
+    bestLapOffTrackCount: NonNegativeInteger
+
+    avgLapOffTrackCount: NonNegativeInteger
 }
 
 structure UserRankingProfile with [BaseProfile] {}

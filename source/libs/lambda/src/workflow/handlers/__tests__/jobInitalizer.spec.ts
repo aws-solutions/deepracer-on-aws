@@ -253,6 +253,25 @@ describe('JobInitializer', () => {
       );
       expect(createTrainingJobSpy).toHaveBeenCalledWith({ jobItem: TEST_SUBMISSION_ITEM, modelItem: TEST_MODEL_ITEM });
     });
+
+    it('should use context jobName over jobItem name for live races', async () => {
+      const liveJobName = `${TEST_SUBMISSION_ITEM.name}-live-abcd1234` as typeof TEST_SUBMISSION_ITEM.name;
+      const liveContext = { ...MOCK_INIT_SUBMISSION_CONTEXT, jobName: liveJobName };
+
+      getJobSpy.mockResolvedValueOnce({ ...TEST_SUBMISSION_ITEM });
+      modelLoadSpy.mockResolvedValueOnce(TEST_MODEL_ITEM);
+      profileLoadSpy.mockResolvedValueOnce(TEST_PROFILE_ITEM);
+      createStreamSpy.mockResolvedValueOnce('arn:aws:kinesisvideo:us-east-1:accountid:stream/streamname');
+      writeJobFilesToS3Spy.mockResolvedValueOnce([]);
+      deleteS3LocationSpy.mockResolvedValueOnce();
+      createTrainingJobSpy.mockResolvedValueOnce(TEST_SUBMISSION_ITEM.sageMakerJobArn);
+
+      await jobInitializer.initializeJob(liveContext);
+
+      expect(createTrainingJobSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ jobItem: expect.objectContaining({ name: liveJobName }) }),
+      );
+    });
   });
 
   describe('writeJobFilesToS3', () => {

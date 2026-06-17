@@ -41,6 +41,10 @@ export interface WorkflowProps {
 }
 
 export class Workflow extends Construct {
+  public readonly jobInitializerFunction: NodeLambdaFunction;
+  public readonly jobMonitorFunction: NodeLambdaFunction;
+  public readonly jobFinalizerFunction: NodeLambdaFunction;
+
   constructor(scope: Construct, id: string, props: WorkflowProps) {
     super(scope, id);
 
@@ -134,7 +138,7 @@ export class Workflow extends Construct {
     const jobInitializerFunction = new NodeLambdaFunction(this, 'JobInitializerFunction', {
       entry: path.join(__dirname, '../../../../../libs/lambda/src/workflow/handlers/jobInitializer.ts'),
       functionName: 'DeepRacerIndyWorkflow-JobInitializerFn',
-      logGroupCategory: LogGroupCategory.WORKFLOW,
+      logGroupCategory: LogGroupCategory.TRAINING,
       namespace,
       environment: {
         MODEL_DATA_BUCKET_NAME: modelStorageBucket.bucketName,
@@ -170,7 +174,7 @@ export class Workflow extends Construct {
     const jobMonitorFunction = new NodeLambdaFunction(this, 'JobMonitorFunction', {
       entry: path.join(__dirname, '../../../../../libs/lambda/src/workflow/handlers/jobMonitor.ts'),
       functionName: 'DeepRacerIndyWorkflow-JobMonitorFn',
-      logGroupCategory: LogGroupCategory.WORKFLOW,
+      logGroupCategory: LogGroupCategory.TRAINING,
       namespace,
       environment: {
         MODEL_DATA_BUCKET_NAME: modelStorageBucket.bucketName,
@@ -197,7 +201,7 @@ export class Workflow extends Construct {
     const jobFinalizerFunction = new NodeLambdaFunction(this, 'JobFinalizerFunction', {
       entry: path.join(__dirname, '../../../../../libs/lambda/src/workflow/handlers/jobFinalizer.ts'),
       functionName: 'DeepRacerIndyWorkflow-JobFinalizerFn',
-      logGroupCategory: LogGroupCategory.WORKFLOW,
+      logGroupCategory: LogGroupCategory.TRAINING,
       namespace,
       timeout: Duration.seconds(900),
       environment: {
@@ -235,6 +239,9 @@ export class Workflow extends Construct {
       }),
     );
 
+    this.jobInitializerFunction = jobInitializerFunction;
+    this.jobMonitorFunction = jobMonitorFunction;
+    this.jobFinalizerFunction = jobFinalizerFunction;
     const successEndState = new Succeed(this, 'Job succeeded');
     const failureEndState = new Fail(this, 'Job failed');
 
@@ -341,7 +348,7 @@ export class Workflow extends Construct {
     const jobDispatcherFunction = new NodeLambdaFunction(this, 'JobDispatcherFunction', {
       entry: path.join(__dirname, '../../../../../libs/lambda/src/workflow/handlers/jobDispatcher.ts'),
       functionName: 'DeepRacerIndyWorkflow-JobDispatcherFn',
-      logGroupCategory: LogGroupCategory.WORKFLOW,
+      logGroupCategory: LogGroupCategory.TRAINING,
       namespace,
       environment: {
         MODEL_DATA_BUCKET_NAME: modelStorageBucket.bucketName,

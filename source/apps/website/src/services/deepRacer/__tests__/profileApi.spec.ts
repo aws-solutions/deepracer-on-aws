@@ -12,8 +12,6 @@ import {
   DeleteProfileModelsCommand,
   DeleteProfileModelsCommandInput,
   DeleteProfileModelsCommandOutput,
-  ListProfilesCommand,
-  ListProfilesCommandOutput,
   Profile,
   UpdateGroupMembershipCommand,
   UpdateGroupMembershipCommandInput,
@@ -116,43 +114,6 @@ describe('profileApi', () => {
     it('should export useDeleteProfileMutation hook', () => {
       expect(profileApiModule.profileApi.useDeleteProfileMutation).toBeDefined();
       expect(typeof profileApiModule.profileApi.useDeleteProfileMutation).toBe('function');
-    });
-  });
-
-  describe('listProfilesCommand', () => {
-    it('should create a ListProfilesCommand', () => {
-      const result = profileApiModule.listProfiles.listProfilesCommand();
-
-      expect(result.command).toBeInstanceOf(ListProfilesCommand);
-      expect(result.displayNotificationOnError).toBe(false);
-    });
-  });
-
-  describe('listProfilesTransformResponse', () => {
-    it('should transform response to profiles array', () => {
-      const mockProfiles: Profile[] = [
-        {
-          profileId: 'profile-1',
-          alias: 'User1',
-          roleName: 'dr-racers',
-          avatar: 'avatar1' as AvatarConfig,
-        },
-        {
-          profileId: 'profile-2',
-          alias: 'User2',
-          roleName: 'dr-racers',
-          avatar: 'avatar2' as AvatarConfig,
-        },
-      ];
-
-      const mockResponse: ListProfilesCommandOutput = {
-        $metadata: {},
-        profiles: mockProfiles,
-      };
-
-      const result = profileApiModule.listProfiles.listProfilesTransformResponse(mockResponse);
-
-      expect(result).toEqual(mockProfiles);
     });
   });
 

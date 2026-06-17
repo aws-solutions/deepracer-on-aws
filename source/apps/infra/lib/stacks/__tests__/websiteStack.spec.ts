@@ -65,6 +65,7 @@ describe('WebsiteStack', () => {
       modelStorageBucket: mockModelStorageBucket,
       uploadBucket: mockUploadBucket,
       namespace: TEST_NAMESPACE,
+      solutionVersion: 'v1.0.0',
       customDomainParam,
     };
 
@@ -105,6 +106,7 @@ describe('WebsiteStack', () => {
       modelStorageBucket: mockModelStorageBucket,
       uploadBucket: mockUploadBucket,
       namespace: TEST_NAMESPACE,
+      solutionVersion: 'v1.0.0',
       customDomainParam,
     };
 

@@ -414,6 +414,50 @@ describe('Api', () => {
       ).not.toThrow();
     });
 
+    it('creates three new admin Lambda functions', () => {
+      ['GetAdminAssetUrl', 'ListAdminProfiles', 'ListModelsForProfile'].forEach((operation) => {
+        expect(() =>
+          template.hasResourceProperties('AWS::Lambda::Function', {
+            FunctionName: `${TEST_NAMESPACE}-DeepRacerIndyApi-${operation}Function`,
+          }),
+        ).not.toThrow();
+      });
+    });
+
+    it('grants cognito AdminListGroupsForUser to admin Lambda functions', () => {
+      ['GetAdminAssetUrl', 'ListAdminProfiles', 'ListModelsForProfile'].forEach((operation) => {
+        expect(() =>
+          template.hasResourceProperties('AWS::IAM::Policy', {
+            PolicyName: Match.stringLikeRegexp(`.*${operation}Function.*`),
+            PolicyDocument: {
+              Statement: Match.arrayWith([
+                Match.objectLike({
+                  Effect: 'Allow',
+                  Action: 'cognito-idp:AdminListGroupsForUser',
+                }),
+              ]),
+            },
+          }),
+        ).not.toThrow();
+      });
+    });
+
+    it('grants S3 read on model storage bucket to GetAdminAssetUrl', () => {
+      expect(() =>
+        template.hasResourceProperties('AWS::IAM::Policy', {
+          PolicyName: Match.stringLikeRegexp('.*GetAdminAssetUrlFunction.*'),
+          PolicyDocument: {
+            Statement: Match.arrayWith([
+              Match.objectLike({
+                Effect: 'Allow',
+                Action: Match.arrayWith(['s3:GetObject*']),
+              }),
+            ]),
+          },
+        }),
+      ).not.toThrow();
+    });
+
     it('grants cognito permissions to API lambda handlers', () => {
       ['CreateModel', 'GetModel'].forEach((operation) => {
         expect(() =>
@@ -472,6 +516,48 @@ describe('Api', () => {
           },
         }),
       ).not.toThrow();
+    });
+  });
+
+  describe('Admin Observability', () => {
+    it('creates WAF rate-based rule scoped to /admin/ path', () => {
+      expect(() =>
+        template.hasResourceProperties('AWS::WAFv2::WebACL', {
+          Rules: Match.arrayWith([
+            Match.objectLike({
+              Name: 'AdminRateLimit',
+              Statement: {
+                RateBasedStatement: Match.objectLike({
+                  Limit: 100,
+                  AggregateKeyType: 'IP',
+                }),
+              },
+            }),
+          ]),
+        }),
+      ).not.toThrow();
+    });
+
+    it('creates CloudWatch metric filters for admin actions', () => {
+      ['ADMIN_MODEL_DOWNLOAD', 'ADMIN_AUTH_FAILURE', 'ADMIN_PROFILE_LIST', 'ADMIN_LIST_MODELS'].forEach((action) => {
+        expect(() =>
+          template.hasResourceProperties('AWS::Logs::MetricFilter', {
+            FilterPattern: Match.stringLikeRegexp(`.*${action}.*`),
+          }),
+        ).not.toThrow();
+      });
+    });
+
+    it('creates CloudWatch alarms for bulk download and auth failures', () => {
+      ['AdminModelDownloadCount', 'AdminAuthFailureCount'].forEach((metricName) => {
+        expect(() =>
+          template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+            Namespace: 'DeepRacerIndyAdmin',
+            MetricName: metricName,
+            TreatMissingData: 'notBreaching',
+          }),
+        ).not.toThrow();
+      });
     });
   });
 });

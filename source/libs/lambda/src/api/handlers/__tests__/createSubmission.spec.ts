@@ -4,17 +4,22 @@
 import { SQSClient } from '@aws-sdk/client-sqs';
 import {
   leaderboardDao,
+  liveQueueItemDao,
   LeaderboardItem,
   modelDao,
+  profileDao,
   submissionDao,
   TEST_LEADERBOARD_ITEM,
+  TEST_LIVE_QUEUE_ITEM,
   TEST_MODEL_ITEM,
+  TEST_PROFILE_ITEM,
   TEST_SUBMISSION_ITEM,
 } from '@deepracer-indy/database';
 import {
   BadRequestError,
   InternalFailureError,
   JobStatus,
+  LiveEventStatus,
   ModelStatus,
   RaceType,
 } from '@deepracer-indy/typescript-server-client';
@@ -217,5 +222,156 @@ describe('CreateSubmission operation', () => {
         TEST_OPERATION_CONTEXT,
       ),
     ).rejects.toStrictEqual(ITEM_FAILED_TO_CREATE_ERROR);
+  });
+
+  // --- Live race submission tests ---
+
+  describe('Live race submissions', () => {
+    const LIVE_LEADERBOARD: LeaderboardItem = {
+      ...TEST_LEADERBOARD_ITEM,
+      isLive: true,
+      liveEventStatus: LiveEventStatus.SCHEDULED,
+      liveEventTime: new Date(Date.now() + 3_600_000).toISOString(), // 1 hour in the future
+      submissionPeriodOpen: false,
+    };
+
+    it('should create live race submission atomically via addToQueue', async () => {
+      vi.spyOn(modelDao, 'load').mockResolvedValueOnce(READY_MODEL);
+      vi.spyOn(leaderboardDao, 'load').mockResolvedValueOnce(LIVE_LEADERBOARD);
+      vi.spyOn(liveQueueItemDao, 'getQueue').mockResolvedValueOnce([]);
+      vi.spyOn(submissionDao, 'listByCreatedAt').mockResolvedValueOnce({ cursor: null, data: [] });
+      vi.spyOn(profileDao, 'load').mockResolvedValueOnce(TEST_PROFILE_ITEM);
+      vi.spyOn(liveQueueItemDao, 'addToQueue').mockResolvedValueOnce(TEST_LIVE_QUEUE_ITEM);
+      vi.spyOn(modelDao, 'update').mockResolvedValueOnce(TEST_MODEL_ITEM);
+
+      const output = await CreateSubmissionOperation(
+        { leaderboardId: LIVE_LEADERBOARD.leaderboardId, modelId: TEST_MODEL_ITEM.modelId },
+        TEST_OPERATION_CONTEXT,
+      );
+
+      expect(output.submissionId).toEqual(TEST_LIVE_QUEUE_ITEM.submissionId);
+      expect(liveQueueItemDao.addToQueue).toHaveBeenCalledTimes(1);
+      expect(liveQueueItemDao.addToQueue).toHaveBeenCalledWith(
+        expect.objectContaining({
+          profileId: TEST_OPERATION_CONTEXT.profileId,
+          modelId: TEST_MODEL_ITEM.modelId,
+          modelName: TEST_MODEL_ITEM.name,
+          participantName: TEST_PROFILE_ITEM.alias,
+          leaderboardId: LIVE_LEADERBOARD.leaderboardId,
+        }),
+      );
+      // Should NOT send SQS message for live race
+      expect(mockSqsClient.calls()).toHaveLength(0);
+    });
+
+    it('should accept submissions just before liveEventTime', async () => {
+      const almostExpiredLeaderboard: LeaderboardItem = {
+        ...LIVE_LEADERBOARD,
+        liveEventTime: new Date(Date.now() + 1_000).toISOString(), // 1 second from now
+      };
+
+      vi.spyOn(modelDao, 'load').mockResolvedValueOnce(READY_MODEL);
+      vi.spyOn(leaderboardDao, 'load').mockResolvedValueOnce(almostExpiredLeaderboard);
+      vi.spyOn(liveQueueItemDao, 'getQueue').mockResolvedValueOnce([]);
+      vi.spyOn(submissionDao, 'listByCreatedAt').mockResolvedValueOnce({ cursor: null, data: [] });
+      vi.spyOn(profileDao, 'load').mockResolvedValueOnce(TEST_PROFILE_ITEM);
+      vi.spyOn(liveQueueItemDao, 'addToQueue').mockResolvedValueOnce(TEST_LIVE_QUEUE_ITEM);
+      vi.spyOn(modelDao, 'update').mockResolvedValueOnce(TEST_MODEL_ITEM);
+
+      const output = await CreateSubmissionOperation(
+        { leaderboardId: almostExpiredLeaderboard.leaderboardId, modelId: TEST_MODEL_ITEM.modelId },
+        TEST_OPERATION_CONTEXT,
+      );
+
+      expect(output.submissionId).toEqual(TEST_LIVE_QUEUE_ITEM.submissionId);
+    });
+
+    it('should reject submissions after liveEventTime when submissionPeriodOpen is false', async () => {
+      const pastEventLeaderboard: LeaderboardItem = {
+        ...LIVE_LEADERBOARD,
+        liveEventTime: new Date(Date.now() - 60_000).toISOString(), // 1 minute ago
+        submissionPeriodOpen: false,
+      };
+
+      vi.spyOn(modelDao, 'load').mockResolvedValueOnce(READY_MODEL);
+      vi.spyOn(leaderboardDao, 'load').mockResolvedValueOnce(pastEventLeaderboard);
+
+      await expect(
+        CreateSubmissionOperation(
+          { leaderboardId: pastEventLeaderboard.leaderboardId, modelId: TEST_MODEL_ITEM.modelId },
+          TEST_OPERATION_CONTEXT,
+        ),
+      ).rejects.toStrictEqual(new BadRequestError({ message: 'Submissions closed.' }));
+    });
+
+    it('should accept submissions after liveEventTime when submissionPeriodOpen is true', async () => {
+      const reopenedLeaderboard: LeaderboardItem = {
+        ...LIVE_LEADERBOARD,
+        liveEventTime: new Date(Date.now() - 60_000).toISOString(), // 1 minute ago
+        submissionPeriodOpen: true,
+      };
+
+      vi.spyOn(modelDao, 'load').mockResolvedValueOnce(READY_MODEL);
+      vi.spyOn(leaderboardDao, 'load').mockResolvedValueOnce(reopenedLeaderboard);
+      vi.spyOn(liveQueueItemDao, 'getQueue').mockResolvedValueOnce([]);
+      vi.spyOn(submissionDao, 'listByCreatedAt').mockResolvedValueOnce({ cursor: null, data: [] });
+      vi.spyOn(profileDao, 'load').mockResolvedValueOnce(TEST_PROFILE_ITEM);
+      vi.spyOn(liveQueueItemDao, 'addToQueue').mockResolvedValueOnce(TEST_LIVE_QUEUE_ITEM);
+      vi.spyOn(modelDao, 'update').mockResolvedValueOnce(TEST_MODEL_ITEM);
+
+      const output = await CreateSubmissionOperation(
+        { leaderboardId: reopenedLeaderboard.leaderboardId, modelId: TEST_MODEL_ITEM.modelId },
+        TEST_OPERATION_CONTEXT,
+      );
+
+      expect(output.submissionId).toEqual(TEST_LIVE_QUEUE_ITEM.submissionId);
+    });
+
+    it('should throw error if max submissions reached for live race', async () => {
+      vi.spyOn(modelDao, 'load').mockResolvedValueOnce(READY_MODEL);
+      vi.spyOn(leaderboardDao, 'load').mockResolvedValueOnce({ ...LIVE_LEADERBOARD, maxSubmissionsPerUser: 1 });
+      vi.spyOn(liveQueueItemDao, 'getQueue').mockResolvedValueOnce([]);
+      vi.spyOn(submissionDao, 'listByCreatedAt').mockResolvedValueOnce({
+        cursor: null,
+        data: [{ ...TEST_SUBMISSION_ITEM, submissionNumber: 1 }],
+      });
+
+      await expect(
+        CreateSubmissionOperation(
+          { leaderboardId: LIVE_LEADERBOARD.leaderboardId, modelId: TEST_MODEL_ITEM.modelId },
+          TEST_OPERATION_CONTEXT,
+        ),
+      ).rejects.toStrictEqual(new BadRequestError({ message: 'Max number of submissions has been reached.' }));
+    });
+
+    it('should reject duplicate model submission in live race', async () => {
+      vi.spyOn(modelDao, 'load').mockResolvedValueOnce(READY_MODEL);
+      vi.spyOn(leaderboardDao, 'load').mockResolvedValueOnce(LIVE_LEADERBOARD);
+      vi.spyOn(liveQueueItemDao, 'getQueue').mockResolvedValueOnce([
+        { ...TEST_LIVE_QUEUE_ITEM, modelId: TEST_MODEL_ITEM.modelId },
+      ]);
+
+      await expect(
+        CreateSubmissionOperation(
+          { leaderboardId: LIVE_LEADERBOARD.leaderboardId, modelId: TEST_MODEL_ITEM.modelId },
+          TEST_OPERATION_CONTEXT,
+        ),
+      ).rejects.toStrictEqual(new BadRequestError({ message: 'This model has already been submitted to this race.' }));
+    });
+
+    it('should reject submissions when live event is completed', async () => {
+      vi.spyOn(modelDao, 'load').mockResolvedValueOnce(READY_MODEL);
+      vi.spyOn(leaderboardDao, 'load').mockResolvedValueOnce({
+        ...LIVE_LEADERBOARD,
+        liveEventStatus: LiveEventStatus.COMPLETED,
+      });
+
+      await expect(
+        CreateSubmissionOperation(
+          { leaderboardId: LIVE_LEADERBOARD.leaderboardId, modelId: TEST_MODEL_ITEM.modelId },
+          TEST_OPERATION_CONTEXT,
+        ),
+      ).rejects.toStrictEqual(new BadRequestError({ message: 'Submissions closed.' }));
+    });
   });
 });

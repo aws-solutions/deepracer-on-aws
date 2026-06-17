@@ -5,7 +5,7 @@ import { logMethod } from '@deepracer-indy/utils';
 
 import { BaseDao } from './BaseDao.js';
 import { DEFAULT_MAX_QUERY_RESULTS } from '../constants/defaults.js';
-import { ProfilesEntity } from '../entities/ProfilesEntity.js';
+import { ProfilesEntity, type ProfileItem } from '../entities/ProfilesEntity.js';
 
 export class ProfileDao extends BaseDao<ProfilesEntity> {
   @logMethod
@@ -25,6 +25,14 @@ export class ProfileDao extends BaseDao<ProfilesEntity> {
       data: result.data,
       cursor: result.cursor ? Buffer.from(JSON.stringify(result.cursor)).toString('base64') : null,
     };
+  }
+
+  @logMethod
+  async listProjected<const Attr extends keyof ProfileItem>(
+    attributes: ReadonlyArray<Attr>,
+  ): Promise<Pick<ProfileItem, Attr>[]> {
+    const result = await this.entity.query.bySortKey({}).go({ attributes, pages: 'all' });
+    return result.data as unknown as Pick<ProfileItem, Attr>[];
   }
 }
 

@@ -4,6 +4,7 @@
 import { DEFAULT_NAMESPACE } from '@deepracer-indy/config/src/defaults/commonDefaults.js';
 import { Stack, Duration, CfnParameter, Fn, CfnCondition, CfnRule, Token, CfnOutput } from 'aws-cdk-lib';
 import { ComputeType } from 'aws-cdk-lib/aws-codebuild';
+import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 
 import { readManifest } from '#constructs/common/manifestReader.js';
@@ -16,6 +17,8 @@ import { SolutionStackProps } from './solutionStackProps.js';
 import { UserIdentity } from '../constructs/auth/userIdentity.js';
 import { UserRolePolicies } from '../constructs/auth/userRolePolicies.js';
 import { applyDrTag } from '../constructs/common/taggingHelper.js';
+import { LiveRaceEvents } from '../constructs/live-race/liveRaceEvents.js';
+import { LiveRaceWorkflow } from '../constructs/live-race-workflow/liveRaceWorkflow.js';
 import { MetricsInfra } from '../constructs/metrics/metricsInfra.js';
 import { MonitoringDashboard } from '../constructs/observability/dashboard.js';
 import { LogInsights } from '../constructs/observability/logInsights.js';
@@ -71,8 +74,19 @@ export class DeepRacerIndyStack extends Stack {
 
     const sesVerifiedEmailParam = new CfnParameter(this, 'SesVerifiedEmail', {
       type: 'String',
-      description: 'Verified SES email address. Required when EmailDeliveryMethod is SES.',
+      description: 'Verified SES email address used to send emails from. Required when EmailDeliveryMethod is SES.',
       default: '',
+      allowedPattern: '^$|^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$',
+      constraintDescription: 'Must be a valid email address or empty.',
+    });
+
+    const sesIdentityParam = new CfnParameter(this, 'SesIdentity', {
+      type: 'String',
+      description:
+        'Optional. SES verified identity used to authorize sending. Use a domain (e.g. example.com) if verified at domain level. Defaults to SesVerifiedEmail.',
+      default: '',
+      allowedPattern: '^$|^[a-zA-Z0-9][a-zA-Z0-9.-]*\\.[a-zA-Z]{2,}$',
+      constraintDescription: 'Must be a valid domain name or empty.',
     });
 
     // CfnRule: block SES if no verified email provided
@@ -91,6 +105,11 @@ export class DeepRacerIndyStack extends Stack {
     // CfnCondition: true when SES delivery is selected
     const isSesEnabled = new CfnCondition(this, 'IsSesEnabled', {
       expression: Fn.conditionEquals(emailDeliveryMethodParam.valueAsString, 'SES'),
+    });
+
+    // CfnCondition: true when a separate SES identity is provided
+    const isSesIdentityProvided = new CfnCondition(this, 'IsSesIdentityProvided', {
+      expression: Fn.conditionNot(Fn.conditionEquals(sesIdentityParam.valueAsString, '')),
     });
 
     const { dynamoDBTable } = new DynamoDBTable(this, 'DynamoDBTable', {
@@ -155,6 +174,8 @@ export class DeepRacerIndyStack extends Stack {
       namespace,
       isSesEnabled,
       sesVerifiedEmail: sesVerifiedEmailParam.valueAsString,
+      sesIdentity: sesIdentityParam.valueAsString,
+      isSesIdentityProvided,
     });
 
     const { userPool, userPoolClient, identityPool, userRoles } = userIdentity;
@@ -191,15 +212,58 @@ export class DeepRacerIndyStack extends Stack {
       api,
       userRoles,
       uploadBucketArn: uploadBucket.bucketArn,
+      namespace,
     });
 
-    new Workflow(this, 'Workflow', {
+    const workflow = new Workflow(this, 'Workflow', {
       dynamoDBTable,
       modelStorageBucket,
       workflowJobQueue,
       simAppRepositoryUri: `${simAppRepository.repository.repositoryUri}:${simAppRepository.imageTag}`,
       namespace,
     });
+
+    const liveRaceWorkflow = new LiveRaceWorkflow(this, 'LiveRaceWorkflow', {
+      dynamoDBTable,
+      modelStorageBucket,
+      simAppRepositoryUri: `${simAppRepository.repository.repositoryUri}:${simAppRepository.imageTag}`,
+      namespace,
+      jobInitializerFunction: workflow.jobInitializerFunction,
+      jobMonitorFunction: workflow.jobMonitorFunction,
+      jobFinalizerFunction: workflow.jobFinalizerFunction,
+    });
+
+    // Wire LaunchLiveRace function to the live race state machine
+    apiStack.apiConstruct.apiFunctions.LaunchLiveRace.addEnvironment(
+      'LIVE_RACE_STATE_MACHINE_ARN',
+      liveRaceWorkflow.stateMachine.stateMachineArn,
+    );
+    liveRaceWorkflow.stateMachine.grantStartExecution(apiStack.apiConstruct.apiFunctions.LaunchLiveRace);
+    apiStack.apiConstruct.apiFunctions.ClearLiveLeaderboard.addToRolePolicy(
+      new PolicyStatement({
+        actions: ['states:StopExecution'],
+        resources: [
+          `arn:aws:states:${this.region}:${this.account}:execution:${liveRaceWorkflow.stateMachine.stateMachineName}:*`,
+        ],
+      }),
+    );
+
+    const attachPolicyFn = apiStack.apiConstruct.apiFunctions.AttachLiveRacePolicy;
+
+    const liveRaceEvents = new LiveRaceEvents(this, 'LiveRaceEvents', {
+      namespace,
+      dynamoDBTable,
+      attachPolicyFunctionName: attachPolicyFn.functionName,
+    });
+
+    attachPolicyFn.addEnvironment('IOT_POLICY_NAME', liveRaceEvents.spectatorPolicyName);
+    attachPolicyFn.addToRolePolicy(
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        actions: ['iot:AttachPolicy'],
+        resources: ['*'],
+      }),
+    );
 
     const website = new StaticWebsite(this, 'Website', {
       apiEndpointUrl: api.url,
@@ -209,6 +273,8 @@ export class DeepRacerIndyStack extends Stack {
       identityPoolId: identityPool.ref,
       uploadBucket,
       namespace,
+      solutionVersion,
+      iotEndpoint: liveRaceEvents.iotEndpoint,
     });
 
     const hasCustomDomain = new CfnCondition(this, 'HasCustomDomain', {
@@ -227,7 +293,8 @@ export class DeepRacerIndyStack extends Stack {
     });
 
     // Update email template with website URL after website is deployed
-    userIdentity.updateEmailTemplateWithWebsiteUrl(`https://${website.cloudFrontDomainName}`);
+    // Use the same URL as the CORS allowed origin: custom domain if configured, otherwise CloudFront URL
+    userIdentity.updateEmailTemplateWithWebsiteUrl(Token.asString(allowedOrigin));
 
     new UsageFunctions(this, 'UsageFunctions', {
       dynamoDBTable,
@@ -266,6 +333,8 @@ export class DeepRacerIndyStack extends Stack {
           userIdentity.postSignUpErrorAlarm,
           apiStack.apiConstruct.assetPackagingDLQAlarm,
           apiStack.apiConstruct.importModelWorkflow.lambdaErrorsAlarm,
+          liveRaceWorkflow.workflowErrorsAlarm,
+          liveRaceWorkflow.streamDlqAlarm,
         ],
         emailAlarms: userIdentity.sesAlarms,
       },

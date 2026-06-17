@@ -19,6 +19,10 @@ export class JobNameHelper {
 
     return `${jobNamePrefix}-${jobType}-${jobId}`;
   }
+
+  getLiveJobNameFromArn(arn: string): JobName {
+    return arn.split('/').pop() as JobName;
+  }
 }
 
 export const jobNameHelper = new JobNameHelper();

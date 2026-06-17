@@ -9,7 +9,7 @@ import CollectionPreferences, {
   CollectionPreferencesProps,
 } from '@cloudscape-design/components/collection-preferences';
 import SpaceBetween from '@cloudscape-design/components/space-between';
-import { Leaderboard } from '@deepracer-indy/typescript-client';
+import { Leaderboard, LiveEventStatus } from '@deepracer-indy/typescript-client';
 import humanizeDuration from 'humanize-duration';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -49,6 +49,54 @@ const getTimeRemaining = (openTime: number, closeTime: number, currentTime: numb
       <Box variant="p" color="inherit">
         {humanizeDuration(openTime - currentTime, { units: ['d', 'h', 'm', 's'], largest: 1, round: true })}{' '}
         {i18n.t('races:toRace')}
+      </Box>
+    </div>
+  );
+};
+
+const getLiveRaceCardStatus = (leaderboard: Leaderboard, currentTime: number) => {
+  if (leaderboard.liveEventStatus === LiveEventStatus.COMPLETED) {
+    return (
+      <div className="otherLeaderboard">
+        <Box variant="p" color="inherit">
+          {i18n.t('races:closed')}
+        </Box>
+      </div>
+    );
+  }
+  if (leaderboard.liveEventStatus === LiveEventStatus.IN_PROGRESS) {
+    return (
+      <div className="openLeaderboard">
+        <Box variant="strong" color="inherit">
+          {i18n.t('races:liveInProgress')}
+        </Box>
+      </div>
+    );
+  }
+  if (!leaderboard.liveEventTime) {
+    return (
+      <div className="otherLeaderboard">
+        <Box variant="p" color="inherit">
+          {i18n.t('races:untilLiveEvent')}
+        </Box>
+      </div>
+    );
+  }
+  if (leaderboard.liveEventTime.getTime() <= currentTime) {
+    return (
+      <div className="otherLeaderboard">
+        <Box variant="p" color="inherit">
+          {i18n.t('races:startingSoon')}
+        </Box>
+      </div>
+    );
+  }
+  const eventTime = leaderboard.liveEventTime.getTime();
+  return (
+    <div className="otherLeaderboard">
+      <Box variant="p" color="inherit">
+        {humanizeDuration(eventTime - currentTime, { units: ['d', 'h', 'm', 's'], largest: 1, round: true })}{' '}
+        {i18n.t('races:untilLiveEvent')}
       </Box>
     </div>
   );
@@ -107,6 +155,9 @@ const useRacesDisplayConfig = (leaderboards: Leaderboard[], isClosed: boolean, c
   });
   const cardDefinitions: CardsProps.CardDefinition<Leaderboard> = {
     header: (item) => {
+      if (item.isLive) {
+        return getLiveRaceCardStatus(item, currentTime);
+      }
       return getTimeRemaining(item.openTime.getTime(), item.closeTime.getTime(), currentTime);
     },
     sections: [
@@ -117,8 +168,11 @@ const useRacesDisplayConfig = (leaderboards: Leaderboard[], isClosed: boolean, c
       {
         id: 'leaderboardName',
         content: (item: Leaderboard) => (
-          <Box textAlign="center" variant="h2">
-            {item.name}
+          <Box textAlign="center">
+            <Box variant="h2">{item.name}</Box>
+            <div className={item.isLive ? 'raceTypeBadge raceTypeBadge--live' : 'raceTypeBadge'}>
+              {item.isLive ? t('liveRace') : t('communityRaces')}
+            </div>
           </Box>
         ),
       },
@@ -135,15 +189,24 @@ const useRacesDisplayConfig = (leaderboards: Leaderboard[], isClosed: boolean, c
       },
       {
         id: 'raceDates',
-        content: (item: Leaderboard) => (
-          <Box textAlign="center">
-            <Box textAlign="center" variant="small">
-              {t('raceDates')}: {t('start', { value: item.openTime })}
-              {' - '}
-              {t('end', { value: item.closeTime })}
+        content: (item: Leaderboard) => {
+          if (item.isLive) {
+            return (
+              <Box textAlign="center" variant="small">
+                {item.liveEventTime ? `${t('liveEventTime')}: ${item.liveEventTime.toLocaleString()}` : t('liveRace')}
+              </Box>
+            );
+          }
+          return (
+            <Box textAlign="center">
+              <Box textAlign="center" variant="small">
+                {t('raceDates')}: {t('start', { value: item.openTime })}
+                {' - '}
+                {t('end', { value: item.closeTime })}
+              </Box>
             </Box>
-          </Box>
-        ),
+          );
+        },
       },
       {
         id: 'image',

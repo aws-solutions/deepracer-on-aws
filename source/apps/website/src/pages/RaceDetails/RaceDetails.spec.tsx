@@ -166,4 +166,17 @@ describe('<RaceDetails />', () => {
       expect(checkUserGroupMembership).toHaveBeenCalledWith([UserGroups.RACE_FACILITATORS, UserGroups.ADMIN]);
     });
   });
+
+  describe('Watch live button', () => {
+    it('does not show Watch live button for non-live races', async () => {
+      vi.mocked(checkUserGroupMembership).mockResolvedValue(true);
+
+      await TTLeaderboard.run();
+
+      await screen.findByText(i18n.t('raceDetails:raceType.TIME_TRIAL'));
+      await waitFor(() => {
+        expect(screen.queryByText(i18n.t('raceDetails:watchLive'))).not.toBeInTheDocument();
+      });
+    });
+  });
 });

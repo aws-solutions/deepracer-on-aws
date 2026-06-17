@@ -22,12 +22,14 @@
             { "AttributeName": "gsi1pk", "KeyType": "HASH" },
             { "AttributeName": "gsi1sk", "KeyType": "RANGE" }
           ],
-          "Projection": { "ProjectionType": "ALL" }
+          "Projection": { "ProjectionType": "ALL" },
+          "ProvisionedThroughput": { "ReadCapacityUnits": 1000, "WriteCapacityUnits": 1000 }
         },
         {
           "IndexName": "sk-index",
           "KeySchema": [{ "AttributeName": "sk", "KeyType": "HASH" }],
-          "Projection": { "ProjectionType": "ALL" }
+          "Projection": { "ProjectionType": "ALL" },
+          "ProvisionedThroughput": { "ReadCapacityUnits": 1000, "WriteCapacityUnits": 1000 }
         }
       ],
       "LocalSecondaryIndexes": [

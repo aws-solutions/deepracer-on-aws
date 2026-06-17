@@ -377,6 +377,7 @@ describe('JobFinalizer', () => {
         modelId: expect.any(String),
         leaderboardId: undefined,
         sageMakerMinutes: expect.any(Number),
+        isLive: false,
       });
     });
 
@@ -504,7 +505,20 @@ describe('JobFinalizer', () => {
         { status: JobStatus.COMPLETED, endTime: TEST_TIMESTAMP },
       );
       expect(persistEvaluationMetricsSpy).not.toHaveBeenCalled();
-      expect(persistSubmissionStatsSpy).toHaveBeenCalledWith(mockInitSubmissionContext);
+      expect(persistSubmissionStatsSpy).toHaveBeenCalledWith(mockInitSubmissionContext, { skipRanking: false });
+    });
+
+    it('should keep model QUEUED for live race submission jobs', async () => {
+      persistSubmissionStatsSpy.mockResolvedValueOnce();
+      const liveJobName = `${MOCK_INIT_SUBMISSION_CONTEXT.jobName}-live-abcd1234`;
+      mockInitSubmissionContext.jobName = liveJobName as typeof mockInitSubmissionContext.jobName;
+
+      await jobFinalizer.persistWorkflowData(mockInitSubmissionContext);
+
+      expect(updateModelSpy).toHaveBeenCalledWith(
+        { modelId: mockInitSubmissionContext.modelId, profileId: mockInitSubmissionContext.profileId },
+        { status: ModelStatus.QUEUED },
+      );
     });
 
     it('should persist data for failed submission job due to failed sagemaker job', async () => {
@@ -545,7 +559,7 @@ describe('JobFinalizer', () => {
         { status: JobStatus.FAILED, endTime: TEST_TIMESTAMP },
       );
       expect(persistEvaluationMetricsSpy).not.toHaveBeenCalled();
-      expect(persistSubmissionStatsSpy).toHaveBeenCalledWith(mockInitSubmissionContext);
+      expect(persistSubmissionStatsSpy).toHaveBeenCalledWith(mockInitSubmissionContext, { skipRanking: true });
       return true;
     }
 
@@ -754,6 +768,31 @@ describe('JobFinalizer', () => {
 
       await expect(jobFinalizer.persistSubmissionStats(mockInitSubmissionContext)).resolves.not.toThrow();
       expect(mockInitSubmissionContext.errorDetails).toEqual(mockError);
+    });
+
+    it('should skip ranking when skipRanking is true even if laps meet requirements', async () => {
+      const mockSubmissionStats: SubmissionStats = {
+        avgResets: 0,
+        avgLapTime: 5000,
+        bestLapTime: 4500,
+        collisionCount: 0,
+        completedLapCount: 2,
+        offTrackCount: 0,
+        resetCount: 0,
+        totalLapTime: 12000,
+      };
+
+      loadSubmissionSpy.mockResolvedValueOnce(TEST_SUBMISSION_ITEM);
+      loadLeaderboardSpy.mockResolvedValueOnce(TEST_LEADERBOARD_ITEM);
+      getSubmissionStatsSpy.mockResolvedValueOnce(mockSubmissionStats);
+      updateSubmissionSpy.mockResolvedValueOnce(TEST_SUBMISSION_ITEM);
+
+      await expect(
+        jobFinalizer.persistSubmissionStats(mockInitSubmissionContext, { skipRanking: true }),
+      ).resolves.not.toThrow();
+
+      expect(updateSubmissionSpy).toHaveBeenCalled();
+      expect(persistRankingStatsSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -991,6 +1030,38 @@ describe('JobFinalizer', () => {
       const mockError = new Error('S3 write error');
       vi.mocked(cloudWatchLogsHelper.writeLogStreamToS3).mockRejectedValueOnce(mockError);
       await expect(jobFinalizer.writeSimulationLogsToS3(mockInitEvaluationContext)).resolves.not.toThrow();
+    });
+  });
+
+  describe('jobStatus on context', () => {
+    beforeEach(() => {
+      vi.spyOn(workflowHelper, 'getJob').mockResolvedValue({ ...TEST_TRAINING_ITEM, status: JobStatus.IN_PROGRESS });
+      vi.spyOn(workflowHelper, 'updateJob').mockResolvedValue(TEST_TRAINING_ITEM);
+    });
+
+    it('should set jobStatus FAILED when trainingJob status is Failed', async () => {
+      mockInitTrainingContext.trainingJob = {
+        ...MOCK_INIT_TRAINING_CONTEXT.trainingJob,
+        status: TrainingJobStatus.FAILED,
+      };
+
+      await jobFinalizer.persistWorkflowData(mockInitTrainingContext);
+
+      expect(mockInitTrainingContext.jobStatus).toBe(JobStatus.FAILED);
+    });
+
+    it('should set jobStatus FAILED when errorDetails is present', async () => {
+      mockInitTrainingContext.errorDetails = new Error('Something broke');
+
+      await jobFinalizer.persistWorkflowData(mockInitTrainingContext);
+
+      expect(mockInitTrainingContext.jobStatus).toBe(JobStatus.FAILED);
+    });
+
+    it('should set jobStatus COMPLETED when job succeeds', async () => {
+      await jobFinalizer.persistWorkflowData(mockInitTrainingContext);
+
+      expect(mockInitTrainingContext.jobStatus).toBe(JobStatus.COMPLETED);
     });
   });
 });

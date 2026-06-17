@@ -190,6 +190,21 @@ export const ModelImporting: Story = {
   },
 };
 
+export const WithSubmissionSuccess: Story = {
+  parameters: {
+    deepRacerApiMocks: (mockClient) => {
+      mockClient.on(GetModelCommand).resolves({ model: TrainingDetailsStories.TrainingCompleted.args?.model });
+      mockClient.on(ListEvaluationsCommand).resolves({ evaluations: [] });
+    },
+    routing: {
+      componentRoute: '/models/:modelId',
+      initialRouteEntries: [
+        { pathname: '/models/test-model-id', state: { successMessage: 'Model submitted successfully!' } },
+      ],
+    },
+  },
+};
+
 const deleteModalApiMocks: Parameters['deepRacerApiMocks'] = (mockClient) => {
   TrainingCompleted.parameters?.deepRacerApiMocks?.(mockClient);
   mockClient.on(DeleteModelCommand).resolves({});

@@ -710,6 +710,62 @@ describe('UserIdentity - Conditional SES Email Configuration', () => {
       }),
     ).not.toThrow();
   });
+
+  it('uses sesIdentity for sourceArn when provided (domain identity)', () => {
+    const app = new App();
+    const stack = new Stack(app, 'TestStack');
+
+    const table = new TableV2(stack, 'TestTable', {
+      partitionKey: { name: 'pk', type: AttributeType.STRING },
+      sortKey: { name: 'sk', type: AttributeType.STRING },
+    });
+
+    const mockGlobalSettings = new GlobalSettings(stack, 'MockGlobalSettings', {
+      namespace: TEST_NAMESPACE,
+    });
+
+    const isSesEnabled = new CfnCondition(stack, 'IsSesEnabled', {
+      expression: Fn.conditionEquals('SES', 'SES'),
+    });
+
+    const isSesIdentityProvided = new CfnCondition(stack, 'IsSesIdentityProvided', {
+      expression: Fn.conditionEquals('true', 'true'),
+    });
+
+    new UserIdentity(stack, 'TestUserIdentity', {
+      dynamoDBTable: table,
+      globalSettings: mockGlobalSettings,
+      namespace: TEST_NAMESPACE,
+      isSesEnabled,
+      sesVerifiedEmail: 'noreply@example.com',
+      sesIdentity: 'example.com',
+      isSesIdentityProvided,
+    });
+
+    const template = Template.fromStack(stack);
+
+    // sourceArn uses IsSesIdentityProvided condition to pick domain vs email
+    expect(() =>
+      template.hasResourceProperties('AWS::Cognito::UserPool', {
+        EmailConfiguration: {
+          SourceArn: {
+            'Fn::If': [
+              'IsSesEnabled',
+              {
+                'Fn::Join': Match.arrayWith([
+                  Match.arrayWith([{ 'Fn::If': ['IsSesIdentityProvided', 'example.com', 'noreply@example.com'] }]),
+                ]),
+              },
+              { Ref: 'AWS::NoValue' },
+            ],
+          },
+          From: {
+            'Fn::If': ['IsSesEnabled', 'noreply@example.com', { Ref: 'AWS::NoValue' }],
+          },
+        },
+      }),
+    ).not.toThrow();
+  });
 });
 
 describe('UserIdentity - CustomMessage Trigger', () => {

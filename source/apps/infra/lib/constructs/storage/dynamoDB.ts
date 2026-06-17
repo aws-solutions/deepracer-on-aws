@@ -4,7 +4,7 @@
 import { BASE_TABLE_NAME } from '@deepracer-indy/config/src/defaults/dynamoDBDefaults.js';
 import { DynamoDBItemAttribute, GlobalSecondaryIndex, LocalSecondaryIndex } from '@deepracer-indy/database';
 import { RemovalPolicy } from 'aws-cdk-lib';
-import { AttributeType, TableV2 } from 'aws-cdk-lib/aws-dynamodb';
+import { AttributeType, StreamViewType, TableV2 } from 'aws-cdk-lib/aws-dynamodb';
 import { Construct } from 'constructs';
 
 import { isDevMode } from '../common/deploymentModeHelper';
@@ -68,6 +68,8 @@ export class DynamoDBTable extends Construct {
       pointInTimeRecoverySpecification: {
         pointInTimeRecoveryEnabled: true,
       },
+      // NEW_AND_OLD_IMAGES required by LiveBroadcastHandler to detect status transitions
+      dynamoStream: StreamViewType.NEW_AND_OLD_IMAGES,
     });
   }
 }

@@ -8,14 +8,26 @@
   "deleteRaceSuccessful": "Successfully deleted the race.",
   "raceDetailsColumnLabels": {
     "raceType": "Race type",
+    "raceMode": "Race mode",
     "raceDates": "Race dates",
+    "liveEventTime": "Live event time",
+    "status": "Status",
     "timezone": "Time zone",
     "accessType": "Access type",
     "raceHosting": "Race hosting"
   },
+  "liveStatus": {
+    "SCHEDULED": "Scheduled",
+    "IN_PROGRESS": "Live — In Progress",
+    "COMPLETED": "Completed"
+  },
   "raceType": {
     "TIME_TRIAL": "Time trial",
     "OBJECT_AVOIDANCE": "Object avoidance"
+  },
+  "raceMode": {
+    "live": "Live race",
+    "community": "Community race"
   },
   "raceTrackColumn": {
     "competitionTrack": "Competition track",
@@ -29,6 +41,7 @@
     "rankingMethod": "Ranking method",
     "style": "Style",
     "entryCriteria": "Entry Criteria",
+    "maximumLaps": "Maximum laps",
     "resets": "Resets",
     "offTrackPenalty": "Off-track penalty",
     "rankingMethodPopoverContents": {
@@ -46,13 +59,20 @@
     "individualLap": "Individual lap",
     "consecutiveLapCount_one": "{{count}} consecutive lap",
     "consecutiveLapCount_other": "{{count}} consecutive laps",
+    "maximumLapCount_one": "{{count}} lap total",
+    "maximumLapCount_other": "{{count}} laps total",
     "resetCountUnlimited": "Unlimited resets",
+    "resetCount_one": "{{count}} reset",
+    "resetCount_other": "{{count}} resets",
     "secondCount_one": "{{count, number}} second",
     "secondCount_other": "{{count, number}} seconds",
     "collisionPenalty": "Collision penalty",
     "collisionPenaltyPopoverContent": "A collision penalty is the number of seconds added to a racer's time for colliding with an object or bot. This triggers a reset."
   },
   "enterRace": "Enter race",
+  "submissionsClosed": "Submissions are currently closed",
+  "raceCompleted": "Race is completed",
+  "watchLive": "Watch live",
   "info": "Info",
   "yourFastestTime": "Your fastest time",
   "fastestModelSubmitted": "Fastest model submitted",

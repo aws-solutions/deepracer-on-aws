@@ -1,0 +1,54 @@
+{
+  "profiles": {
+    "header": "Racers",
+    "loadingText": "Loading profiles...",
+    "columnHeader": {
+      "racerName": "Racer name",
+      "email": "Email",
+      "models": "Models"
+    },
+    "filter": {
+      "placeholder": "Search by racer name or email..."
+    },
+    "empty": "No users found.",
+    "noMatch": "No users match the search criteria.",
+    "error": {
+      "message": "Unable to load profiles. Try refreshing the page.",
+      "retry": "Retry"
+    }
+  },
+  "models": {
+    "header": "Models",
+    "loadingText": "Loading models...",
+    "columnHeader": {
+      "modelName": "Model name",
+      "status": "Status",
+      "trainingDate": "Training date",
+      "download": "Download"
+    },
+    "filter": {
+      "placeholder": "Search by model name..."
+    },
+    "empty": "This user has no trained models.",
+    "noMatch": "No models match the search criteria.",
+    "notReady": "Not ready",
+    "downloadLink": "Download",
+    "error": {
+      "message": "Unable to load models for this user.",
+      "retry": "Retry"
+    },
+    "downloadFailed": "Download failed. Please try again."
+  },
+  "preferences": {
+    "title": "Preferences",
+    "confirmLabel": "Confirm",
+    "cancelLabel": "Cancel",
+    "pageSize": {
+      "title": "Page size",
+      "options": {
+        "25": "25",
+        "50": "50"
+      }
+    }
+  }
+}

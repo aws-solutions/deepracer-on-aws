@@ -1,6 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import { RaceType, TimingMethod, TrackDirection, TrackId } from '@deepracer-indy/typescript-client';
 import { composeStories } from '@storybook/react';
 import { screen, waitFor } from '@testing-library/react';
 import { fetchAuthSession } from 'aws-amplify/auth';
@@ -348,6 +349,55 @@ describe('<CreateRace />', () => {
       });
 
       expect(screen.queryByText('Unauthorized')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('live race form flow', () => {
+    const futureDate = new Date(Date.now() + 86400000);
+    const futureDateStr = `${futureDate.getFullYear()}-${String(futureDate.getMonth() + 1).padStart(2, '0')}-${String(futureDate.getDate()).padStart(2, '0')}`;
+
+    beforeEach(() => {
+      (fetchAuthSession as Mock).mockResolvedValue({
+        tokens: { accessToken: { payload: { 'cognito:groups': ['dr-admins'] } } },
+      });
+    });
+
+    it('should advance to review step with live race settings', async () => {
+      render(
+        <CreateRace
+          initialFormValues={{
+            raceName: 'Live Test Race',
+            raceType: RaceType.TIME_TRIAL,
+            startDate: '',
+            endDate: '',
+            startTime: '',
+            endTime: '',
+            track: { trackId: TrackId.A_TO_Z_SPEEDWAY, trackDirection: TrackDirection.COUNTER_CLOCKWISE },
+            desc: '',
+            ranking: TimingMethod.TOTAL_TIME,
+            minLap: '3',
+            maxLap: '5',
+            offTrackPenalty: '1',
+            collisionPenalty: '1',
+            maxSubmissionsPerUser: 99,
+            objectAvoidanceConfig: { numberOfObjects: 2, objectPositions: [] },
+            randomizeObstacles: false,
+            isLive: true,
+            liveEventDate: futureDateStr,
+            liveEventTime: '14:00',
+            maxResets: 5,
+          }}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText(i18n.t('createRace:addRaceDetails.description'))).toBeInTheDocument();
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText(i18n.t('createRace:addRaceDetails.liveEventTime'))).toBeInTheDocument();
+      });
+      expect(screen.getByText(i18n.t('createRace:addRaceDetails.maxResets'))).toBeInTheDocument();
     });
   });
 });

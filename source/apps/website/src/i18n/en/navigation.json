@@ -2,10 +2,12 @@
   "sections": {
     "raceHub": "Race hub",
     "learningAndModels": "Learning & Models",
-    "admin": "Admin"
+    "admin": "Admin",
+    "modelManagement": "Model Management"
   },
   "breadcrumbs": {
     "account": "Account",
+    "adminModelDownload": "Download physical car model",
     "createEvaluation": "Create evaluation",
     "createModel": "Create model",
     "createRace": "Create race",

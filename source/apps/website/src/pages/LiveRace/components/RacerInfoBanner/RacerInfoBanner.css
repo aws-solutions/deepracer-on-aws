@@ -1,0 +1,28 @@
+.racerChyron {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-family-base-dnvic8, 'Open Sans', 'Helvetica Neue', Roboto, Arial, sans-serif);
+}
+
+.racerChyron__avatar {
+  display: flex;
+  align-items: center;
+}
+
+.racerChyron__info {
+  display: flex;
+  flex-direction: column;
+}
+
+.racerChyron__label {
+  color: #687078;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.racerChyron__name {
+  color: #16191f;
+  font-size: 16px;
+  font-weight: 700;
+}

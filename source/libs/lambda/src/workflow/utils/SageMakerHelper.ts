@@ -51,6 +51,7 @@ class SageMakerHelper {
           InstanceType: (process.env.SAGEMAKER_INSTANCE_TYPE ||
             deepRacerIndyAppConfig.sageMaker.instanceType) as TrainingInstanceType,
           VolumeSizeInGB: deepRacerIndyAppConfig.sageMaker.instanceVolumeSizeInGB,
+          ...(jobItem.name.includes('-live-') && { KeepAlivePeriodInSeconds: 3600 }),
         },
         StoppingCondition: {
           MaxRuntimeInSeconds: terminationConditions.maxTimeInMinutes * 60,

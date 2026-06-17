@@ -233,10 +233,10 @@ export const createModelValidationSchema: Yup.ObjectSchema<CreateModelFormValues
                 )
                 .required(i18n.t('createModel:requiredError'))
                 .min(
-                  0.1,
+                  0.5,
                   i18n.t('validation:number.min', {
                     name: i18n.t('createModel:actionSpace.continuousSection.minimumSpeed'),
-                    min: 0.1,
+                    min: 0.5,
                   }),
                 )
                 .max(

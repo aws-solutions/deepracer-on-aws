@@ -37,10 +37,9 @@ describe('<ManageRaces />', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getAllByText(i18n.t('leaderboards:table.raceType.timeTrial'))[0]).toBeInTheDocument();
+        expect(screen.getAllByText(i18n.t('leaderboards:table.raceMode.community'))[0]).toBeInTheDocument();
       });
 
-      await screen.findByText(i18n.t('leaderboards:table.raceType.objectAvoidance'));
       await screen.findByText(i18n.t('leaderboards:table.columnHeader.status'));
       await screen.findByText(i18n.t('leaderboards:table.columnHeader.name'));
       await screen.findByText(i18n.t('leaderboards:table.columnHeader.competitionFormat'));
@@ -131,10 +130,9 @@ describe('<ManageRaces />', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getAllByText(i18n.t('leaderboards:table.raceType.timeTrial'))[0]).toBeInTheDocument();
+        expect(screen.getAllByText(i18n.t('leaderboards:table.raceMode.community'))[0]).toBeInTheDocument();
       });
 
-      await screen.findByText(i18n.t('leaderboards:table.raceType.objectAvoidance'));
       await screen.findByText(i18n.t('leaderboards:table.columnHeader.status'));
       await screen.findByText(i18n.t('leaderboards:table.columnHeader.name'));
       await screen.findByText(i18n.t('leaderboards:table.columnHeader.competitionFormat'));

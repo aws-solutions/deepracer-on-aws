@@ -17,18 +17,15 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import { PageId } from '#constants/pages';
-import { useAppDispatch } from '#hooks/useAppDispatch';
 import { useListLeaderboardsQuery } from '#services/deepRacer/leaderboardsApi';
 import { useGetModelQuery } from '#services/deepRacer/modelsApi';
 import { useCreateSubmissionMutation } from '#services/deepRacer/submissionsApi';
-import { displaySuccessNotification } from '#store/notifications/notificationsSlice';
 import { checkUserGroupMembership } from '#utils/authUtils';
 import { getPath } from '#utils/pageUtils';
 
 const SubmitModelToRace = () => {
   const { modelId = '' } = useParams();
   const navigate = useNavigate();
-  const dispatch = useAppDispatch();
   const { t } = useTranslation('submitModelToRace');
   const { t: tCommon } = useTranslation('common', { keyPrefix: 'modelStatus' });
   const [selectedRace, setSelectedRace] = useState<null | SelectProps.Option>(null);
@@ -51,9 +48,16 @@ const SubmitModelToRace = () => {
     void checkRaceManagementPermissions();
   }, []);
 
-  // Filter to only open races
+  // Filter to only open races (time-based for community, submissionPeriodOpen for live)
   const currentTime = new Date();
-  const openRaces = leaderboards.filter((race) => currentTime >= race.openTime && currentTime < race.closeTime);
+  const openRaces = leaderboards.filter((race) => {
+    if (race.isLive) {
+      if (race.liveEventStatus === 'COMPLETED') return false;
+      if (race.liveEventTime && currentTime >= race.liveEventTime) return race.submissionPeriodOpen !== false;
+      return true;
+    }
+    return currentTime >= race.openTime && currentTime < race.closeTime;
+  });
 
   if (isGetModelUninitialized || isModelLoading) {
     return <Spinner data-testid="model-loading-spinner" />;
@@ -134,15 +138,14 @@ const SubmitModelToRace = () => {
                 })
                   .unwrap()
                   .then(() => {
-                    dispatch(
-                      displaySuccessNotification({
-                        content: t('submitModelSuccess', {
+                    navigate(getPath(PageId.MODEL_DETAILS, { modelId }), {
+                      state: {
+                        successMessage: t('submitModelSuccess', {
                           modelName: model.name,
                           raceName: selectedRace?.label,
                         }),
-                      }),
-                    );
-                    navigate(getPath(PageId.MODEL_DETAILS, { modelId }));
+                      },
+                    });
                   });
               }}
               disabled={!selectedRace}

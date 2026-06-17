@@ -7,6 +7,7 @@ import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 
 import { UserRoles } from './userIdentity';
+import { iotTopicPrefix } from '../../constants/iotTopics.js';
 
 export interface UserRolePoliciesProps {
   /**
@@ -21,6 +22,10 @@ export interface UserRolePoliciesProps {
    * ARN of the S3 bucket for file uploads
    */
   uploadBucketArn: string;
+  /**
+   * Deployment namespace, used to scope IoT topic resources
+   */
+  namespace: string;
 }
 
 export class UserRolePolicies extends Construct {
@@ -82,6 +87,26 @@ export class UserRolePolicies extends Construct {
       `${apiBaseArn}/*/GET/leaderboards/*/submissions`, // ListSubmissions
       `${apiBaseArn}/*/OPTIONS/leaderboards/*/submissions`, // CorsLeaderboardsLeaderboardidSubmissions
       `${apiBaseArn}/*/POST/leaderboards/*/submissions`, // CreateSubmission
+      // leaderboards/{leaderboardId}/liveQueue
+      `${apiBaseArn}/*/GET/leaderboards/*/liveQueue`, // ListLiveQueueItems
+      `${apiBaseArn}/*/OPTIONS/leaderboards/*/liveQueue`, // CorsLeaderboardsLeaderboardidLivequeue
+      `${apiBaseArn}/*/POST/leaderboards/*/liveQueue/reorder`, // ReorderLiveQueue
+      `${apiBaseArn}/*/OPTIONS/leaderboards/*/liveQueue/reorder`, // CorsLiveQueueReorder
+      `${apiBaseArn}/*/DELETE/leaderboards/*/liveQueue/*`, // RemoveLiveQueueItem
+      `${apiBaseArn}/*/OPTIONS/leaderboards/*/liveQueue/*`, // CorsLiveQueueItem
+      `${apiBaseArn}/*/POST/leaderboards/*/liveQueue/*/resetModel`, // ResetLiveQueueModel
+      `${apiBaseArn}/*/OPTIONS/leaderboards/*/liveQueue/*/resetModel`, // CorsLiveQueueItemResetmodel
+      `${apiBaseArn}/*/POST/leaderboards/*/liveQueue/resetAll`, // ClearLiveLeaderboard
+      `${apiBaseArn}/*/OPTIONS/leaderboards/*/liveQueue/resetAll`, // CorsLiveQueueResetAll
+      // leaderboards/{leaderboardId}/liveQueue/launch
+      `${apiBaseArn}/*/POST/leaderboards/*/liveQueue/launch`, // LaunchLiveRace
+      `${apiBaseArn}/*/OPTIONS/leaderboards/*/liveQueue/launch`, // CorsLeaderboardsLeaderboardidLivequeueLaunch
+      // leaderboards/{leaderboardId}/declareWinner
+      `${apiBaseArn}/*/POST/leaderboards/*/declareWinner`, // DeclareWinner
+      `${apiBaseArn}/*/OPTIONS/leaderboards/*/declareWinner`, // CorsDeclareWinner
+      // leaderboards/{leaderboardId}/liveState
+      `${apiBaseArn}/*/GET/leaderboards/*/liveState`, // GetLiveRaceState
+      `${apiBaseArn}/*/OPTIONS/leaderboards/*/liveState`, // CorsLiveState
       // models
       `${apiBaseArn}/*/GET/models`, // ListModels
       `${apiBaseArn}/*/OPTIONS/models`, // CorsModels
@@ -103,6 +128,15 @@ export class UserRolePolicies extends Construct {
       // models/{modelId}/getasset
       `${apiBaseArn}/*/GET/models/*/getasset`, // GetAssetUrl
       `${apiBaseArn}/*/OPTIONS/models/*/getasset`, // CorsModelsModelidGetasset
+      // admin/profiles
+      `${apiBaseArn}/*/GET/admin/profiles`, // ListAdminProfiles
+      `${apiBaseArn}/*/OPTIONS/admin/profiles`, // CorsAdminProfiles
+      // admin/profiles/{profileId}/models
+      `${apiBaseArn}/*/GET/admin/profiles/*/models`, // ListModelsForProfile
+      `${apiBaseArn}/*/OPTIONS/admin/profiles/*/models`, // CorsAdminProfilesModels
+      // admin/models/{modelId}/getasset
+      `${apiBaseArn}/*/GET/admin/models/*/getasset`, // GetAdminAssetUrl
+      `${apiBaseArn}/*/OPTIONS/admin/models/*/getasset`, // CorsAdminModelsGetasset
       // profile
       `${apiBaseArn}/*/GET/profile`, // GetProfile
       `${apiBaseArn}/*/OPTIONS/profile`, // CorsProfile
@@ -114,6 +148,9 @@ export class UserRolePolicies extends Construct {
       // settings/{key}
       `${apiBaseArn}/*/GET/settings/*`, // GetGlobalSetting
       `${apiBaseArn}/*/OPTIONS/settings/*`, // CorsSettingsKey
+      // live-race/connect
+      `${apiBaseArn}/*/POST/live-race/connect`, // AttachLiveRacePolicy
+      `${apiBaseArn}/*/OPTIONS/live-race/connect`, // CorsLiveRaceConnect
     ];
 
     props.userRoles.raceFacilitatorRole.addToPolicy(
@@ -146,6 +183,12 @@ export class UserRolePolicies extends Construct {
       `${apiBaseArn}/*/GET/leaderboards/*/submissions`, // ListSubmissions
       `${apiBaseArn}/*/OPTIONS/leaderboards/*/submissions`, // CorsLeaderboardsLeaderboardidSubmissions
       `${apiBaseArn}/*/POST/leaderboards/*/submissions`, // CreateSubmission
+      // leaderboards/{leaderboardId}/liveQueue
+      `${apiBaseArn}/*/GET/leaderboards/*/liveQueue`, // ListLiveQueueItems
+      `${apiBaseArn}/*/OPTIONS/leaderboards/*/liveQueue`, // CorsLeaderboardsLeaderboardidLivequeue
+      // leaderboards/{leaderboardId}/liveState
+      `${apiBaseArn}/*/GET/leaderboards/*/liveState`, // GetLiveRaceState
+      `${apiBaseArn}/*/OPTIONS/leaderboards/*/liveState`, // CorsLiveState
       // models
       `${apiBaseArn}/*/GET/models`, // ListModels
       `${apiBaseArn}/*/OPTIONS/models`, // CorsModels
@@ -178,6 +221,9 @@ export class UserRolePolicies extends Construct {
       // settings/{key}
       `${apiBaseArn}/*/GET/settings/*`, // GetGlobalSetting
       `${apiBaseArn}/*/OPTIONS/settings/*`, // CorsSettingsKey
+      // live-race/connect
+      `${apiBaseArn}/*/POST/live-race/connect`, // AttachLiveRacePolicy
+      `${apiBaseArn}/*/OPTIONS/live-race/connect`, // CorsLiveRaceConnect
     ];
 
     props.userRoles.racerRole.addToPolicy(
@@ -187,5 +233,29 @@ export class UserRolePolicies extends Construct {
         resources: racerApiAllowedResources,
       }),
     );
+
+    // IoT Core permissions for live race spectating (MQTT over WSS)
+    const { region, account, partition } = Stack.of(this);
+    const topicPrefix = iotTopicPrefix(props.namespace);
+    const iotConnectPolicy = new PolicyStatement({
+      effect: Effect.ALLOW,
+      actions: ['iot:Connect'],
+      resources: [`arn:${partition}:iot:${region}:${account}:client/*`],
+    });
+    const iotSubscribeReceivePolicy = new PolicyStatement({
+      effect: Effect.ALLOW,
+      actions: ['iot:Subscribe', 'iot:Receive'],
+      resources: [
+        `arn:${partition}:iot:${region}:${account}:topicfilter/${topicPrefix}/*`,
+        `arn:${partition}:iot:${region}:${account}:topic/${topicPrefix}/*`,
+      ],
+    });
+
+    props.userRoles.adminRole.addToPolicy(iotConnectPolicy);
+    props.userRoles.adminRole.addToPolicy(iotSubscribeReceivePolicy);
+    props.userRoles.raceFacilitatorRole.addToPolicy(iotConnectPolicy);
+    props.userRoles.raceFacilitatorRole.addToPolicy(iotSubscribeReceivePolicy);
+    props.userRoles.racerRole.addToPolicy(iotConnectPolicy);
+    props.userRoles.racerRole.addToPolicy(iotSubscribeReceivePolicy);
   }
 }

@@ -19,9 +19,10 @@ import { SubmitHandler, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, Link } from 'react-router-dom';
 
+import { buildLeaderboardDefinition } from './buildLeaderboardDefinition';
 import AddRaceDetails from './components/AddRaceDetails';
 import ReviewRaceDetails from './components/ReviewRaceDetails';
-import { createRaceValidationSchema } from './validation';
+import { createRaceValidationSchema, DEFAULT_MAX_RESETS } from './validation';
 import { PageId } from '../../constants/pages.js';
 import { DEFAULT_OBJECT_POSITIONS } from '../../constants/tracks.js';
 import { useAppDispatch } from '../../hooks/useAppDispatch.js';
@@ -41,11 +42,16 @@ export interface CreateRaceFormValues {
   desc?: string;
   ranking: TimingMethod;
   minLap: string;
+  maxLap: string;
   offTrackPenalty: string;
   collisionPenalty: string;
   maxSubmissionsPerUser: number;
   objectAvoidanceConfig: ObjectAvoidanceConfig;
   randomizeObstacles: boolean;
+  isLive: boolean;
+  liveEventDate: string;
+  liveEventTime: string;
+  maxResets: number;
 }
 
 const initialRaceFormValues: CreateRaceFormValues = {
@@ -62,6 +68,7 @@ const initialRaceFormValues: CreateRaceFormValues = {
   desc: '',
   ranking: TimingMethod.TOTAL_TIME,
   minLap: '3',
+  maxLap: '5',
   offTrackPenalty: '1',
   collisionPenalty: '1',
   maxSubmissionsPerUser: 99,
@@ -70,6 +77,10 @@ const initialRaceFormValues: CreateRaceFormValues = {
     objectPositions: DEFAULT_OBJECT_POSITIONS,
   },
   randomizeObstacles: false,
+  isLive: false,
+  liveEventDate: '',
+  liveEventTime: '',
+  maxResets: DEFAULT_MAX_RESETS,
 };
 
 const CreateRace = ({ initialFormValues = initialRaceFormValues, leaderboardId = '' }) => {
@@ -133,32 +144,7 @@ const CreateRace = ({ initialFormValues = initialRaceFormValues, leaderboardId =
   }
 
   const onNavigateStep1: SubmitHandler<CreateRaceFormValues> = async (data) => {
-    setCurrentLeaderboardValues({
-      name: data.raceName,
-      openTime: new Date(data.startDate + ' ' + data.startTime),
-      closeTime: new Date(data.endDate + ' ' + data.endTime),
-      trackConfig: data.track,
-      raceType: data.raceType,
-      maxSubmissionsPerUser: data.maxSubmissionsPerUser,
-      resettingBehaviorConfig: {
-        continuousLap: true,
-        offTrackPenaltySeconds: Number(data.offTrackPenalty),
-        collisionPenaltySeconds: Number(data.collisionPenalty),
-      },
-      submissionTerminationConditions: {
-        minimumLaps: Number(data.minLap),
-        maximumLaps: 5,
-      },
-      timingMethod: data.ranking,
-      description: data.desc || undefined,
-      objectAvoidanceConfig:
-        data.raceType === RaceType.OBJECT_AVOIDANCE
-          ? {
-              numberOfObjects: data.objectAvoidanceConfig.numberOfObjects,
-              objectPositions: data.randomizeObstacles ? undefined : data.objectAvoidanceConfig.objectPositions,
-            }
-          : undefined,
-    });
+    setCurrentLeaderboardValues(buildLeaderboardDefinition(data));
     setActiveStepIndex(1);
   };
   return (
@@ -217,7 +203,9 @@ const CreateRace = ({ initialFormValues = initialRaceFormValues, leaderboardId =
         {
           title: t('addRaceDetails.header'),
           description: t('addRaceDetails.description'),
-          content: <AddRaceDetails setValue={setValue} nameRef={nameRef} control={control} />,
+          content: (
+            <AddRaceDetails setValue={setValue} nameRef={nameRef} control={control} isEditMode={!!leaderboardId} />
+          ),
         },
         {
           title: t('reviewRaceDetails'),

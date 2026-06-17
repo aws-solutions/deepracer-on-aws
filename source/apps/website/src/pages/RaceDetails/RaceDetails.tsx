@@ -18,7 +18,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import RaceOverview from '#components/RaceOverview';
 import { PageId } from '#constants/pages.js';
 import { useAppDispatch } from '#hooks/useAppDispatch.js';
-import { useDeleteLeaderboardMutation, useGetLeaderboardQuery } from '#services/deepRacer/leaderboardsApi.js';
+import {
+  useDeleteLeaderboardMutation,
+  useGetLeaderboardQuery,
+  useGetLiveRaceStateQuery,
+} from '#services/deepRacer/leaderboardsApi.js';
 import { useGetRankingQuery, useListRankingsQuery } from '#services/deepRacer/rankingsApi.js';
 import { useListSubmissionsQuery } from '#services/deepRacer/submissionsApi.js';
 import { displaySuccessNotification } from '#store/notifications/notificationsSlice.js';
@@ -28,21 +32,26 @@ import { getPath } from '#utils/pageUtils.js';
 import RaceLeaderboardTable from './components/RaceLeaderboardTable';
 import SubmissionsTable from './components/SubmissionsTable';
 import UserRaceStats from './components/UserRaceStats';
+import { isDeleteDisabled, isEditDisabled, isEnterRaceDisabled } from './raceDetailsHelpers';
 
 const RaceDetails = () => {
   const { t } = useTranslation('raceDetails');
   const { leaderboardId = '' } = useParams();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { data: rankings = [] } = useListRankingsQuery({ leaderboardId });
-  const { data: personalRanking } = useGetRankingQuery({ leaderboardId });
-  const { data: submissions = [] } = useListSubmissionsQuery({ leaderboardId });
+  const { data: rankings = [] } = useListRankingsQuery({ leaderboardId }, { refetchOnMountOrArgChange: true });
+  const { data: personalRanking } = useGetRankingQuery({ leaderboardId }, { refetchOnMountOrArgChange: true });
+  const { data: submissions = [] } = useListSubmissionsQuery({ leaderboardId }, { refetchOnMountOrArgChange: true });
   const [deleteLeaderboard] = useDeleteLeaderboardMutation();
   const {
     data: leaderboard,
     isLoading: isLeaderboardLoading,
     isUninitialized: isGetLeaderboardUninitialized,
   } = useGetLeaderboardQuery({ leaderboardId });
+  const { data: liveRaceState, isLoading: isLiveRaceStateLoading } = useGetLiveRaceStateQuery(
+    { leaderboardId },
+    { skip: !leaderboard?.isLive, pollingInterval: 5000 },
+  );
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [canManageRaces, setCanManageRaces] = useState(false);
 
@@ -77,7 +86,7 @@ const RaceDetails = () => {
                 <>
                   <Button
                     variant="normal"
-                    disabled={new Date() >= leaderboard.openTime && new Date() < leaderboard.closeTime}
+                    disabled={isDeleteDisabled(leaderboard)}
                     onClick={() => setDeleteModalVisible(true)}
                     data-testid="btn-delete-race"
                   >
@@ -85,7 +94,7 @@ const RaceDetails = () => {
                   </Button>
                   <Button
                     variant="normal"
-                    disabled={new Date() >= leaderboard.openTime}
+                    disabled={isEditDisabled(leaderboard)}
                     onClick={() => navigate(getPath(PageId.EDIT_RACE, { leaderboardId }))}
                   >
                     {t('editRace')}
@@ -94,11 +103,28 @@ const RaceDetails = () => {
               )}
               <Button
                 variant="primary"
-                disabled={new Date() >= leaderboard.closeTime || new Date() < leaderboard.openTime}
+                disabled={
+                  isLiveRaceStateLoading || isEnterRaceDisabled(leaderboard, liveRaceState?.race?.submissionPeriodOpen)
+                }
+                disabledReason={
+                  leaderboard.isLive && leaderboard.liveEventStatus === 'COMPLETED'
+                    ? t('raceCompleted')
+                    : leaderboard.isLive &&
+                        leaderboard.liveEventStatus !== 'COMPLETED' &&
+                        !isLiveRaceStateLoading &&
+                        liveRaceState?.race?.submissionPeriodOpen === false
+                      ? t('submissionsClosed')
+                      : undefined
+                }
                 onClick={() => navigate(getPath(PageId.ENTER_RACE, { leaderboardId }))}
               >
                 {t('enterRace')}
               </Button>
+              {leaderboard.isLive && (
+                <Button variant="normal" onClick={() => navigate(getPath(PageId.LIVE_RACE, { leaderboardId }))}>
+                  {t('watchLive')}
+                </Button>
+              )}
             </SpaceBetween>
           }
         >
@@ -114,12 +140,24 @@ const RaceDetails = () => {
             tabs={[
               {
                 label: t('tabs.raceLeaderboard'),
-                content: <RaceLeaderboardTable rankings={rankings} leaderboard={leaderboard} />,
+                content: (
+                  <RaceLeaderboardTable
+                    rankings={rankings}
+                    leaderboard={leaderboard}
+                    submissionPeriodOpen={liveRaceState?.race?.submissionPeriodOpen}
+                  />
+                ),
                 id: 'leaderboard',
               },
               {
                 label: `${t('tabs.yourSubmissions')} (${submissions?.length ?? 0})`,
-                content: <SubmissionsTable submissions={submissions} leaderboard={leaderboard} />,
+                content: (
+                  <SubmissionsTable
+                    submissions={submissions}
+                    leaderboard={leaderboard}
+                    submissionPeriodOpen={liveRaceState?.race?.submissionPeriodOpen}
+                  />
+                ),
                 id: 'yourSubmissions',
               },
             ]}

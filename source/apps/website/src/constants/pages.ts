@@ -5,6 +5,7 @@ import type { AppLayoutProps } from '@cloudscape-design/components/app-layout';
 
 export enum PageId {
   ACCOUNT = 'account',
+  ADMIN_MODEL_DOWNLOAD = 'adminModelDownload',
   CREATE_EVALUATION = 'createEvaluation',
   CREATE_MODEL = 'createModel',
   CREATE_RACE = 'createRace',
@@ -16,6 +17,7 @@ export enum PageId {
   GET_STARTED = 'getStarted',
   HOME = 'home',
   IMPORT_MODEL = 'importModel',
+  LIVE_RACE = 'liveRace',
   MANAGE_INSTANCE = 'manageInstance',
   MANAGE_RACES = 'manageRaces',
   MODEL_DETAILS = 'modelDetails',
@@ -47,6 +49,10 @@ export const pages = {
   [PageId.ACCOUNT]: {
     path: '/account',
     contentType: 'form',
+  },
+  [PageId.ADMIN_MODEL_DOWNLOAD]: {
+    path: '/admin/model-download',
+    contentType: 'table',
   },
   [PageId.CLONE_RACE]: {
     path: '/races/:leaderboardId/cloneRace',
@@ -86,6 +92,10 @@ export const pages = {
   },
   [PageId.IMPORT_MODEL]: {
     path: '/models/import',
+  },
+  [PageId.LIVE_RACE]: {
+    path: '/races/:leaderboardId/live',
+    contentType: 'default',
   },
   [PageId.MANAGE_RACES]: {
     path: '/races/manage',

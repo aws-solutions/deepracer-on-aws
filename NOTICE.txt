@@ -56,6 +56,8 @@ This software includes third party software subject to the following copyrights:
 @aws-sdk/client-cognito-identity under the Apache-2.0 license.
 @aws-sdk/client-dynamodb under the Apache-2.0 license.
 @aws-sdk/client-firehose under the Apache-2.0 license.
+@aws-sdk/client-iot under the Apache-2.0 license.
+@aws-sdk/client-iot-data-plane under the Apache-2.0 license.
 @aws-sdk/client-kinesis-video-archived-media under the Apache-2.0 license.
 @aws-sdk/client-kinesis-video-media under the Apache-2.0 license.
 @aws-sdk/client-kinesis-video under the Apache-2.0 license.
@@ -322,6 +324,7 @@ This software includes third party software subject to the following copyrights:
 @humanwhocodes/config-array under the Apache-2.0 license.
 @humanwhocodes/module-importer under the Apache-2.0 license.
 @humanwhocodes/object-schema under the BSD-3-Clause license.
+@httptoolkit/websocket-stream under the BSD-2-Clause license.
 @inquirer/ansi under the MIT license.
 @inquirer/confirm under the MIT license.
 @inquirer/core under the MIT license.
@@ -694,6 +697,7 @@ This software includes third party software subject to the following copyrights:
 @types/uuid under the MIT license.
 @types/wait-on under the MIT license.
 @types/webxr under the MIT license.
+@types/ws under the MIT license.
 @types/yargs-parser under the MIT license.
 @types/yargs under the MIT license.
 @typescript-eslint/eslint-plugin under the MIT license.
@@ -855,6 +859,7 @@ deepracer_gazebo_system_plugin under the Apache-2.0 license.
 catkin license under the Apache-2.0 license.
 libproducer under the Apache-2.0 license.
 producer under the Apache-2.0 license.
+fractional-indexing under the CC0-1.0 license
 
 ********************
 OPEN SOURCE LICENSES
@@ -869,3 +874,4 @@ MIT - https://opensource.org/license/mit/
 MIT-0 - https://github.com/aws/mit-0
 curl - https://curl.se/docs/copyright.html
 LGPL - https://spdx.org/licenses/LGPL-2.1-or-later.html
+CC0-1.0 - https://creativecommons.org/publicdomain/zero/1.0/

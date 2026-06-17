@@ -2,9 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
+  ClearLiveLeaderboardCommand,
+  ClearLiveLeaderboardCommandInput,
   CreateLeaderboardCommand,
   CreateLeaderboardCommandInput,
   CreateLeaderboardCommandOutput,
+  DeclareWinnerCommand,
+  DeclareWinnerCommandInput,
+  DeclareWinnerCommandOutput,
   DeleteLeaderboardCommand,
   DeleteLeaderboardCommandInput,
   EditLeaderboardCommand,
@@ -13,7 +18,21 @@ import {
   GetLeaderboardCommand,
   GetLeaderboardCommandInput,
   GetLeaderboardCommandOutput,
+  GetLiveRaceStateCommand,
+  GetLiveRaceStateCommandInput,
+  GetLiveRaceStateCommandOutput,
+  LaunchLiveRaceCommand,
+  LaunchLiveRaceCommandInput,
   Leaderboard,
+  ListLiveQueueItemsCommand,
+  ListLiveQueueItemsCommandInput,
+  ListLiveQueueItemsCommandOutput,
+  RemoveLiveQueueItemCommand,
+  RemoveLiveQueueItemCommandInput,
+  ReorderLiveQueueCommand,
+  ReorderLiveQueueCommandInput,
+  ResetLiveQueueModelCommand,
+  ResetLiveQueueModelCommandInput,
   paginateListLeaderboards,
 } from '@deepracer-indy/typescript-client';
 
@@ -67,12 +86,60 @@ export const leaderboardsApi = deepRacerApi.injectEndpoints({
         { type: DeepRacerApiQueryTagType.LEADERBOARDS, id: LIST_QUERY_TAG_ID },
       ],
     }),
+    getLiveRaceState: build.query<GetLiveRaceStateCommandOutput, GetLiveRaceStateCommandInput>({
+      query: (input) => ({
+        command: new GetLiveRaceStateCommand(input),
+      }),
+    }),
+    listLiveQueueItems: build.query<ListLiveQueueItemsCommandOutput, ListLiveQueueItemsCommandInput>({
+      query: (input) => ({
+        command: new ListLiveQueueItemsCommand(input),
+      }),
+    }),
+    launchLiveRace: build.mutation<void, LaunchLiveRaceCommandInput>({
+      query: (input) => ({
+        command: new LaunchLiveRaceCommand(input),
+      }),
+    }),
+    declareWinner: build.mutation<DeclareWinnerCommandOutput, DeclareWinnerCommandInput>({
+      query: (input) => ({
+        command: new DeclareWinnerCommand(input),
+      }),
+    }),
+    reorderLiveQueue: build.mutation<void, ReorderLiveQueueCommandInput>({
+      query: (input) => ({
+        command: new ReorderLiveQueueCommand(input),
+      }),
+    }),
+    removeLiveQueueItem: build.mutation<void, RemoveLiveQueueItemCommandInput>({
+      query: (input) => ({
+        command: new RemoveLiveQueueItemCommand(input),
+      }),
+    }),
+    resetLiveQueueModel: build.mutation<void, ResetLiveQueueModelCommandInput>({
+      query: (input) => ({
+        command: new ResetLiveQueueModelCommand(input),
+      }),
+    }),
+    clearLiveLeaderboard: build.mutation<void, ClearLiveLeaderboardCommandInput>({
+      query: (input) => ({
+        command: new ClearLiveLeaderboardCommand(input),
+      }),
+    }),
   }),
 });
 
 export const {
   useGetLeaderboardQuery,
+  useGetLiveRaceStateQuery,
   useListLeaderboardsQuery,
+  useListLiveQueueItemsQuery,
+  useLaunchLiveRaceMutation,
+  useDeclareWinnerMutation,
+  useReorderLiveQueueMutation,
+  useRemoveLiveQueueItemMutation,
+  useResetLiveQueueModelMutation,
+  useClearLiveLeaderboardMutation,
   useCreateLeaderboardMutation,
   useDeleteLeaderboardMutation,
   useEditLeaderboardMutation,

@@ -17,6 +17,7 @@ export interface WebsiteStackProps extends NestedStackProps {
   modelStorageBucket: Bucket;
   uploadBucket: Bucket;
   namespace: string;
+  solutionVersion: string;
   customDomainParam: CfnParameter;
 }
 
@@ -24,7 +25,16 @@ export class WebsiteStack extends NestedStack {
   constructor(scope: Construct, id: string, props: WebsiteStackProps) {
     super(scope, id, props);
 
-    const { api, identityPoolId, userPoolId, modelStorageBucket, userPoolClientId, uploadBucket, namespace } = props;
+    const {
+      api,
+      identityPoolId,
+      userPoolId,
+      modelStorageBucket,
+      userPoolClientId,
+      uploadBucket,
+      namespace,
+      solutionVersion,
+    } = props;
 
     const website = new StaticWebsite(this, 'Website', {
       apiEndpointUrl: api.url,
@@ -34,6 +44,7 @@ export class WebsiteStack extends NestedStack {
       identityPoolId,
       uploadBucket,
       namespace,
+      solutionVersion,
     });
 
     const hasCustomDomain = new CfnCondition(this, 'HasCustomDomain', {

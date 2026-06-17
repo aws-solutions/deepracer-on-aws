@@ -16,6 +16,7 @@ export default meta;
 
 type Story = StoryObj<typeof Races>;
 export const Default: Story = {
+  args: { __forceFacilitator: true },
   parameters: {
     deepRacerApiMocks: (client) => {
       client.on(ListLeaderboardsCommand).resolves({ leaderboards: mockLeaderboards });

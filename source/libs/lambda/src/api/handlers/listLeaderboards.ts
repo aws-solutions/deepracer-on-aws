@@ -39,6 +39,11 @@ export const ListLeaderboardsOperation: Operation<
       maxSubmissionsPerUser: leaderboardItem.maxSubmissionsPerUser,
       leaderboardId: leaderboardItem.leaderboardId,
       participantCount: leaderboardItem.participantCount,
+      isLive: leaderboardItem.isLive,
+      liveEventTime: leaderboardItem.liveEventTime ? new Date(leaderboardItem.liveEventTime) : undefined,
+      liveEventStatus: leaderboardItem.liveEventStatus,
+      maxResets: leaderboardItem.maxResets,
+      submissionPeriodOpen: leaderboardItem.submissionPeriodOpen,
     }),
   );
 

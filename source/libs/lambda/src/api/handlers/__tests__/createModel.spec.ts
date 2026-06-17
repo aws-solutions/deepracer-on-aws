@@ -70,7 +70,6 @@ describe('CreateModel', () => {
     vi.spyOn(accountResourceUsageDao, 'getOrCreate').mockResolvedValueOnce(TEST_ACCOUNT_RESOURCE_USAGE_NORMAL);
     vi.spyOn(profileDao, 'load').mockResolvedValueOnce(TEST_PROFILE_ITEM);
     const metricsLoggerSpy = vi.spyOn(metricsLogger, 'logCreateModel').mockImplementation(() => undefined);
-
     await expect(
       CreateModelOperation({ modelDefinition: testModelDefinition }, TEST_OPERATION_CONTEXT),
     ).resolves.toEqual({ modelId: TEST_MODEL_ITEM.modelId });
@@ -106,7 +105,10 @@ describe('CreateModel', () => {
     );
     expect(profileDaoUpdate).toHaveBeenCalledWith(
       { profileId: TEST_OPERATION_CONTEXT.profileId },
-      { computeMinutesQueued: TEST_TRAINING_ITEM.terminationConditions.maxTimeInMinutes },
+      {
+        computeMinutesQueued: TEST_TRAINING_ITEM.terminationConditions.maxTimeInMinutes,
+        modelCount: 1,
+      },
     );
   });
 
@@ -169,7 +171,10 @@ describe('CreateModel', () => {
     );
     expect(profileDaoUpdate).toHaveBeenCalledWith(
       { profileId: TEST_OPERATION_CONTEXT.profileId },
-      { computeMinutesQueued: TEST_TRAINING_ITEM.terminationConditions.maxTimeInMinutes },
+      {
+        computeMinutesQueued: TEST_TRAINING_ITEM.terminationConditions.maxTimeInMinutes,
+        modelCount: 1,
+      },
     );
   });
 
@@ -238,6 +243,7 @@ describe('CreateModel', () => {
         computeMinutesQueued:
           (TEST_PROFILE_ITEM_WITH_USAGE_AND_LIMITS.computeMinutesQueued ?? 0) +
           TEST_TRAINING_ITEM.terminationConditions.maxTimeInMinutes,
+        modelCount: 1,
       },
     );
   });
@@ -274,7 +280,10 @@ describe('CreateModel', () => {
 
     expect(profileDaoUpdate).toHaveBeenCalledWith(
       { profileId: TEST_OPERATION_CONTEXT.profileId },
-      { computeMinutesQueued: TEST_TRAINING_ITEM.terminationConditions.maxTimeInMinutes },
+      {
+        computeMinutesQueued: TEST_TRAINING_ITEM.terminationConditions.maxTimeInMinutes,
+        modelCount: 1,
+      },
     );
   });
 

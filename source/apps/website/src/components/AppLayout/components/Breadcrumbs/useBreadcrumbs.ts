@@ -58,9 +58,11 @@ export const useBreadcrumbs = (currentPageDetails: ReturnType<typeof getPageDeta
           .slice(0, currentPagePathNoLeadingSlash.indexOf(currentPagePathParts[index]) + 1)
           .join('/');
 
-        const currentPartPageId = Object.entries(pages).find(
-          ([_, { path }]) => path.slice(1) === pathSoFar,
-        )?.[0] as PageId;
+        const currentPartPageId = Object.entries(pages).find(([_, { path }]) => path.slice(1) === pathSoFar)?.[0] as
+          | PageId
+          | undefined;
+
+        if (!currentPartPageId) return null;
 
         return {
           text: t(currentPartPageId),

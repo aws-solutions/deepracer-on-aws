@@ -17,6 +17,7 @@ const {
   ModelImporting,
   DeleteModalOpens,
   DeleteModelFails,
+  WithSubmissionSuccess,
   ...stories
 } = composeStories(ModelDetailsStories);
 
@@ -244,6 +245,20 @@ describe('Submit Model button', () => {
     const submitButton = buttonText.closest('button');
 
     expect(submitButton).not.toBeDisabled();
+  });
+});
+
+describe('Submission success banner', () => {
+  it('should show success flashbar when navigated with successMessage state', async () => {
+    await WithSubmissionSuccess.run();
+
+    expect(await screen.findByText('Model submitted successfully!')).toBeInTheDocument();
+  });
+
+  it('should not show flashbar without successMessage state', async () => {
+    await stories.TrainingCompleted.run();
+
+    expect(screen.queryByText('Model submitted successfully!')).not.toBeInTheDocument();
   });
 });
 

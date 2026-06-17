@@ -102,7 +102,45 @@ describe('ModelPerformanceMetricsHelper', () => {
         offTrackCount: 1,
         resetCount: 1,
         totalLapTime: 42000,
+        bestLapOffTrackCount: 0,
+        avgLapOffTrackCount: 0,
       });
+    });
+
+    it('should compute bestLapOffTrackCount from the fastest lap', async () => {
+      const mockMetrics = [
+        {
+          completionPercentage: 100,
+          elapsedTimeInMilliseconds: 10000,
+          offTrackCount: 3,
+          crashCount: 0,
+          resetCount: 0,
+          trial: 1,
+          episodeStatus: EpisodeStatus.LAP_COMPLETE,
+        },
+        {
+          completionPercentage: 100,
+          elapsedTimeInMilliseconds: 8000,
+          offTrackCount: 2,
+          crashCount: 0,
+          resetCount: 0,
+          trial: 2,
+          episodeStatus: EpisodeStatus.LAP_COMPLETE,
+        },
+        {
+          completionPercentage: 100,
+          elapsedTimeInMilliseconds: 12000,
+          offTrackCount: 0,
+          crashCount: 0,
+          resetCount: 0,
+          trial: 3,
+          episodeStatus: EpisodeStatus.LAP_COMPLETE,
+        },
+      ] as EvaluationMetric[];
+      vi.spyOn(modelPerformanceMetricsHelper, 'getEvaluationMetrics').mockResolvedValueOnce(mockMetrics);
+
+      const stats = await modelPerformanceMetricsHelper.getSubmissionStats('mock', 2);
+      expect(stats.bestLapOffTrackCount).toBe(2); // fastest lap is trial 2 (8000ms) with 2 off-tracks
     });
   });
 
@@ -140,7 +178,7 @@ describe('ModelPerformanceMetricsHelper', () => {
         { completionPercentage: 100, elapsedTimeInMilliseconds: 9000 },
       ] as EvaluationMetric[];
 
-      expect(modelPerformanceMetricsHelper.getBestAverageLapTime(mockMetrics, 2)).toBe(10000); // (11000 + 9000) / 2
+      expect(modelPerformanceMetricsHelper.getBestAverageLapTime(mockMetrics, 2).avgLapTime).toBe(10000); // (11000 + 9000) / 2
     });
 
     it('should skip incomplete laps', () => {
@@ -151,7 +189,7 @@ describe('ModelPerformanceMetricsHelper', () => {
         { completionPercentage: 100, elapsedTimeInMilliseconds: 9000 },
       ] as EvaluationMetric[];
 
-      expect(modelPerformanceMetricsHelper.getBestAverageLapTime(mockMetrics, 2)).toBe(10000); // (11000 + 9000) / 2
+      expect(modelPerformanceMetricsHelper.getBestAverageLapTime(mockMetrics, 2).avgLapTime).toBe(10000); // (11000 + 9000) / 2
     });
 
     it('should return INVALID_RANKING_SCORE when consecutiveLapCount is greater than metrics length', () => {
@@ -160,7 +198,9 @@ describe('ModelPerformanceMetricsHelper', () => {
         { completionPercentage: 100, elapsedTimeInMilliseconds: 12000 },
       ] as EvaluationMetric[];
 
-      expect(modelPerformanceMetricsHelper.getBestAverageLapTime(mockMetrics, 3)).toBe(INVALID_RANKING_SCORE);
+      expect(modelPerformanceMetricsHelper.getBestAverageLapTime(mockMetrics, 3).avgLapTime).toBe(
+        INVALID_RANKING_SCORE,
+      );
     });
 
     it('should return INVALID_RANKING_SCORE when not enough consecutive completed laps are found', () => {
@@ -172,11 +212,26 @@ describe('ModelPerformanceMetricsHelper', () => {
         { completionPercentage: 100, elapsedTimeInMilliseconds: 9000 },
       ] as EvaluationMetric[];
 
-      expect(modelPerformanceMetricsHelper.getBestAverageLapTime(mockMetrics, 3)).toBe(INVALID_RANKING_SCORE);
+      expect(modelPerformanceMetricsHelper.getBestAverageLapTime(mockMetrics, 3).avgLapTime).toBe(
+        INVALID_RANKING_SCORE,
+      );
     });
 
     it('should handle an empty metrics array', () => {
-      expect(modelPerformanceMetricsHelper.getBestAverageLapTime([], 1)).toBe(INVALID_RANKING_SCORE);
+      expect(modelPerformanceMetricsHelper.getBestAverageLapTime([], 1).avgLapTime).toBe(INVALID_RANKING_SCORE);
+    });
+
+    it('should return avgLapOffTrackCount from the winning window', () => {
+      const mockMetrics = [
+        { completionPercentage: 100, elapsedTimeInMilliseconds: 10000, offTrackCount: 3 },
+        { completionPercentage: 100, elapsedTimeInMilliseconds: 12000, offTrackCount: 2 },
+        { completionPercentage: 100, elapsedTimeInMilliseconds: 11000, offTrackCount: 1 },
+        { completionPercentage: 100, elapsedTimeInMilliseconds: 9000, offTrackCount: 0 },
+      ] as EvaluationMetric[];
+
+      const result = modelPerformanceMetricsHelper.getBestAverageLapTime(mockMetrics, 2);
+      expect(result.avgLapTime).toBe(10000); // (11000 + 9000) / 2
+      expect(result.avgLapOffTrackCount).toBe(1); // offTrack from laps 3 and 4: 1 + 0
     });
   });
 });

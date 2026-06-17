@@ -30,6 +30,8 @@ interface StaticWebsiteProps {
   modelStorageBucket: Bucket;
   uploadBucket: Bucket;
   namespace: string;
+  solutionVersion: string;
+  iotEndpoint?: string;
 }
 
 export class StaticWebsite extends Construct {
@@ -46,6 +48,8 @@ export class StaticWebsite extends Construct {
       modelStorageBucket,
       uploadBucket,
       namespace,
+      solutionVersion,
+      iotEndpoint,
     } = props;
 
     const region = Stack.of(this).region;
@@ -108,7 +112,7 @@ export class StaticWebsite extends Construct {
               "style-src 'self'",
               "script-src 'self' 'wasm-unsafe-eval'",
               "worker-src 'self' blob:",
-              `connect-src 'self' blob: ${apiEndpointUrl} https://cognito-idp.${region}.amazonaws.com https://cognito-identity.${region}.amazonaws.com https://*.kinesisvideo.${region}.amazonaws.com https://${uploadBucket.bucketRegionalDomainName} https://${modelStorageBucket.bucketRegionalDomainName} https://www.gstatic.com/draco/versioned/decoders/`,
+              `connect-src 'self' blob: ${apiEndpointUrl} https://cognito-idp.${region}.amazonaws.com https://cognito-identity.${region}.amazonaws.com https://*.kinesisvideo.${region}.amazonaws.com https://${uploadBucket.bucketRegionalDomainName} https://${modelStorageBucket.bucketRegionalDomainName} https://www.gstatic.com/draco/versioned/decoders/ https://api.github.com${iotEndpoint ? ` wss://${iotEndpoint}` : ''}`,
               'upgrade-insecure-requests',
             ].join('; '),
             override: true,
@@ -169,7 +173,7 @@ export class StaticWebsite extends Construct {
 
     const websiteDistPath = path.join(__dirname, '../../../../website/dist');
 
-    new BucketDeployment(this, 'DeployWebsite', {
+    const websiteDeployment = new BucketDeployment(this, 'DeployWebsite', {
       destinationBucket: cloudFrontToS3.s3Bucket as Bucket,
       distribution: cloudFrontToS3.cloudFrontWebDistribution,
       memoryLimit: 2048, // increased due to timeouts occurring at 512
@@ -213,11 +217,14 @@ export class StaticWebsite extends Construct {
       identityPoolId,
       region,
       uploadBucketName: uploadBucket.bucketName,
+      iotEndpoint,
+      solutionVersion,
+      namespace,
     };
 
     const envConfigContents = `window.EnvironmentConfig = ${JSON.stringify(environmentConfig)};`;
 
-    new CustomResource(this, 'CreateEnvFileResource', {
+    const envFileResource = new CustomResource(this, 'CreateEnvFileResource', {
       serviceToken: createEnvFileProvider.serviceToken,
       properties: {
         bucketName: cloudFrontToS3.s3Bucket?.bucketName,
@@ -228,6 +235,9 @@ export class StaticWebsite extends Construct {
         forceUpdate: Date.now().toString(),
       },
     });
+
+    // Ensure env.js is written AFTER BucketDeployment (which prunes unknown files)
+    envFileResource.node.addDependency(websiteDeployment);
 
     addCfnGuardSuppressionForAutoCreatedLambdas(this, 'CreateEnvFileProvider');
 

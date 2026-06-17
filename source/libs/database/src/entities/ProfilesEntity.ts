@@ -57,6 +57,10 @@ export const ProfilesEntity = new Entity(
       [DynamoDBItemAttribute.MODEL_COUNT]: {
         type: 'number',
       },
+      [DynamoDBItemAttribute.TOTAL_MODEL_COUNT]: {
+        type: 'number',
+        default: 0,
+      },
       [DynamoDBItemAttribute.CREATED_AT]: {
         type: 'string',
       },

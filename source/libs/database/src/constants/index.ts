@@ -7,5 +7,6 @@ export * from './errorMessages.js';
 export * from './indexes.js';
 export * from './jobType.js';
 export * from './regex.js';
+export * from './removableLiveQueueItemStatuses.js';
 export * from './resourceTypes.js';
 export * from './testConstants.js';

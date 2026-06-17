@@ -6,8 +6,9 @@ import { composeStories } from '@storybook/react';
 
 import i18n from '#i18n/index.js';
 import { checkUserGroupMembership } from '#utils/authUtils.js';
-import { screen, waitFor } from '#utils/testUtils';
+import { render, screen, waitFor } from '#utils/testUtils';
 
+import Races from './Races';
 import * as stories from './Races.stories';
 
 vi.mock('#utils/authUtils.js', () => ({
@@ -28,7 +29,7 @@ describe('<Races />', () => {
     });
 
     it('renders the main page structure with create race button for authorized users', async () => {
-      await Default.run();
+      render(<Races />);
 
       await screen.findByText(i18n.t('races:welcome'));
 
@@ -37,14 +38,14 @@ describe('<Races />', () => {
         expect(createRaceButtons.length).toBeGreaterThanOrEqual(1);
       });
 
-      await screen.findByText(i18n.t('races:communityRaces'));
+      await screen.findByText(i18n.t('races:openRaces'));
       await screen.findByText(i18n.t('races:completedRaces'));
 
       expect(mockCheckUserGroupMembership).toHaveBeenCalledWith([UserGroups.RACE_FACILITATORS, UserGroups.ADMIN]);
     });
 
     it('renders race management buttons in child components', async () => {
-      await Default.run();
+      render(<Races />);
 
       await screen.findByText(i18n.t('races:welcome'));
 
@@ -59,7 +60,7 @@ describe('<Races />', () => {
     });
 
     it('calls checkUserGroupMembership with correct parameters', async () => {
-      await Default.run();
+      render(<Races />);
 
       await waitFor(() => {
         expect(mockCheckUserGroupMembership).toHaveBeenCalledWith([UserGroups.RACE_FACILITATORS, UserGroups.ADMIN]);
@@ -73,7 +74,7 @@ describe('<Races />', () => {
     });
 
     it('hides create race button in main header for unauthorized users', async () => {
-      await Default.run();
+      render(<Races />);
 
       await screen.findByText(i18n.t('races:welcome'));
 
@@ -86,28 +87,23 @@ describe('<Races />', () => {
     });
 
     it('still renders race sections without management buttons', async () => {
-      await Default.run();
+      render(<Races />);
 
       await screen.findByText(i18n.t('races:welcome'));
-      await screen.findByText(i18n.t('races:communityRaces'));
+      await screen.findByText(i18n.t('races:openRaces'));
       await screen.findByText(i18n.t('races:completedRaces'));
 
-      expect(screen.getByText(i18n.t('races:communityRaces'))).toBeInTheDocument();
+      expect(screen.getByText(i18n.t('races:openRaces'))).toBeInTheDocument();
       expect(screen.getByText(i18n.t('races:completedRaces'))).toBeInTheDocument();
     });
   });
 
   describe('legacy test compatibility', () => {
-    beforeEach(() => {
-      mockCheckUserGroupMembership.mockResolvedValue(true);
-    });
-
-    it('renders without crashing (legacy test)', async () => {
+    it('renders without crashing (via story)', async () => {
       await Default.run();
 
       await screen.findByText(i18n.t('races:welcome'));
-
-      await screen.findByText(i18n.t('races:communityRaces'));
+      await screen.findByText(i18n.t('races:openRaces'));
 
       await waitFor(() => {
         expect(screen.getByText(i18n.t('races:manageRace'))).toBeInTheDocument();

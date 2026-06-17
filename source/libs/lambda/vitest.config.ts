@@ -10,5 +10,11 @@ export default mergeConfig(
   defineProject({
     root: __dirname,
     cacheDir: '../../node_modules/.vite/libs/lambda',
+    test: {
+      env: {
+        IOT_ENDPOINT: 'test.iot.us-east-1.amazonaws.com',
+        TOPIC_PREFIX: 'deepracer/test/leaderboard',
+      },
+    },
   }),
 );

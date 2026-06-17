@@ -6,6 +6,7 @@ import Box from '@cloudscape-design/components/box';
 import Button from '@cloudscape-design/components/button';
 import ButtonDropdown from '@cloudscape-design/components/button-dropdown';
 import ContentLayout from '@cloudscape-design/components/content-layout';
+import Flashbar from '@cloudscape-design/components/flashbar';
 import Header from '@cloudscape-design/components/header';
 import Popover from '@cloudscape-design/components/popover';
 import SpaceBetween from '@cloudscape-design/components/space-between';
@@ -69,6 +70,11 @@ const ModelDetails = () => {
   const { t } = useTranslation('modelDetails');
   const { t: tCommon } = useTranslation('common', { keyPrefix: 'modelStatus' });
   const [activeTabId, setActiveTabId] = useState(location.state?.activeTabId ?? 'training');
+  const [successMessage, setSuccessMessage] = useState(() => {
+    const msg = location.state?.successMessage;
+    if (msg) window.history.replaceState({}, '');
+    return msg;
+  });
   const [showModal, setShowModal] = useState(false);
   const [modelToDelete, setModelToDelete] = useState<Model>();
 
@@ -84,7 +90,9 @@ const ModelDetails = () => {
     {
       pollingInterval: POLLING_INTERVAL_TIME,
       skipPollingIfUnfocused: true,
-      skip: modelStatusRef.current === ModelStatus.ERROR || modelStatusRef.current === ModelStatus.READY,
+      skip:
+        !successMessage &&
+        (modelStatusRef.current === ModelStatus.ERROR || modelStatusRef.current === ModelStatus.READY),
     },
   );
 
@@ -285,6 +293,19 @@ const ModelDetails = () => {
         </Header>
       }
     >
+      {successMessage && (
+        <Flashbar
+          items={[
+            {
+              type: 'success',
+              content: successMessage,
+              dismissible: true,
+              id: 'submission-success',
+              onDismiss: () => setSuccessMessage(undefined),
+            },
+          ]}
+        />
+      )}
       <Tabs
         activeTabId={activeTabId}
         onChange={({ detail }) => {

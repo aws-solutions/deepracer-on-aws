@@ -226,6 +226,10 @@ describe('UsageQuotaHelper', () => {
         { profileId: TEST_PROFILE_ID_2 },
         { computeMinutesUsed: 0, modelCount: 0 },
       );
+      // totalModelCount is a lifetime counter — must NOT be reset monthly
+      mockProfileDao.update.mock.calls.forEach(([, fields]) => {
+        expect(fields).not.toHaveProperty('totalModelCount');
+      });
     });
 
     it('should handle multiple batches with pagination', async () => {

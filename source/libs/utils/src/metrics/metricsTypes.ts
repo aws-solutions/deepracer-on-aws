@@ -53,6 +53,17 @@ export type DeepRacerJobInput = {
   modelId: string;
   leaderboardId?: string;
   sageMakerMinutes: number;
+  isLive?: boolean;
+};
+
+export type CreateLeaderboardInput = {
+  isLive?: boolean;
+};
+
+export type CreateSubmissionInput = {
+  isLive?: boolean;
+  profileId?: string;
+  leaderboardId?: string;
 };
 
 export type DownloadModelInput = {

@@ -2,13 +2,19 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { deepRacerIndyAppConfig } from '@deepracer-indy/config';
-import { RaceType, TimingMethod, TrackDirection, TrackId } from '@deepracer-indy/typescript-server-client';
+import {
+  LiveEventStatus,
+  RaceType,
+  TimingMethod,
+  TrackDirection,
+  TrackId,
+} from '@deepracer-indy/typescript-server-client';
 import { CustomAttributeType, Entity, EntityItem } from 'electrodb';
 
 import { LocalSecondaryIndex } from '../constants/indexes.js';
 import {
-  METADATA_ATTRIBUTES,
   DynamoDBItemAttribute,
+  METADATA_ATTRIBUTES,
   OBJECT_AVOIDANCE_CONFIG_ATTRIBUTE,
   RESETTING_BEHAVIOR_CONFIG_ATTRIBUTE,
 } from '../constants/itemAttributes.js';
@@ -99,6 +105,44 @@ export const LeaderboardsEntity = new Entity(
             required: true,
           },
         },
+      },
+      [DynamoDBItemAttribute.IS_LIVE]: {
+        type: 'boolean',
+        default: false,
+      },
+      [DynamoDBItemAttribute.LIVE_EVENT_TIME]: {
+        type: 'string',
+      },
+      [DynamoDBItemAttribute.LIVE_EVENT_STATUS]: {
+        type: Object.values(LiveEventStatus),
+      },
+      [DynamoDBItemAttribute.AUTO_LAUNCH_ENABLED]: {
+        type: 'boolean',
+        default: false,
+      },
+      [DynamoDBItemAttribute.CURRENT_EXECUTION_ARN]: {
+        type: 'string',
+        required: false,
+      },
+      [DynamoDBItemAttribute.WINNER_ID]: {
+        type: CustomAttributeType<ResourceId>('string'),
+        required: false,
+      },
+      [DynamoDBItemAttribute.WINNER_DECLARED_AT]: {
+        type: 'string',
+        required: false,
+      },
+      [DynamoDBItemAttribute.LAST_SF_FAILURE_AT]: {
+        type: 'number',
+        required: false,
+      },
+      [DynamoDBItemAttribute.MAX_RESETS]: {
+        type: 'number',
+        required: false,
+      },
+      [DynamoDBItemAttribute.SUBMISSION_PERIOD_OPEN]: {
+        type: 'boolean',
+        default: false,
       },
     },
     indexes: {

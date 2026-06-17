@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { leaderboardDao, TEST_ITEM_NOT_FOUND_ERROR, TEST_LEADERBOARD_ITEM } from '@deepracer-indy/database';
+import { LiveEventStatus } from '@deepracer-indy/typescript-server-client';
 
 import { TEST_OPERATION_CONTEXT } from '../../constants/testConstants.js';
 import { GetLeaderboardOperation } from '../getLeaderboard.js';
@@ -40,5 +41,26 @@ describe('GetLeaderboard operation', () => {
     return expect(
       GetLeaderboardOperation({ leaderboardId: TEST_LEADERBOARD_ITEM.leaderboardId }, TEST_OPERATION_CONTEXT),
     ).rejects.toStrictEqual(TEST_ITEM_NOT_FOUND_ERROR);
+  });
+
+  it('should return live race fields when present', async () => {
+    const liveLeaderboard = {
+      ...TEST_LEADERBOARD_ITEM,
+      isLive: true,
+      liveEventTime: '2026-04-05T14:00:00.000Z',
+      liveEventStatus: LiveEventStatus.SCHEDULED,
+      maxResets: 5,
+    };
+    vi.spyOn(leaderboardDao, 'load').mockResolvedValue(liveLeaderboard);
+
+    const output = await GetLeaderboardOperation(
+      { leaderboardId: TEST_LEADERBOARD_ITEM.leaderboardId },
+      TEST_OPERATION_CONTEXT,
+    );
+
+    expect(output.leaderboard.isLive).toBe(true);
+    expect(output.leaderboard.liveEventTime).toEqual(new Date('2026-04-05T14:00:00.000Z'));
+    expect(output.leaderboard.liveEventStatus).toBe('SCHEDULED');
+    expect(output.leaderboard.maxResets).toBe(5);
   });
 });

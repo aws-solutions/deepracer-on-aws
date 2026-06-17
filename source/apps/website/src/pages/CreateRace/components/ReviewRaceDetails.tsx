@@ -32,6 +32,9 @@ const ReviewRaceDetails = ({
     leaderboardId: '',
     participantCount: 0,
     description: leaderboardDef.description,
+    isLive: leaderboardDef.isLive,
+    liveEventTime: leaderboardDef.liveEventTime,
+    maxResets: leaderboardDef.maxResets,
   };
   return (
     <Container

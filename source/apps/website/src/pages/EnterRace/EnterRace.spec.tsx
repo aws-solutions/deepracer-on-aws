@@ -9,7 +9,7 @@ import { screen } from '#utils/testUtils';
 
 import * as stories from './EnterRace.stories';
 
-const { Default } = composeStories(stories);
+const { Default, LiveRaceFiltered } = composeStories(stories);
 
 describe('<EnterRace />', () => {
   it('TT leaderboard renders without crashing', async () => {
@@ -40,5 +40,12 @@ describe('<EnterRace />', () => {
         name: 'Cancel',
       }),
     ).toBeInTheDocument();
+  });
+
+  it('filters out already-submitted models for live races', async () => {
+    await LiveRaceFiltered.run();
+
+    await screen.findByText(i18n.t('enterRace:chooseModel'));
+    await expect(screen.getByText(i18n.t('enterRace:selection'))).toBeInTheDocument();
   });
 });

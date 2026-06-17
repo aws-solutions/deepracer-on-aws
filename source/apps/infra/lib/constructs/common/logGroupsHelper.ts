@@ -25,6 +25,8 @@ export enum LogGroupCategory {
   USER_IDENTITY = 'DeepRacerUserIdentity',
   METRICS = 'DeepRacerMetrics',
   SYSTEM_EVENTS = 'DeepRacerSystemEvents',
+  LIVE_RACING = 'DeepRacerLiveRacing',
+  TRAINING = 'DeepRacerTraining',
 }
 
 export const DefaultLogRetentionDays = RetentionDays.TWO_YEARS;

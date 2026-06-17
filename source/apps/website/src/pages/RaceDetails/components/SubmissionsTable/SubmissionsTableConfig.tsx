@@ -19,6 +19,8 @@ import { PageId } from '#constants/pages.js';
 import { millisToMinutesAndSeconds } from '#utils/dateTimeUtils.js';
 import { getPath } from '#utils/pageUtils.js';
 
+import { isEnterRaceDisabled } from '../../raceDetailsHelpers';
+
 enum SubmissionsTableColumn {
   MODEL_NAME = 'Model name',
   STATUS = 'Status',
@@ -26,7 +28,11 @@ enum SubmissionsTableColumn {
   DATE = 'Date submitted to race',
 }
 
-export const useSubmissionsTableConfig = (submissions: Submission[], leaderboard: Leaderboard) => {
+export const useSubmissionsTableConfig = (
+  submissions: Submission[],
+  leaderboard: Leaderboard,
+  submissionPeriodOpen?: boolean,
+) => {
   const { t } = useTranslation('raceDetails');
   const navigate = useNavigate();
 
@@ -57,7 +63,7 @@ export const useSubmissionsTableConfig = (submissions: Submission[], leaderboard
           action={
             <Button
               onClick={() => navigate(getPath(PageId.ENTER_RACE, { leaderboardId: leaderboard.leaderboardId }))}
-              disabled={leaderboard.openTime > new Date() || leaderboard.closeTime <= new Date()}
+              disabled={isEnterRaceDisabled(leaderboard, submissionPeriodOpen)}
             >
               {t('enterRace')}
             </Button>

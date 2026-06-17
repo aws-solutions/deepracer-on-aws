@@ -13,9 +13,10 @@ import { useRaceLeaderboardTableConfig } from './RaceLeaderboardTableConfig';
 interface RaceLeaderboardTableProps {
   rankings: Ranking[];
   leaderboard: Leaderboard;
+  submissionPeriodOpen?: boolean;
 }
 
-const RaceLeaderboardTable = ({ rankings, leaderboard }: RaceLeaderboardTableProps) => {
+const RaceLeaderboardTable = ({ rankings, leaderboard, submissionPeriodOpen }: RaceLeaderboardTableProps) => {
   const { t } = useTranslation('raceDetails');
 
   const {
@@ -27,7 +28,7 @@ const RaceLeaderboardTable = ({ rankings, leaderboard }: RaceLeaderboardTablePro
     paginationProps,
     filterProps,
     filteredItemsCount,
-  } = useRaceLeaderboardTableConfig(rankings, leaderboard);
+  } = useRaceLeaderboardTableConfig(rankings, leaderboard, submissionPeriodOpen);
 
   return (
     <Table

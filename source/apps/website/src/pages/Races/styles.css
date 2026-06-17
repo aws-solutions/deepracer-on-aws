@@ -24,3 +24,19 @@ SPDX-License-Identifier: Apache-2.0
   align-items: center;
   border-radius: 3px;
 }
+
+.raceTypeBadge {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 3px;
+  background: rgba(65, 77, 92, 0.15);
+  color: #414d5c;
+}
+
+.raceTypeBadge--live {
+  background: rgba(205, 12, 210, 0.1);
+  color: #cd0cd2;
+}

@@ -17,7 +17,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 
 import RaceOverview from '#components/RaceOverview';
 import { PageId } from '#constants/pages.js';
-import { useGetLeaderboardQuery } from '#services/deepRacer/leaderboardsApi.js';
+import { useGetLeaderboardQuery, useListLiveQueueItemsQuery } from '#services/deepRacer/leaderboardsApi.js';
 import { useListModelsQuery } from '#services/deepRacer/modelsApi.js';
 import { useCreateSubmissionMutation } from '#services/deepRacer/submissionsApi.js';
 import { getPath } from '#utils/pageUtils.js';
@@ -34,9 +34,13 @@ const EnterRace = () => {
     isUninitialized: isGetLeaderboardUninitialized,
   } = useGetLeaderboardQuery({ leaderboardId });
   const { data: models = [], isLoading: isListModelsLoading } = useListModelsQuery();
+  const { data: queueData } = useListLiveQueueItemsQuery({ leaderboardId });
   const [createSubmission, { isLoading: isCreateSubmissionLoading }] = useCreateSubmissionMutation();
 
-  const eligibleModels = models.filter((item) => item.status === ModelStatus.READY);
+  const submittedModelIds = new Set(queueData?.items?.map((i) => i.modelId));
+  const eligibleModels = models.filter(
+    (item) => item.status === ModelStatus.READY && !submittedModelIds.has(item.modelId),
+  );
 
   if (isGetLeaderboardUninitialized || isLeaderboardLoading) {
     return <Spinner />;
@@ -87,11 +91,13 @@ const EnterRace = () => {
               variant="primary"
               loading={isCreateSubmissionLoading}
               onClick={async () => {
-                await createSubmission({
+                const result = await createSubmission({
                   leaderboardId,
                   modelId: selectedModel?.value || '',
                 });
-                navigate(getPath(PageId.RACE_DETAILS, { leaderboardId }));
+                if (!('error' in result)) {
+                  navigate(getPath(PageId.RACE_DETAILS, { leaderboardId }));
+                }
               }}
               disabled={!selectedModel}
               disabledReason={t('noSelectedModels')}

@@ -15,4 +15,5 @@ export enum ResourceType {
   TRAINING = 'training',
   RANKING = 'ranking',
   ACCOUNT_RESOURCE_USAGE = 'accountresourceusage',
+  LIVE_QUEUE_ITEM = 'livequeueitem',
 }

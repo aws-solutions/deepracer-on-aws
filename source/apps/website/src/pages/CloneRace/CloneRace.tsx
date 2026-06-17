@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 
 import CreateRace, { CreateRaceFormValues } from '#pages/CreateRace/CreateRace';
+import { DEFAULT_MAX_RESETS } from '#pages/CreateRace/validation';
 import { useGetLeaderboardQuery } from '#services/deepRacer/leaderboardsApi.js';
 
 const CloneRace = () => {
@@ -40,6 +41,7 @@ const CloneRace = () => {
     desc: leaderboard.description || '',
     ranking: leaderboard.timingMethod,
     minLap: leaderboard.submissionTerminationConditions.minimumLaps.toString(),
+    maxLap: leaderboard.submissionTerminationConditions.maximumLaps.toString(),
     offTrackPenalty: leaderboard.resettingBehaviorConfig.offTrackPenaltySeconds?.toString() || '1',
     collisionPenalty: leaderboard.resettingBehaviorConfig.collisionPenaltySeconds?.toString() || '1',
     maxSubmissionsPerUser: leaderboard.maxSubmissionsPerUser,
@@ -48,6 +50,10 @@ const CloneRace = () => {
       objectPositions: leaderboard.objectAvoidanceConfig?.objectPositions,
     },
     randomizeObstacles: !leaderboard.objectAvoidanceConfig?.objectPositions?.length,
+    isLive: false,
+    liveEventDate: '',
+    liveEventTime: '',
+    maxResets: DEFAULT_MAX_RESETS,
   };
 
   return <CreateRace initialFormValues={initialRaceFormValues} />;

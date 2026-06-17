@@ -9,8 +9,15 @@ operation EditLeaderboard {
         @httpLabel
         leaderboardId: ResourceIdentifier
 
-        @required
         leaderboardDefinition: LeaderboardDefinition
+
+        /// Live race toggle fields (optional, only for live races)
+        autoLaunchEnabled: Boolean
+
+        submissionPeriodOpen: Boolean
+
+        @timestampFormat("date-time")
+        liveEventTime: Timestamp
     }
 
     output := {

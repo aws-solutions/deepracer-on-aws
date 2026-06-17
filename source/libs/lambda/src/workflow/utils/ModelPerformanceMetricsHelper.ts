@@ -14,15 +14,27 @@ class ModelPerformanceMetricsHelper {
 
     const resetCount = metrics.reduce((acc, currentMetric) => acc + currentMetric.resetCount, 0);
 
+    // Find best lap index for bestLapOffTrackCount
+    const bestLapIndex = metrics.length
+      ? metrics.reduce(
+          (best, m, i) => (m.elapsedTimeInMilliseconds < metrics[best].elapsedTimeInMilliseconds ? i : best),
+          0,
+        )
+      : -1;
+
+    const { avgLapTime, avgLapOffTrackCount } = this.getBestAverageLapTime(metrics, minimumLaps);
+
     const submissionStats: SubmissionStats = {
       resetCount,
-      avgLapTime: this.getBestAverageLapTime(metrics, minimumLaps),
+      avgLapTime,
       avgResets: metrics.length ? resetCount / metrics.length : 0,
       bestLapTime: Math.min(...metrics.map((metric) => metric.elapsedTimeInMilliseconds), INVALID_RANKING_SCORE),
       collisionCount: metrics.reduce((acc, currentMetric) => acc + currentMetric.crashCount, 0),
       completedLapCount: this.getMaxConsecutiveCompletedLaps(metrics),
       offTrackCount: metrics.reduce((acc, currentMetric) => acc + currentMetric.offTrackCount, 0),
       totalLapTime: metrics.reduce((acc, currentMetric) => acc + currentMetric.elapsedTimeInMilliseconds, 0),
+      bestLapOffTrackCount: bestLapIndex >= 0 ? metrics[bestLapIndex].offTrackCount : 0,
+      avgLapOffTrackCount,
     };
 
     return submissionStats;
@@ -73,29 +85,35 @@ class ModelPerformanceMetricsHelper {
 
   getBestAverageLapTime(metrics: EvaluationMetric[], consecutiveLapCount: number) {
     let bestAvgLapTime = INVALID_RANKING_SCORE;
+    let avgLapOffTrackCount = 0;
 
     if (consecutiveLapCount > metrics.length) {
-      return bestAvgLapTime;
+      return { avgLapTime: bestAvgLapTime, avgLapOffTrackCount };
     }
 
     outerLoop: for (let i = 0; i <= metrics.length - consecutiveLapCount; i++) {
       let currentWindowLapTimeSum = 0;
+      let currentWindowOffTrack = 0;
 
       for (let j = i; j < i + consecutiveLapCount; j++) {
         const currentMetric = metrics[j];
 
         if (currentMetric.completionPercentage === 100) {
           currentWindowLapTimeSum += currentMetric.elapsedTimeInMilliseconds;
+          currentWindowOffTrack += currentMetric.offTrackCount;
         } else {
           continue outerLoop;
         }
       }
 
       const windowAvgLapTime = Math.floor(currentWindowLapTimeSum / consecutiveLapCount);
-      bestAvgLapTime = Math.min(bestAvgLapTime, windowAvgLapTime);
+      if (windowAvgLapTime < bestAvgLapTime) {
+        bestAvgLapTime = windowAvgLapTime;
+        avgLapOffTrackCount = currentWindowOffTrack;
+      }
     }
 
-    return bestAvgLapTime;
+    return { avgLapTime: bestAvgLapTime, avgLapOffTrackCount };
   }
 
   getMaxConsecutiveCompletedLaps(metrics: EvaluationMetric[]) {

@@ -98,6 +98,31 @@ describe('SageMakerHelper', () => {
 
       delete process.env.DEPLOYMENT_MODE;
     });
+
+    it('should include KeepAlivePeriodInSeconds for live race jobs', async () => {
+      const liveJobItem = {
+        ...TEST_TRAINING_ITEM,
+        name: 'deepracerindy-submission-abc123-live-def456',
+      } as unknown as typeof TEST_TRAINING_ITEM;
+
+      vi.spyOn(sageMakerHelper, 'getSageMakerHyperparameters').mockResolvedValueOnce({} as SageMakerHyperparameters);
+      mockSageMakerClient.on(CreateTrainingJobCommand).resolves({ TrainingJobArn: testTrainingJobArn });
+
+      await sageMakerHelper.createTrainingJob({ jobItem: liveJobItem, modelItem: TEST_MODEL_ITEM });
+
+      const calls = mockSageMakerClient.commandCalls(CreateTrainingJobCommand);
+      expect(calls[0].args[0].input.ResourceConfig?.KeepAlivePeriodInSeconds).toBe(3600);
+    });
+
+    it('should not include KeepAlivePeriodInSeconds for non-live jobs', async () => {
+      vi.spyOn(sageMakerHelper, 'getSageMakerHyperparameters').mockResolvedValueOnce({} as SageMakerHyperparameters);
+      mockSageMakerClient.on(CreateTrainingJobCommand).resolves({ TrainingJobArn: testTrainingJobArn });
+
+      await sageMakerHelper.createTrainingJob({ jobItem: TEST_TRAINING_ITEM, modelItem: TEST_MODEL_ITEM });
+
+      const calls = mockSageMakerClient.commandCalls(CreateTrainingJobCommand);
+      expect(calls[0].args[0].input.ResourceConfig?.KeepAlivePeriodInSeconds).toBeUndefined();
+    });
   });
 
   describe('stopQueuedJob()', () => {

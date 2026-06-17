@@ -5,7 +5,7 @@ import { AdminListGroupsForUserCommand } from '@aws-sdk/client-cognito-identity-
 import { convertEvent, convertVersion1Response } from '@aws-smithy/server-apigateway';
 import type { ServiceHandler } from '@aws-smithy/server-common';
 import { ResourceId } from '@deepracer-indy/database';
-import { BadRequestError, InternalFailureError, UserGroups } from '@deepracer-indy/typescript-server-client';
+import { InternalFailureError, UserGroups } from '@deepracer-indy/typescript-server-client';
 import { logger, metrics } from '@deepracer-indy/utils';
 import type { APIGatewayProxyEvent, APIGatewayProxyHandler } from 'aws-lambda';
 
@@ -102,7 +102,7 @@ export async function getCognitoUserId(cognitoAuthProvider: string) {
   return profileId;
 }
 
-export async function isUserAdmin(profileId: ResourceId): Promise<boolean> {
+async function getUserGroups(profileId: ResourceId): Promise<string[]> {
   const userPoolId = process.env.USER_POOL_ID;
   if (!userPoolId) {
     throw new InternalFailureError({ message: 'Service configuration error.' });
@@ -110,15 +110,21 @@ export async function isUserAdmin(profileId: ResourceId): Promise<boolean> {
 
   try {
     const response = await cognitoClient.send(
-      new AdminListGroupsForUserCommand({
-        UserPoolId: userPoolId,
-        Username: profileId,
-      }),
+      new AdminListGroupsForUserCommand({ UserPoolId: userPoolId, Username: profileId }),
     );
-
-    return response.Groups?.some((group) => group.GroupName === UserGroups.ADMIN) ?? false;
+    return response.Groups?.map((g) => g.GroupName as string) ?? [];
   } catch (error) {
     logger.error('Failed to verify user permissions.');
-    throw new BadRequestError({ message: 'Failed to verify user permissions.' });
+    throw new InternalFailureError({ message: 'Failed to verify user permissions.' });
   }
+}
+
+export async function isUserAdmin(profileId: ResourceId): Promise<boolean> {
+  const groups = await getUserGroups(profileId);
+  return groups.includes(UserGroups.ADMIN);
+}
+
+export async function isUserAdminOrFacilitator(profileId: ResourceId): Promise<boolean> {
+  const groups = await getUserGroups(profileId);
+  return [UserGroups.ADMIN, UserGroups.RACE_FACILITATORS].some((g) => groups.includes(g));
 }

@@ -17,6 +17,7 @@ import {
   TimingMethod,
   TrackDirection,
   TrackId,
+  LiveQueueItemStatus,
 } from '@deepracer-indy/typescript-server-client';
 
 import { ErrorMessage } from './errorMessages.js';
@@ -25,6 +26,7 @@ import { JobType } from './jobType.js';
 import type { AccountResourceUsageItem } from '../entities/AccountResourceUsageEntity.js';
 import type { EvaluationItem } from '../entities/EvaluationsEntity.js';
 import type { LeaderboardItem } from '../entities/LeaderboardsEntity.js';
+import type { LiveQueueItem } from '../entities/LiveQueueItemEntity.js';
 import type { ModelItem, ModelsEntity } from '../entities/ModelsEntity.js';
 import type { ProfileItem } from '../entities/ProfilesEntity.js';
 import type { RankingItem } from '../entities/RankingsEntity.js';
@@ -355,6 +357,8 @@ export const TEST_LEADERBOARD_ITEM: LeaderboardItem = {
     maxTimeInMinutes: 10,
   },
   timingMethod: TimingMethod.AVG_LAP_TIME,
+  isLive: false,
+  submissionPeriodOpen: false,
 };
 
 export const TEST_LEADERBOARD_ITEM_OA: LeaderboardItem = {
@@ -389,6 +393,8 @@ export const TEST_LEADERBOARD_ITEM_OA: LeaderboardItem = {
     maxTimeInMinutes: 10,
   },
   timingMethod: TimingMethod.AVG_LAP_TIME,
+  isLive: false,
+  submissionPeriodOpen: false,
 };
 
 export const TEST_MODEL_ITEMS: ModelItem[] = [
@@ -651,3 +657,38 @@ export const TEST_GLOBAL_CONFIG_NEW_USER = {
   newUserComputeMinutesLimit: 10,
   newUserModelCountLimit: 10,
 };
+
+export const TEST_LIVE_QUEUE_ITEM: LiveQueueItem = {
+  leaderboardId: TEST_LEADERBOARD_ID,
+  submissionId: TEST_SUBMISSION_ID_1,
+  queuePosition: 'a0',
+  profileId: TEST_PROFILE_ID_1,
+  modelId: TEST_MODEL_ID_1,
+  modelName: 'Test Model',
+  participantName: 'testAlias',
+  status: LiveQueueItemStatus.PENDING,
+  resetCount: 0,
+  submittedAt: TEST_TIMESTAMP,
+  createdAt: TEST_TIMESTAMP,
+  updatedAt: TEST_TIMESTAMP,
+};
+
+export const TEST_LIVE_QUEUE_ITEMS: LiveQueueItem[] = [
+  TEST_LIVE_QUEUE_ITEM,
+  {
+    ...TEST_LIVE_QUEUE_ITEM,
+    submissionId: TEST_SUBMISSION_ID_2,
+    profileId: TEST_PROFILE_ID_2,
+    queuePosition: 'a1',
+    participantName: 'testAlias2',
+    modelName: 'Test Model 2',
+  },
+  {
+    ...TEST_LIVE_QUEUE_ITEM,
+    submissionId: TEST_SUBMISSION_ID_3,
+    profileId: TEST_PROFILE_ID_3,
+    queuePosition: 'a2',
+    participantName: 'testAlias3',
+    modelName: 'Test Model 3',
+  },
+];

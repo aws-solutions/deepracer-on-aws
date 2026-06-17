@@ -21,6 +21,11 @@ export class ModelDao extends BaseDao<ModelsEntity> {
   }) {
     return this.entity.query.byProfileId({ profileId }).go({ cursor, limit: maxResults });
   }
+
+  @logMethod
+  listAll({ profileId }: { profileId: ResourceId }) {
+    return this.entity.query.byProfileId({ profileId }).go({ pages: 'all' });
+  }
 }
 
 export const modelDao = new ModelDao(ModelsEntity);

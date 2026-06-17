@@ -13,6 +13,42 @@ import {
 import i18n from '../../i18n/index.js';
 import { validateObjectPositions } from '../../utils/validationUtils.js';
 
+export const DEFAULT_MAX_RESETS = 3;
+
+/** Parses date (YYYY-MM-DD) and time (HH:mm) strings into a Date using local time. */
+export const parseDateTimeLocal = (dateStr: string, timeStr: string): Date => {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return new Date(year, month - 1, day, hours, minutes);
+};
+
+export const validateLiveEventDate: Yup.TestFunction<string> = function (liveEventDate, ctx) {
+  const [year, month, day] = liveEventDate.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  const today = new Date();
+  date.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+
+  if (date < today) {
+    return ctx.createError({ message: i18n.t('createRace:addRaceDetails.validationErrors.startDateInPast') });
+  }
+  return true;
+};
+
+export const validateLiveEventTime: Yup.TestFunction<string> = function (liveEventTime, ctx) {
+  const { liveEventDate } = this.parent;
+  if (!liveEventDate) return true;
+
+  const [year, month, day] = liveEventDate.split('-').map(Number);
+  const [hours, minutes] = liveEventTime.split(':').map(Number);
+  const eventTime = new Date(year, month - 1, day, hours, minutes);
+
+  if (eventTime <= new Date()) {
+    return ctx.createError({ message: i18n.t('createRace:addRaceDetails.validationErrors.startTimeInPast') });
+  }
+  return true;
+};
+
 export const validateStartTime: Yup.TestFunction<string> = function (startTime, ctx) {
   const { startDate } = this.parent;
 
@@ -100,10 +136,30 @@ export const createRaceValidationSchema = Yup.object().shape({
     .required(i18n.t('createRace:required'))
     .max(RESOURCE_NAME_MAX_LENGTH, i18n.t('createRace:addRaceDetails.errorNameMaxLength'))
     .matches(RESOURCE_NAME_REGEX, i18n.t('createRace:addRaceDetails.nameOfRacingEventNoMatch')),
-  startDate: Yup.string().required(i18n.t('createRace:required')).test(validateStartDate),
-  startTime: Yup.string().required(i18n.t('createRace:required')).test(validateStartTime),
-  endDate: Yup.string().required(i18n.t('createRace:required')).test(validateEndDate),
-  endTime: Yup.string().required(i18n.t('createRace:required')).test(validateEndTime),
+  startDate: Yup.string()
+    .default('')
+    .when('isLive', {
+      is: false,
+      then: (schema) => schema.required(i18n.t('createRace:required')).test(validateStartDate),
+    }),
+  startTime: Yup.string()
+    .default('')
+    .when('isLive', {
+      is: false,
+      then: (schema) => schema.required(i18n.t('createRace:required')).test(validateStartTime),
+    }),
+  endDate: Yup.string()
+    .default('')
+    .when('isLive', {
+      is: false,
+      then: (schema) => schema.required(i18n.t('createRace:required')).test(validateEndDate),
+    }),
+  endTime: Yup.string()
+    .default('')
+    .when('isLive', {
+      is: false,
+      then: (schema) => schema.required(i18n.t('createRace:required')).test(validateEndTime),
+    }),
   raceType: Yup.mixed<RaceType>().required(i18n.t('createRace:required')),
   track: Yup.mixed<TrackConfig>().required(i18n.t('createRace:required')),
   desc: Yup.string()
@@ -115,6 +171,19 @@ export const createRaceValidationSchema = Yup.object().shape({
     }),
   ranking: Yup.mixed<TimingMethod>().required(i18n.t('createRace:required')),
   minLap: Yup.string().required(i18n.t('createRace:required')),
+  maxLap: Yup.string()
+    .required(i18n.t('createRace:required'))
+    .test(
+      'maxLap-gte-minLap',
+      i18n.t('createRace:addRaceDetails.validationErrors.maxLapsLessThanMinLaps'),
+      function (maxLap) {
+        const { minLap, ranking } = this.parent;
+        if (ranking === TimingMethod.TOTAL_TIME) {
+          return Number(maxLap) === Number(minLap);
+        }
+        return Number(maxLap) >= Number(minLap);
+      },
+    ),
   offTrackPenalty: Yup.string().required(i18n.t('createRace:required')),
   collisionPenalty: Yup.string().required(i18n.t('createRace:required')),
   maxSubmissionsPerUser: Yup.number().required(i18n.t('createRace:required')),
@@ -145,4 +214,23 @@ export const createRaceValidationSchema = Yup.object().shape({
       ),
     }),
   randomizeObstacles: Yup.boolean().required(i18n.t('createRace:required')),
+  isLive: Yup.boolean().required(),
+  liveEventDate: Yup.string()
+    .default('')
+    .when('isLive', {
+      is: true,
+      then: (schema) => schema.required(i18n.t('createRace:required')).test(validateLiveEventDate),
+    }),
+  liveEventTime: Yup.string()
+    .default('')
+    .when('isLive', {
+      is: true,
+      then: (schema) => schema.required(i18n.t('createRace:required')).test(validateLiveEventTime),
+    }),
+  maxResets: Yup.number()
+    .default(DEFAULT_MAX_RESETS)
+    .when('isLive', {
+      is: true,
+      then: (schema) => schema.required(i18n.t('createRace:required')),
+    }),
 });

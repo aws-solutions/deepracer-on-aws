@@ -15,16 +15,17 @@ import {
   ResponseType,
   SpecRestApi,
 } from 'aws-cdk-lib/aws-apigateway';
-import { Alarm, TreatMissingData } from 'aws-cdk-lib/aws-cloudwatch';
+import { Alarm, Metric, TreatMissingData } from 'aws-cdk-lib/aws-cloudwatch';
 import { IUserPool, UserPool } from 'aws-cdk-lib/aws-cognito';
 import { TableV2 } from 'aws-cdk-lib/aws-dynamodb';
 import { IVpc, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import { PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { Architecture, DockerImageCode, DockerImageFunction } from 'aws-cdk-lib/aws-lambda';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
-import { LogGroup } from 'aws-cdk-lib/aws-logs';
+import { FilterPattern, LogGroup, MetricFilter } from 'aws-cdk-lib/aws-logs';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { Queue, QueueEncryption } from 'aws-cdk-lib/aws-sqs';
+import { CfnWebACL } from 'aws-cdk-lib/aws-wafv2';
 import { Construct } from 'constructs';
 
 import { EcrStack } from '../../stacks/ecrStack.js';
@@ -56,6 +57,7 @@ export class Api extends Construct {
   public readonly importModelJobQueue: Queue;
   public readonly importModelWorkflow: ImportWorkflow;
   public readonly rewardFunctionValidationLambda: DockerImageFunction;
+  public readonly apiFunctions: { [Operation in DeepRacerIndyServiceOperations]: NodeLambdaFunction };
 
   constructor(scope: Construct, id: string, props: ApiProps) {
     super(scope, id);
@@ -73,35 +75,47 @@ export class Api extends Construct {
 
     // Entry points for api lambda handlers in the lambda lib
     const apiHandlerEntryPoints = {
-      UpdateGroupMembership: 'api/handlers/updateGroupMembership',
+      ClearLiveLeaderboard: 'api/handlers/clearLiveLeaderboard',
       CreateEvaluation: 'api/handlers/createEvaluation',
       CreateLeaderboard: 'api/handlers/createLeaderboard',
       CreateModel: 'api/handlers/createModel',
       CreateProfile: 'api/handlers/createProfile',
+      CreateSubmission: 'api/handlers/createSubmission',
+      DeclareWinner: 'api/handlers/declareWinner',
       DeleteLeaderboard: 'api/handlers/deleteLeaderboard',
       DeleteModel: 'api/handlers/deleteModel',
       DeleteProfile: 'api/handlers/deleteProfile',
       DeleteProfileModels: 'api/handlers/deleteProfileModels',
       EditLeaderboard: 'api/handlers/editLeaderboard',
+      GetAdminAssetUrl: 'api/handlers/getAdminAssetUrl',
       GetAssetUrl: 'api/handlers/getAssetUrl',
       GetEvaluation: 'api/handlers/getEvaluation',
       GetGlobalSetting: 'api/handlers/getGlobalSetting',
       GetLeaderboard: 'api/handlers/getLeaderboard',
+      GetLiveRaceState: 'api/handlers/getLiveRaceState',
       GetModel: 'api/handlers/getModel',
       GetProfile: 'api/handlers/getProfile',
       GetRanking: 'api/handlers/getRanking',
       ImportModel: 'api/handlers/importModel',
       JoinLeaderboard: 'api/handlers/joinLeaderboard',
+      LaunchLiveRace: 'api/handlers/launchLiveRace',
+      ListAdminProfiles: 'api/handlers/listAdminProfiles',
       ListEvaluations: 'api/handlers/listEvaluations',
       ListLeaderboards: 'api/handlers/listLeaderboards',
+      ListLiveQueueItems: 'api/handlers/listLiveQueueItems',
       ListModels: 'api/handlers/listModels',
+      ListModelsForProfile: 'api/handlers/listModelsForProfile',
+      ListProfiles: 'api/handlers/listProfiles',
       ListRankings: 'api/handlers/listRankings',
       ListSubmissions: 'api/handlers/listSubmissions',
-      ListProfiles: 'api/handlers/listProfiles',
+      AttachLiveRacePolicy: 'live-race/attachPolicy',
+      RemoveLiveQueueItem: 'api/handlers/removeLiveQueueItem',
+      ReorderLiveQueue: 'api/handlers/reorderLiveQueue',
+      ResetLiveQueueModel: 'api/handlers/resetLiveQueueModel',
       StopModel: 'api/handlers/stopModel',
-      CreateSubmission: 'api/handlers/createSubmission',
       TestRewardFunction: 'api/handlers/testRewardFunction',
       UpdateGlobalSetting: 'api/handlers/updateGlobalSetting',
+      UpdateGroupMembership: 'api/handlers/updateGroupMembership',
       UpdateProfile: 'api/handlers/updateProfile',
     } as const satisfies { [Operation in DeepRacerIndyServiceOperations]: string };
 
@@ -159,6 +173,20 @@ export class Api extends Construct {
         ],
       }),
     );
+
+    const adminCognitoPolicy = new PolicyStatement({
+      actions: ['cognito-idp:AdminListGroupsForUser'],
+      resources: [
+        Stack.of(this).formatArn({
+          service: 'cognito-idp',
+          resource: 'userpool',
+          resourceName: props.userPool.userPoolId,
+        }),
+      ],
+    });
+    functions.ListAdminProfiles.addToRolePolicy(adminCognitoPolicy);
+    functions.ListModelsForProfile.addToRolePolicy(adminCognitoPolicy);
+    functions.GetAdminAssetUrl.addToRolePolicy(adminCognitoPolicy);
 
     const appConfigConsumers = [
       functions.CreateEvaluation,
@@ -242,6 +270,8 @@ export class Api extends Construct {
     });
     this.importModelJobQueue = this.importModelWorkflow.importModelJobQueue;
 
+    this.apiFunctions = functions;
+
     functions.ImportModel.addEnvironment('IMPORT_MODEL_JOB_QUEUE_URL', this.importModelJobQueue.queueUrl);
 
     // Grant ImportModel function permission to send messages to import model job queue
@@ -308,6 +338,147 @@ export class Api extends Construct {
 
     new WafwebaclToApiGateway(this, 'WafwebaclToApiGateway', {
       existingApiGatewayInterface: this.api,
+      webaclProps: {
+        rules: [
+          // Re-include the 7 default managed rule groups that WafwebaclToApiGateway provides
+          // when no webaclProps are specified. Providing webaclProps.rules replaces them entirely.
+          ...[
+            'AWSManagedRulesBotControlRuleSet',
+            'AWSManagedRulesKnownBadInputsRuleSet',
+            'AWSManagedRulesCommonRuleSet',
+            'AWSManagedRulesAnonymousIpList',
+            'AWSManagedRulesAmazonIpReputationList',
+            'AWSManagedRulesSQLiRuleSet',
+            'AWSManagedRulesWordPressRuleSet',
+          ].map(
+            (name, priority): CfnWebACL.RuleProperty => ({
+              name,
+              priority,
+              overrideAction: { none: {} },
+              statement: { managedRuleGroupStatement: { vendorName: 'AWS', name } },
+              visibilityConfig: {
+                sampledRequestsEnabled: true,
+                cloudWatchMetricsEnabled: true,
+                metricName: name,
+              },
+            }),
+          ),
+          // AdminProtectionRuleSet would block our own /admin/* routes — count only
+          {
+            name: 'AWSManagedRulesAdminProtectionRuleSet',
+            priority: 7,
+            overrideAction: { count: {} },
+            statement: {
+              managedRuleGroupStatement: { vendorName: 'AWS', name: 'AWSManagedRulesAdminProtectionRuleSet' },
+            },
+            visibilityConfig: {
+              sampledRequestsEnabled: true,
+              cloudWatchMetricsEnabled: true,
+              metricName: 'AWSManagedRulesAdminProtectionRuleSet',
+            },
+          } satisfies CfnWebACL.RuleProperty,
+          {
+            name: 'AdminRateLimit',
+            priority: 10,
+            action: { block: {} },
+            statement: {
+              rateBasedStatement: {
+                limit: 100,
+                aggregateKeyType: 'IP',
+                scopeDownStatement: {
+                  byteMatchStatement: {
+                    searchString: '/admin/',
+                    fieldToMatch: { uriPath: {} },
+                    textTransformations: [{ priority: 0, type: 'NONE' }],
+                    positionalConstraint: 'CONTAINS',
+                  },
+                },
+              },
+            },
+            visibilityConfig: {
+              sampledRequestsEnabled: true,
+              cloudWatchMetricsEnabled: true,
+              metricName: 'AdminRateLimit',
+            },
+          } satisfies CfnWebACL.RuleProperty,
+        ],
+      },
+    });
+
+    const adminMetricNamespace = 'DeepRacerIndyAdmin';
+
+    new MetricFilter(this, 'AdminModelDownloadMetricFilter', {
+      logGroup: functions.GetAdminAssetUrl.logGroup,
+      filterPattern: FilterPattern.stringValue('$.action', '=', 'ADMIN_MODEL_DOWNLOAD'),
+      metricName: 'AdminModelDownloadCount',
+      metricNamespace: adminMetricNamespace,
+      metricValue: '1',
+    });
+
+    new MetricFilter(this, 'AdminAuthFailureMetricFilter', {
+      logGroup: functions.ListAdminProfiles.logGroup,
+      filterPattern: FilterPattern.stringValue('$.action', '=', 'ADMIN_AUTH_FAILURE'),
+      metricName: 'AdminAuthFailureCount',
+      metricNamespace: adminMetricNamespace,
+      metricValue: '1',
+    });
+
+    new MetricFilter(this, 'AdminAuthFailureGetAssetMetricFilter', {
+      logGroup: functions.GetAdminAssetUrl.logGroup,
+      filterPattern: FilterPattern.stringValue('$.action', '=', 'ADMIN_AUTH_FAILURE'),
+      metricName: 'AdminAuthFailureCount',
+      metricNamespace: adminMetricNamespace,
+      metricValue: '1',
+    });
+
+    new MetricFilter(this, 'AdminAuthFailureListModelsMetricFilter', {
+      logGroup: functions.ListModelsForProfile.logGroup,
+      filterPattern: FilterPattern.stringValue('$.action', '=', 'ADMIN_AUTH_FAILURE'),
+      metricName: 'AdminAuthFailureCount',
+      metricNamespace: adminMetricNamespace,
+      metricValue: '1',
+    });
+
+    new MetricFilter(this, 'AdminProfileListMetricFilter', {
+      logGroup: functions.ListAdminProfiles.logGroup,
+      filterPattern: FilterPattern.stringValue('$.action', '=', 'ADMIN_PROFILE_LIST'),
+      metricName: 'AdminProfileListCount',
+      metricNamespace: adminMetricNamespace,
+      metricValue: '1',
+    });
+
+    new MetricFilter(this, 'AdminListModelsMetricFilter', {
+      logGroup: functions.ListModelsForProfile.logGroup,
+      filterPattern: FilterPattern.stringValue('$.action', '=', 'ADMIN_LIST_MODELS'),
+      metricName: 'AdminListModelsCount',
+      metricNamespace: adminMetricNamespace,
+      metricValue: '1',
+    });
+
+    new Alarm(this, 'AdminBulkDownloadAlarm', {
+      metric: new Metric({
+        namespace: adminMetricNamespace,
+        metricName: 'AdminModelDownloadCount',
+        period: Duration.minutes(5),
+        statistic: 'Sum',
+      }),
+      threshold: 50,
+      evaluationPeriods: 1,
+      alarmDescription: 'Unusual bulk admin model download activity detected',
+      treatMissingData: TreatMissingData.NOT_BREACHING,
+    });
+
+    new Alarm(this, 'AdminAuthFailuresAlarm', {
+      metric: new Metric({
+        namespace: adminMetricNamespace,
+        metricName: 'AdminAuthFailureCount',
+        period: Duration.minutes(5),
+        statistic: 'Sum',
+      }),
+      threshold: 10,
+      evaluationPeriods: 1,
+      alarmDescription: 'Potential unauthorized admin access attempts detected',
+      treatMissingData: TreatMissingData.NOT_BREACHING,
     });
 
     for (const apiLambdaHandler of Object.values(functions)) {
@@ -319,7 +490,12 @@ export class Api extends Construct {
 
       // Grant each lambda handler permissions to the DeepRacerIndy data layer
       props.dynamoDBTable.grantReadWriteData(apiLambdaHandler);
-      props.modelStorageBucket.grantReadWrite(apiLambdaHandler);
+      // GetAdminAssetUrl only needs read access (least privilege)
+      if (apiLambdaHandler === functions.GetAdminAssetUrl) {
+        props.modelStorageBucket.grantRead(apiLambdaHandler);
+      } else {
+        props.modelStorageBucket.grantReadWrite(apiLambdaHandler);
+      }
 
       // Grant lambda permission to call SQS queue
       this.workflowJobQueue.grantSendMessages(apiLambdaHandler);
@@ -367,6 +543,17 @@ export class Api extends Construct {
         ],
       }),
     );
+
+    for (const fn of [functions.ResetLiveQueueModel, functions.ClearLiveLeaderboard]) {
+      fn.addToRolePolicy(
+        new PolicyStatement({
+          actions: ['sagemaker:DescribeTrainingJob', 'sagemaker:StopTrainingJob'],
+          resources: [
+            `arn:aws:sagemaker:${Stack.of(this).region}:${Stack.of(this).account}:training-job/deepracerindy-*`,
+          ],
+        }),
+      );
+    }
 
     // Grant the permissions to invoke the RewardFunctionValidationLambda
     this.rewardFunctionValidationLambda.grantInvoke(functions.TestRewardFunction);

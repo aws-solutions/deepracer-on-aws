@@ -5,7 +5,7 @@ import { UserGroups } from '@deepracer-indy/typescript-client';
 import { Amplify } from 'aws-amplify';
 import { fetchAuthSession } from 'aws-amplify/auth';
 
-import { checkUserGroupMembership, configureAuth } from '../authUtils.js';
+import { checkUserGroupMembership, configureAuth, getUserGroups } from '../authUtils.js';
 
 const mockEnvironmentConfig = vi.hoisted(() => ({
   userPoolId: 'test-user-pool-id',
@@ -250,6 +250,50 @@ describe('authUtils', () => {
         expect(result).toBe(false);
         expect(mockFetchAuthSession).toHaveBeenCalledTimes(1);
       });
+    });
+  });
+
+  describe('getUserGroups()', () => {
+    it('should return known UserGroups from the session', async () => {
+      mockFetchAuthSession.mockResolvedValue({
+        tokens: {
+          accessToken: {
+            payload: { 'cognito:groups': [UserGroups.ADMIN, UserGroups.RACE_FACILITATORS] },
+          },
+        },
+      });
+
+      const result = await getUserGroups();
+
+      expect(result).toEqual([UserGroups.ADMIN, UserGroups.RACE_FACILITATORS]);
+      expect(mockFetchAuthSession).toHaveBeenCalledTimes(1);
+    });
+
+    it('should filter out unknown group strings', async () => {
+      mockFetchAuthSession.mockResolvedValue({
+        tokens: {
+          accessToken: {
+            payload: { 'cognito:groups': [UserGroups.ADMIN, 'unknown-group'] },
+          },
+        },
+      });
+
+      const result = await getUserGroups();
+
+      expect(result).toEqual([UserGroups.ADMIN]);
+    });
+
+    it('should return empty array when tokens are missing', async () => {
+      mockFetchAuthSession.mockResolvedValue({ tokens: undefined });
+
+      expect(await getUserGroups()).toEqual([]);
+    });
+
+    it('should return empty array when fetchAuthSession throws', async () => {
+      mockFetchAuthSession.mockRejectedValue(new Error('Auth failed'));
+
+      expect(await getUserGroups()).toEqual([]);
+      expect(mockFetchAuthSession).toHaveBeenCalledTimes(1);
     });
   });
 });

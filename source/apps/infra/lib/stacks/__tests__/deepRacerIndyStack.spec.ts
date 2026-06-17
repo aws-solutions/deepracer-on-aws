@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { App } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
+import { Match, Template } from 'aws-cdk-lib/assertions';
 import { Source } from 'aws-cdk-lib/aws-s3-deployment';
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 
@@ -138,6 +138,23 @@ describe('DeepRacerIndyStack', () => {
       });
     });
 
+    it('creates SesIdentity parameter with correct default', () => {
+      template.hasParameter('SesIdentity', {
+        Type: 'String',
+        Default: '',
+      });
+      expect(template).toBeDefined();
+    });
+
+    it('creates IsSesIdentityProvided condition in synthesized template', () => {
+      const templateJson = template.toJSON();
+      const conditions = templateJson.Conditions;
+      expect(conditions.IsSesIdentityProvided).toBeDefined();
+      expect(conditions.IsSesIdentityProvided).toEqual({
+        'Fn::Not': [{ 'Fn::Equals': [{ Ref: 'SesIdentity' }, ''] }],
+      });
+    });
+
     it('creates multiple S3 buckets', () => {
       // The stack creates more buckets than just the 3 main ones due to CDK assets
       const bucketCount = template.findResources('AWS::S3::Bucket');
@@ -160,7 +177,7 @@ describe('DeepRacerIndyStack', () => {
     });
 
     it('creates Step Functions state machines', () => {
-      template.resourceCountIs('AWS::StepFunctions::StateMachine', 1);
+      template.resourceCountIs('AWS::StepFunctions::StateMachine', 3);
       expect(template).toBeDefined();
     });
 
@@ -187,6 +204,15 @@ describe('DeepRacerIndyStack', () => {
 
       // Should have multiple IAM roles for various services
       expect(roleCount).toBeGreaterThan(5);
+    });
+
+    it('passes CustomDomain-aware URL to email template sync handler', () => {
+      template.hasResourceProperties('AWS::CloudFormation::CustomResource', {
+        websiteUrl: {
+          'Fn::If': Match.arrayWith([Match.stringLikeRegexp('HasCustomDomain')]),
+        },
+      });
+      expect(template).toBeDefined();
     });
   });
 });

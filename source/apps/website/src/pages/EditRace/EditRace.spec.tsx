@@ -311,4 +311,45 @@ describe('<EditRace />', () => {
       expect(screen.getByText(i18n.t('createRace:addRaceDetails.objectAvoidance'))).toBeInTheDocument();
     });
   });
+
+  describe('live race editing', () => {
+    beforeEach(() => {
+      (fetchAuthSession as Mock).mockResolvedValue({
+        tokens: { accessToken: { payload: { 'cognito:groups': ['dr-admins'] } } },
+      });
+      mockUseGetLeaderboardQuery.mockReturnValue({
+        data: {
+          ...mockLeaderboardTTFuture,
+          isLive: true,
+          liveEventTime: new Date(2026, 5, 15, 14, 30),
+          liveEventStatus: 'SCHEDULED',
+          maxResets: 5,
+        },
+        isLoading: false,
+        isUninitialized: false,
+      });
+    });
+
+    it('should display live race fields when editing a live race', async () => {
+      render(<EditRace />);
+
+      await waitFor(() => {
+        expect(screen.getByText(i18n.t('createRace:addRaceDetails.liveRaceToggle'))).toBeInTheDocument();
+      });
+
+      expect(screen.getByText(i18n.t('createRace:addRaceDetails.liveEventTime'))).toBeInTheDocument();
+      expect(screen.getByText(i18n.t('createRace:addRaceDetails.maxResets'))).toBeInTheDocument();
+    });
+
+    it('should disable the live race toggle in edit mode', async () => {
+      render(<EditRace />);
+
+      await waitFor(() => {
+        expect(screen.getByText(i18n.t('createRace:addRaceDetails.liveRace'))).toBeInTheDocument();
+      });
+
+      const tile = screen.getByLabelText(i18n.t('createRace:addRaceDetails.liveRace'));
+      expect(tile).toHaveAttribute('aria-disabled', 'true');
+    });
+  });
 });

@@ -46,6 +46,7 @@ describe('UserRolePolicies', () => {
       api,
       userRoles,
       uploadBucketArn: 'arn:aws:s3:::test-bucket',
+      namespace: 'test-namespace',
     });
 
     const template = Template.fromStack(stack);

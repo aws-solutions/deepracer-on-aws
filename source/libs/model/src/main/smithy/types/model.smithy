@@ -246,6 +246,19 @@ enum JobStatus {
     STOPPING
 }
 
+enum LiveEventStatus {
+    SCHEDULED
+    IN_PROGRESS
+    COMPLETED
+}
+
+enum LiveQueueItemStatus {
+    PENDING
+    IN_PROGRESS
+    COMPLETED
+    FAILED
+}
+
 enum AgentAlgorithm {
     PPO
     SAC

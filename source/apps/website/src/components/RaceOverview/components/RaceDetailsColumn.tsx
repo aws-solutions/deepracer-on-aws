@@ -12,33 +12,49 @@ interface RaceDetailsColumnProps {
 }
 
 const RaceDetailsColumn = ({ leaderboard }: RaceDetailsColumnProps) => {
-  const { closeTime, openTime, raceType } = leaderboard;
+  const { closeTime, openTime, raceType, isLive, liveEventTime, liveEventStatus } = leaderboard;
 
   const { t } = useTranslation('raceDetails');
 
-  return (
-    <KeyValuePairs
-      items={[
-        {
-          label: t('raceDetailsColumnLabels.raceType'),
-          value: t(`raceType.${raceType}`),
-        },
-        {
-          label: t('raceDetailsColumnLabels.raceDates'),
-          value: (
-            <>
-              <div>{t('start', { value: openTime })}</div>
-              <div>{t('end', { value: closeTime })}</div>
-            </>
-          ),
-        },
-        {
-          label: t('raceDetailsColumnLabels.timezone'),
-          value: getUTCOffsetTimeZoneText(),
-        },
-      ]}
-    />
-  );
+  const dateItem = isLive
+    ? {
+        label: t('raceDetailsColumnLabels.liveEventTime'),
+        value: liveEventTime ? liveEventTime.toLocaleString() : '—',
+      }
+    : {
+        label: t('raceDetailsColumnLabels.raceDates'),
+        value: (
+          <>
+            <div>{t('start', { value: openTime })}</div>
+            <div>{t('end', { value: closeTime })}</div>
+          </>
+        ),
+      };
+
+  const items = [
+    {
+      label: t('raceDetailsColumnLabels.raceMode'),
+      value: isLive ? t('raceMode.live') : t('raceMode.community'),
+    },
+    {
+      label: t('raceDetailsColumnLabels.raceType'),
+      value: t(`raceType.${raceType}`),
+    },
+    dateItem,
+    {
+      label: t('raceDetailsColumnLabels.timezone'),
+      value: getUTCOffsetTimeZoneText(),
+    },
+  ];
+
+  if (isLive) {
+    items.push({
+      label: t('raceDetailsColumnLabels.status'),
+      value: t(`liveStatus.${liveEventStatus ?? 'SCHEDULED'}`),
+    });
+  }
+
+  return <KeyValuePairs items={items} />;
 };
 
 export default RaceDetailsColumn;

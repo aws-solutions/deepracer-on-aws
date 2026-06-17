@@ -29,4 +29,14 @@ describe('JobNameHelper', () => {
       expect(jobNameHelper.getJobName(jobType, TEST_JOB_ID)).toBe(`${jobNamePrefix}-${jobType}-${TEST_JOB_ID}`);
     });
   });
+
+  describe('getLiveJobNameFromArn()', () => {
+    it('should extract job name from SageMaker training job ARN', () => {
+      expect(
+        jobNameHelper.getLiveJobNameFromArn(
+          'arn:aws:sagemaker:us-east-1:123456789012:training-job/deepracerindy-submission-abc123-live-a3b7c9d2',
+        ),
+      ).toBe('deepracerindy-submission-abc123-live-a3b7c9d2');
+    });
+  });
 });

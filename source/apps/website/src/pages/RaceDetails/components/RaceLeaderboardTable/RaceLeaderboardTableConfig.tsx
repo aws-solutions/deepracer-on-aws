@@ -7,7 +7,7 @@ import CollectionPreferences, {
   CollectionPreferencesProps,
 } from '@cloudscape-design/components/collection-preferences';
 import { TableProps } from '@cloudscape-design/components/table';
-import { Ranking, Leaderboard } from '@deepracer-indy/typescript-client';
+import { Ranking, Leaderboard, TimingMethod } from '@deepracer-indy/typescript-client';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -16,6 +16,8 @@ import TableEmptyState from '#components/TableEmptyState/TableEmptyState.js';
 import { PageId } from '#constants/pages.js';
 import { getRacingTimeGap, millisToMinutesAndSeconds } from '#utils/dateTimeUtils.js';
 import { getPath } from '#utils/pageUtils.js';
+
+import { isEnterRaceDisabled } from '../../raceDetailsHelpers';
 
 enum RaceLeaderboardTableColumn {
   RANK = 'Rank',
@@ -26,7 +28,11 @@ enum RaceLeaderboardTableColumn {
   OFF_TRACK = 'Off-track',
 }
 
-export const useRaceLeaderboardTableConfig = (rankings: Ranking[], leaderboard: Leaderboard) => {
+export const useRaceLeaderboardTableConfig = (
+  rankings: Ranking[],
+  leaderboard: Leaderboard,
+  submissionPeriodOpen?: boolean,
+) => {
   const { t } = useTranslation('raceDetails');
   const navigate = useNavigate();
 
@@ -51,6 +57,8 @@ export const useRaceLeaderboardTableConfig = (rankings: Ranking[], leaderboard: 
 
   const { items, collectionProps, paginationProps, filteredItemsCount, filterProps } = useCollection(rankings, {
     filtering: {
+      filteringFunction: (item, filteringText) =>
+        item.userProfile.alias.toLowerCase().includes(filteringText.toLowerCase()),
       empty: (
         <TableEmptyState
           title={t('raceLeaderboardTable.emptyTitle')}
@@ -58,7 +66,7 @@ export const useRaceLeaderboardTableConfig = (rankings: Ranking[], leaderboard: 
           action={
             <Button
               onClick={() => navigate(getPath(PageId.ENTER_RACE, { leaderboardId: leaderboard.leaderboardId }))}
-              disabled={leaderboard.openTime > new Date() || leaderboard.closeTime <= new Date()}
+              disabled={isEnterRaceDisabled(leaderboard, submissionPeriodOpen)}
             >
               {t('enterRace')}
             </Button>
@@ -109,11 +117,32 @@ export const useRaceLeaderboardTableConfig = (rankings: Ranking[], leaderboard: 
       {
         id: RaceLeaderboardTableColumn.OFF_TRACK,
         header: t('raceLeaderboardTable.header.offtrack'),
-        cell: (e) => e.stats.offTrackCount,
-        sortingComparator: (item1, item2) => item1.stats.offTrackCount - item2.stats.offTrackCount,
+        cell: (e) => {
+          switch (leaderboard.timingMethod) {
+            case TimingMethod.BEST_LAP_TIME:
+              return e.stats.bestLapOffTrackCount ?? e.stats.offTrackCount;
+            case TimingMethod.AVG_LAP_TIME:
+              return e.stats.avgLapOffTrackCount ?? e.stats.offTrackCount;
+            default:
+              return e.stats.offTrackCount;
+          }
+        },
+        sortingComparator: (item1, item2) => {
+          const get = (e: Ranking) => {
+            switch (leaderboard.timingMethod) {
+              case TimingMethod.BEST_LAP_TIME:
+                return e.stats.bestLapOffTrackCount ?? e.stats.offTrackCount;
+              case TimingMethod.AVG_LAP_TIME:
+                return e.stats.avgLapOffTrackCount ?? e.stats.offTrackCount;
+              default:
+                return e.stats.offTrackCount;
+            }
+          };
+          return get(item1) - get(item2);
+        },
       },
     ],
-    [rankings, t],
+    [rankings, t, leaderboard.timingMethod],
   );
 
   const RaceLeaderboardTablePreferences = () => (

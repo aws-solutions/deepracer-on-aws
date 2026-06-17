@@ -17,12 +17,13 @@
     "@deepracer-indy/typescript-server-client": "workspace:*",
     "@deepracer-indy/utils": "workspace:*",
     "electrodb": "3.4.1",
+    "fractional-indexing": "^3.2.0",
     "nanoid": "^5.1.2"
-  },
-  "devDependencies": {
-    "vitest-dynamodb-lite": "^3.1.1"
   },
   "imports": {
     "#*": "./src/*"
+  },
+  "devDependencies": {
+    "vitest-dynamodb-lite": "^3.1.1"
   }
 }

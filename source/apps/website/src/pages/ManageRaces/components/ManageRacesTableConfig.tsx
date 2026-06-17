@@ -9,7 +9,7 @@ import CollectionPreferences, {
 import Link from '@cloudscape-design/components/link';
 import StatusIndicator from '@cloudscape-design/components/status-indicator';
 import { TableProps } from '@cloudscape-design/components/table';
-import { Leaderboard, RaceType } from '@deepracer-indy/typescript-client';
+import { Leaderboard, LiveEventStatus } from '@deepracer-indy/typescript-client';
 import humanizeDuration from 'humanize-duration';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -44,6 +44,26 @@ const getTimeRemaining = (openTime: number, closeTime: number) => {
     </StatusIndicator>
   );
 };
+
+interface StatusDisplay {
+  type: 'pending' | 'success' | 'stopped';
+  label: string;
+}
+
+const getLiveRaceStatus = (leaderboard: Leaderboard) => {
+  const statusMap: Record<string, StatusDisplay> = {
+    [LiveEventStatus.SCHEDULED]: { type: 'pending', label: i18n.t('leaderboards:table.status.scheduled') },
+    [LiveEventStatus.IN_PROGRESS]: { type: 'success', label: i18n.t('leaderboards:table.status.inProgress') },
+    [LiveEventStatus.COMPLETED]: { type: 'stopped', label: i18n.t('leaderboards:table.status.closed') },
+  };
+  const status = statusMap[leaderboard.liveEventStatus ?? ''] ?? statusMap[LiveEventStatus.SCHEDULED];
+  return <StatusIndicator type={status.type}>{status.label}</StatusIndicator>;
+};
+
+const getRaceStatus = (leaderboard: Leaderboard) =>
+  leaderboard.isLive
+    ? getLiveRaceStatus(leaderboard)
+    : getTimeRemaining(leaderboard.openTime.getTime(), leaderboard.closeTime.getTime());
 
 export const useManageRacesTableConfig = (leaderboards: Leaderboard[]) => {
   const { t } = useTranslation('leaderboards');
@@ -82,7 +102,11 @@ export const useManageRacesTableConfig = (leaderboards: Leaderboard[]) => {
     sorting: {
       defaultState: {
         sortingColumn: {
-          sortingComparator: (item1, item2) => item1.openTime.getTime() - item2.openTime.getTime(),
+          sortingComparator: (item1, item2) => {
+            const date1 = item1.isLive && item1.liveEventTime ? item1.liveEventTime : item1.openTime;
+            const date2 = item2.isLive && item2.liveEventTime ? item2.liveEventTime : item2.openTime;
+            return date1.getTime() - date2.getTime();
+          },
         },
         isDescending: true,
       },
@@ -113,27 +137,32 @@ export const useManageRacesTableConfig = (leaderboards: Leaderboard[]) => {
       {
         id: ManageRacesTableColumn.STATUS,
         header: t('table.columnHeader.status'),
-        cell: (e) => getTimeRemaining(e.openTime.getTime(), e.closeTime.getTime()),
+        cell: (e) => getRaceStatus(e),
         sortingComparator: (item1, item2) => item1.openTime.getTime() - item2.openTime.getTime(),
       },
-      /* TODO: fix the race type to be classic/live */
       {
         id: ManageRacesTableColumn.COMPETITION_FORMAT,
         header: t('table.columnHeader.competitionFormat'),
-        cell: (e) =>
-          e.raceType === RaceType.TIME_TRIAL ? t('table.raceType.timeTrial') : t('table.raceType.objectAvoidance'),
-        sortingField: 'raceType',
+        cell: (e) => (e.isLive ? t('table.raceMode.live') : t('table.raceMode.community')),
+        sortingComparator: (item1, item2) => Number(item1.isLive ?? false) - Number(item2.isLive ?? false),
       },
       {
         id: ManageRacesTableColumn.START_DATE,
         header: t('table.columnHeader.startDate'),
-        cell: (e) => t('table.creationTime', { date: e.openTime }),
-        sortingComparator: (item1, item2) => item1.openTime.getTime() - item2.openTime.getTime(),
+        cell: (e) =>
+          e.isLive && e.liveEventTime
+            ? t('table.creationTime', { date: e.liveEventTime })
+            : t('table.creationTime', { date: e.openTime }),
+        sortingComparator: (item1, item2) => {
+          const date1 = item1.isLive && item1.liveEventTime ? item1.liveEventTime : item1.openTime;
+          const date2 = item2.isLive && item2.liveEventTime ? item2.liveEventTime : item2.openTime;
+          return date1.getTime() - date2.getTime();
+        },
       },
       {
         id: ManageRacesTableColumn.END_DATE,
         header: t('table.columnHeader.endDate'),
-        cell: (e) => t('table.creationTime', { date: e.closeTime }),
+        cell: (e) => (e.isLive ? '—' : t('table.creationTime', { date: e.closeTime })),
         sortingComparator: (item1, item2) => item1.closeTime.getTime() - item2.closeTime.getTime(),
       },
     ],

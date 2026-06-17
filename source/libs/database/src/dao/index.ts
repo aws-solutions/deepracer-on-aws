@@ -3,6 +3,7 @@
 
 export { evaluationDao } from './EvaluationDao.js';
 export { leaderboardDao } from './LeaderboardDao.js';
+export { liveQueueItemDao } from './LiveQueueItemDao.js';
 export { metricsDao } from './metrics/metricsDao.js';
 export { modelDao } from './ModelDao.js';
 export { profileDao } from './ProfileDao.js';

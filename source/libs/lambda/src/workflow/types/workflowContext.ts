@@ -31,6 +31,12 @@ export type WorkflowContext<JT extends JobType = JobType> = {
 
   /** Workflow error details */
   errorDetails?: Error;
+
+  /** Final job status set by JobFinalizer (used by live race SF to route to SetFailed) */
+  jobStatus?: string;
+
+  /** Live race model counter (used by live race SF only) */
+  modelsProcessed?: number;
 } & (JT extends JobType.SUBMISSION
   ? {
       leaderboardId: ResourceId;

@@ -5,7 +5,11 @@ import { RemovalPolicy } from 'aws-cdk-lib';
 import { NetworkAcl, SecurityGroup, SubnetType, Vpc } from 'aws-cdk-lib/aws-ec2';
 import { Construct } from 'constructs';
 
-import { addCfnGuardSuppression } from '../common/cfnGuardHelper.js';
+import {
+  addCfnGuardSuppression,
+  addCfnGuardSuppressionForAutoCreatedRoles,
+  addCfnGuardSuppressionForAutoCreatedLambdas,
+} from '../common/cfnGuardHelper.js';
 
 export class VpcConstruct extends Construct {
   readonly userExecutionVpc: Vpc;
@@ -16,6 +20,7 @@ export class VpcConstruct extends Construct {
 
     this.userExecutionVpc = new Vpc(this, 'userExecutionVpc', {
       natGateways: 0,
+      restrictDefaultSecurityGroup: true,
       subnetConfiguration: [
         {
           cidrMask: 24,
@@ -36,6 +41,12 @@ export class VpcConstruct extends Construct {
     // cfn guard says - Check was not compliant as property [/Resources/VpcuserExecutionSecurityGroupD815F9BC[L:1171,C:45]] was not empty.
     // but the config is what we expect
     addCfnGuardSuppression(this.userExecutionSecurityGroup, ['SECURITY_GROUP_EGRESS_PORT_RANGE_RULE']);
+
+    // cfn guard says - Check was not compliant as property [/Resources/CustomVpcRestrictDefaultSGCustomResourceProviderRole26592FE0/Properties/Policies[L:1896,C:20]] was not empty.
+    // CDK internally creates this role with an inline policy for the restrictDefaultSecurityGroup custom resource.
+    addCfnGuardSuppressionForAutoCreatedRoles(this, 'VpcRestrictDefaultSG');
+
+    addCfnGuardSuppressionForAutoCreatedLambdas(this, 'VpcRestrictDefaultSG');
 
     new NetworkAcl(this, 'userExecutionAcl', {
       vpc: this.userExecutionVpc,

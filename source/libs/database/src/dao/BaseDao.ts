@@ -48,7 +48,7 @@ export abstract class BaseDao<
     return response.data;
   }
 
-  protected async _update(primaryKey: Parameters<E['patch']>[0], updatedAttributes: SetItem<A, F, C, S>) {
+  protected async _update(primaryKey: Parameters<E['patch']>[0], updatedAttributes: Partial<SetItem<A, F, C, S>>) {
     let query = this.entity
       .patch(primaryKey)
       .add({ [DynamoDBItemAttribute.VERSION]: 1 } as unknown as AddItem<A, F, C, S>)
@@ -108,6 +108,11 @@ export abstract class BaseDao<
 
   @logMethod
   update(primaryKey: Parameters<E['get']>[0][0], updatedAttributes: SetItem<A, F, C, S>) {
+    return this._update(primaryKey, updatedAttributes);
+  }
+
+  @logMethod
+  partialUpdate(primaryKey: Parameters<E['get']>[0][0], updatedAttributes: Partial<SetItem<A, F, C, S>>) {
     return this._update(primaryKey, updatedAttributes);
   }
 }

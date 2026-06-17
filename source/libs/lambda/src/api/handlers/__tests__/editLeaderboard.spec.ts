@@ -4,14 +4,17 @@
 import {
   leaderboardDao,
   LeaderboardItem,
+  liveQueueItemDao,
   TEST_ITEM_NOT_FOUND_ERROR,
   TEST_LEADERBOARD_ID,
+  TEST_LIVE_QUEUE_ITEM,
   TEST_TIMESTAMP,
 } from '@deepracer-indy/database';
 import {
   BadRequestError,
   InternalFailureError,
   LeaderboardDefinition,
+  LiveEventStatus,
   RaceType,
   TimingMethod,
   TrackConfig,
@@ -48,6 +51,8 @@ const TEST_FUTURE_LEADERBOARD_ITEM: LeaderboardItem = {
     maxTimeInMinutes: 10,
   },
   timingMethod: TimingMethod.AVG_LAP_TIME,
+  isLive: false,
+  submissionPeriodOpen: false,
 };
 
 describe('EditLeaderboard', () => {
@@ -106,6 +111,8 @@ describe('EditLeaderboard', () => {
       participantCount: TEST_FUTURE_LEADERBOARD_ITEM.participantCount,
       updatedAt: new Date().toISOString(),
       createdAt: TEST_FUTURE_LEADERBOARD_ITEM.createdAt,
+      isLive: false,
+      submissionPeriodOpen: false,
     };
 
     const updateLeaderboardSpy = vi.spyOn(leaderboardDao, 'update').mockResolvedValue(mockUpdatedLeaderboard);
@@ -190,6 +197,23 @@ describe('EditLeaderboard', () => {
         TEST_OPERATION_CONTEXT,
       ),
     ).rejects.toStrictEqual(new BadRequestError({ message: 'Opening time cannot be after close time.' }));
+  });
+
+  it('should validate objectAvoidanceConfig for OBJECT_AVOIDANCE race type', async () => {
+    vi.spyOn(leaderboardDao, 'load').mockResolvedValue(TEST_FUTURE_LEADERBOARD_ITEM);
+
+    await expect(
+      EditLeaderboardOperation(
+        {
+          leaderboardId: TEST_LEADERBOARD_ID,
+          leaderboardDefinition: {
+            ...TEST_LEADERBOARD_DEFINITION,
+            raceType: RaceType.OBJECT_AVOIDANCE,
+          },
+        },
+        TEST_OPERATION_CONTEXT,
+      ),
+    ).rejects.toThrowError(BadRequestError);
   });
 
   it('should throw error if track config is invalid', async () => {
@@ -277,5 +301,212 @@ describe('EditLeaderboard', () => {
         TEST_OPERATION_CONTEXT,
       ),
     ).rejects.toStrictEqual(new BadRequestError({ message: 'Cannot edit closed leaderboards.' }));
+  });
+
+  it('should throw BadRequestError when leaderboardDefinition missing for community race', async () => {
+    vi.spyOn(leaderboardDao, 'load').mockResolvedValue(TEST_FUTURE_LEADERBOARD_ITEM);
+
+    await expect(
+      EditLeaderboardOperation({ leaderboardId: TEST_LEADERBOARD_ID }, TEST_OPERATION_CONTEXT),
+    ).rejects.toStrictEqual(new BadRequestError({ message: 'leaderboardDefinition is required.' }));
+  });
+
+  describe('live race toggles', () => {
+    const LIVE_LEADERBOARD: LeaderboardItem = {
+      ...TEST_FUTURE_LEADERBOARD_ITEM,
+      isLive: true,
+      liveEventStatus: LiveEventStatus.IN_PROGRESS,
+      autoLaunchEnabled: false,
+      submissionPeriodOpen: false,
+      currentExecutionArn: '',
+    };
+
+    it('should toggle autoLaunchEnabled', async () => {
+      vi.spyOn(leaderboardDao, 'load').mockResolvedValue(LIVE_LEADERBOARD);
+      vi.spyOn(leaderboardDao, 'partialUpdate').mockResolvedValue({ ...LIVE_LEADERBOARD, autoLaunchEnabled: true });
+      vi.spyOn(liveQueueItemDao, 'getNextPending').mockResolvedValue(TEST_LIVE_QUEUE_ITEM);
+      vi.spyOn(liveQueueItemDao, 'touchItem').mockResolvedValue(TEST_LIVE_QUEUE_ITEM);
+
+      const output = await EditLeaderboardOperation(
+        {
+          leaderboardId: TEST_LEADERBOARD_ID,
+          autoLaunchEnabled: true,
+        },
+        TEST_OPERATION_CONTEXT,
+      );
+
+      expect(output.leaderboard).toBeDefined();
+      expect(leaderboardDao.partialUpdate).toHaveBeenCalledWith(
+        { leaderboardId: TEST_LEADERBOARD_ID },
+        expect.objectContaining({ autoLaunchEnabled: true }),
+      );
+      // Should touch PENDING item to trigger stream when autolaunch ON and no SF running
+      expect(liveQueueItemDao.touchItem).toHaveBeenCalled();
+    });
+
+    it('should toggle submissionPeriodOpen', async () => {
+      vi.spyOn(leaderboardDao, 'load').mockResolvedValue(LIVE_LEADERBOARD);
+      vi.spyOn(leaderboardDao, 'partialUpdate').mockResolvedValue({ ...LIVE_LEADERBOARD, submissionPeriodOpen: true });
+
+      await EditLeaderboardOperation(
+        {
+          leaderboardId: TEST_LEADERBOARD_ID,
+          submissionPeriodOpen: true,
+        },
+        TEST_OPERATION_CONTEXT,
+      );
+
+      expect(leaderboardDao.partialUpdate).toHaveBeenCalledWith(
+        { leaderboardId: TEST_LEADERBOARD_ID },
+        expect.objectContaining({ submissionPeriodOpen: true }),
+      );
+    });
+
+    it('should not touch queue item when SF already running', async () => {
+      vi.spyOn(leaderboardDao, 'load').mockResolvedValue({
+        ...LIVE_LEADERBOARD,
+        currentExecutionArn: 'arn:existing',
+      });
+      vi.spyOn(leaderboardDao, 'partialUpdate').mockResolvedValue({
+        ...LIVE_LEADERBOARD,
+        autoLaunchEnabled: true,
+        currentExecutionArn: 'arn:existing',
+      });
+      const touchSpy = vi.spyOn(liveQueueItemDao, 'touchItem');
+
+      await EditLeaderboardOperation(
+        {
+          leaderboardId: TEST_LEADERBOARD_ID,
+          autoLaunchEnabled: true,
+        },
+        TEST_OPERATION_CONTEXT,
+      );
+
+      expect(touchSpy).not.toHaveBeenCalled();
+    });
+
+    it('should update liveEventTime when valid', async () => {
+      vi.spyOn(leaderboardDao, 'load').mockResolvedValue(LIVE_LEADERBOARD);
+      const futureTime = new Date(Date.now() + 86400000);
+      vi.spyOn(leaderboardDao, 'partialUpdate').mockResolvedValue({
+        ...LIVE_LEADERBOARD,
+        liveEventTime: futureTime.toISOString(),
+      });
+
+      const output = await EditLeaderboardOperation(
+        {
+          leaderboardId: TEST_LEADERBOARD_ID,
+          liveEventTime: futureTime,
+        },
+        TEST_OPERATION_CONTEXT,
+      );
+
+      expect(output.leaderboard).toBeDefined();
+      expect(leaderboardDao.partialUpdate).toHaveBeenCalledWith(
+        { leaderboardId: TEST_LEADERBOARD_ID },
+        expect.objectContaining({ liveEventTime: futureTime.toISOString() }),
+      );
+    });
+
+    it('should reject toggle on COMPLETED race', async () => {
+      vi.spyOn(leaderboardDao, 'load').mockResolvedValue({
+        ...LIVE_LEADERBOARD,
+        liveEventStatus: LiveEventStatus.COMPLETED,
+      });
+
+      await expect(
+        EditLeaderboardOperation(
+          {
+            leaderboardId: TEST_LEADERBOARD_ID,
+            liveEventTime: new Date(Date.now() + 86400000),
+          },
+          TEST_OPERATION_CONTEXT,
+        ),
+      ).rejects.toStrictEqual(new BadRequestError({ message: 'Cannot modify a completed live race.' }));
+    });
+
+    it('should reject liveEventTime in the past', async () => {
+      vi.spyOn(leaderboardDao, 'load').mockResolvedValue(LIVE_LEADERBOARD);
+
+      await expect(
+        EditLeaderboardOperation(
+          {
+            leaderboardId: TEST_LEADERBOARD_ID,
+            liveEventTime: new Date(Date.now() - 60000),
+          },
+          TEST_OPERATION_CONTEXT,
+        ),
+      ).rejects.toStrictEqual(new BadRequestError({ message: 'Event time must be in the future.' }));
+    });
+
+    it('should allow definition edit for SCHEDULED live race', async () => {
+      vi.spyOn(leaderboardDao, 'load').mockResolvedValue({
+        ...LIVE_LEADERBOARD,
+        liveEventStatus: LiveEventStatus.SCHEDULED,
+      });
+      vi.spyOn(leaderboardDao, 'update').mockResolvedValue({
+        ...LIVE_LEADERBOARD,
+        liveEventStatus: LiveEventStatus.SCHEDULED,
+        name: 'Updated Name',
+      });
+
+      const output = await EditLeaderboardOperation(
+        {
+          leaderboardId: TEST_LEADERBOARD_ID,
+          leaderboardDefinition: TEST_LEADERBOARD_DEFINITION,
+        },
+        TEST_OPERATION_CONTEXT,
+      );
+
+      expect(output.leaderboard).toBeDefined();
+      expect(leaderboardDao.update).toHaveBeenCalled();
+    });
+
+    it('should reject definition edit for IN_PROGRESS live race', async () => {
+      vi.spyOn(leaderboardDao, 'load').mockResolvedValue(LIVE_LEADERBOARD);
+
+      await expect(
+        EditLeaderboardOperation(
+          {
+            leaderboardId: TEST_LEADERBOARD_ID,
+            leaderboardDefinition: TEST_LEADERBOARD_DEFINITION,
+          },
+          TEST_OPERATION_CONTEXT,
+        ),
+      ).rejects.toStrictEqual(new BadRequestError({ message: 'Can only edit live races before they start.' }));
+    });
+
+    it('should reject combined toggle fields and leaderboardDefinition', async () => {
+      vi.spyOn(leaderboardDao, 'load').mockResolvedValue(LIVE_LEADERBOARD);
+
+      await expect(
+        EditLeaderboardOperation(
+          {
+            leaderboardId: TEST_LEADERBOARD_ID,
+            autoLaunchEnabled: true,
+            leaderboardDefinition: TEST_LEADERBOARD_DEFINITION,
+          },
+          TEST_OPERATION_CONTEXT,
+        ),
+      ).rejects.toStrictEqual(
+        new BadRequestError({ message: 'Cannot combine toggle fields with leaderboardDefinition.' }),
+      );
+    });
+
+    it('should succeed even if touchItem fails (best-effort)', async () => {
+      vi.spyOn(leaderboardDao, 'load').mockResolvedValue(LIVE_LEADERBOARD);
+      vi.spyOn(leaderboardDao, 'partialUpdate').mockResolvedValue({ ...LIVE_LEADERBOARD, autoLaunchEnabled: true });
+      vi.spyOn(liveQueueItemDao, 'getNextPending').mockRejectedValue(new Error('DynamoDB throttle'));
+
+      const output = await EditLeaderboardOperation(
+        {
+          leaderboardId: TEST_LEADERBOARD_ID,
+          autoLaunchEnabled: true,
+        },
+        TEST_OPERATION_CONTEXT,
+      );
+
+      expect(output.leaderboard).toBeDefined();
+    });
   });
 });

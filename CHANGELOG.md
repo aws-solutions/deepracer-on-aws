@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-06-17
+
+### Added
+
+- Live racing - host and moderate real-time live community races with a dedicated live race page, broadcast mode, facilitator and queue-management controls, participant notifications, a winner overlay, and submission queueing with evaluation.
+
+### Changed
+
+- Added Amazon SageMaker warm pool support (`KeepAlivePeriodInSeconds`) to reduce lead time between live race submissions and pre-load subsequent evaluations.
+- Improved evaluation job video performance toward training-level smoothness by isolating overlay editing into a dedicated ROS node.
+- Added an operations dashboard with new observability metrics, including a total races metric and a namespace differentiator on the `ImportModelLambdaErrorsAlarm`.
+- Add a new page to allow Instance Admins and Race Facilitators to download physical models.
+- Reduced eval/submission job shutdown time.
+
+### Fixed
+
+- Off-track time penalty not being applied to participant times in community races.
+- Admin unable to view all the profiles due to API skipping pagination token.
+- Amazon SES domain identity support for authentication emails ([#48](https://github.com/aws-solutions/deepracer-on-aws/issues/48)).
+- Cognito invite email now uses custom domain when configured ([#58](https://github.com/aws-solutions/deepracer-on-aws/issues/58)) - contributed by ([@larsll](https://github.com/larsll)) via ([#59](https://github.com/aws-solutions/deepracer-on-aws/pull/59)).
+- Improve lap management for races ([#38](https://github.com/aws-solutions/deepracer-on-aws/pull/38)) - contributed by ([@larsll](https://github.com/larsll)).
+
+### Security
+
+- Restrict the default security group on the user execution VPC per Security Hub guidance ([#52](https://github.com/aws-solutions/deepracer-on-aws/pull/52)) - contributed by ([@larsll](https://github.com/larsll)).
+
 ## [1.1.7] - 2026-06-15
 
 ### Security

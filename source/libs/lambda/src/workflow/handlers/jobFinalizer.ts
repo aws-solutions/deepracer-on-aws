@@ -167,18 +167,26 @@ class JobFinalizer implements WorkflowTaskHandler {
     try {
       const jobType = jobNameHelper.getJobType(jobName);
 
+      // Determine failure status BEFORE persisting stats/rankings
+      let modelStatus: ModelStatus = ModelStatus.READY;
+      if (workflowContext.errorDetails || trainingJob?.status === TrainingJobStatus.FAILED) {
+        jobStatus = JobStatus.FAILED;
+        modelStatus = jobType === JobType.TRAINING ? ModelStatus.ERROR : ModelStatus.READY;
+      }
+
+      // Live race models stay QUEUED until race ends (prevents double-submission)
+      const isLiveRace = jobName.includes('-live-');
+      if (isLiveRace && modelStatus === ModelStatus.READY) {
+        modelStatus = ModelStatus.QUEUED;
+      }
+
       if (jobType === JobType.EVALUATION) {
         await this.persistEvaluationMetrics(workflowContext as WorkflowContext<JobType.EVALUATION>);
       }
       if (jobType === JobType.SUBMISSION) {
-        await this.persistSubmissionStats(workflowContext as WorkflowContext<JobType.SUBMISSION>);
-      }
-
-      let modelStatus: ModelStatus = ModelStatus.READY;
-
-      if (workflowContext.errorDetails || trainingJob?.status === TrainingJobStatus.FAILED) {
-        jobStatus = JobStatus.FAILED;
-        modelStatus = jobType === JobType.TRAINING ? ModelStatus.ERROR : ModelStatus.READY;
+        await this.persistSubmissionStats(workflowContext as WorkflowContext<JobType.SUBMISSION>, {
+          skipRanking: jobStatus === JobStatus.FAILED,
+        });
       }
 
       await waitForAll([
@@ -201,12 +209,14 @@ class JobFinalizer implements WorkflowTaskHandler {
       logger.error('Error persisting workflow data', { error });
       workflowContext.errorDetails = error as Error;
     } finally {
+      workflowContext.jobStatus = jobStatus;
       metricsLogger.logDeepRacerJob({
         jobType: jobNameHelper.getJobType(jobName),
         jobStatus,
         modelId,
         leaderboardId,
         sageMakerMinutes: this.minutesUsedBySageMaker,
+        isLive: jobName.includes('-live-'), // Live race jobs have -live-{uuid} suffix set by getNextPending
       });
 
       // Publish job outcome metric to CloudWatch using Lambda Powertools
@@ -234,7 +244,10 @@ class JobFinalizer implements WorkflowTaskHandler {
     }
   }
 
-  async persistSubmissionStats(workflowContext: WorkflowContext<JobType.SUBMISSION>) {
+  async persistSubmissionStats(
+    workflowContext: WorkflowContext<JobType.SUBMISSION>,
+    { skipRanking = false }: { skipRanking?: boolean } = {},
+  ) {
     const { jobName, leaderboardId, profileId } = workflowContext;
 
     try {
@@ -263,16 +276,17 @@ class JobFinalizer implements WorkflowTaskHandler {
         logger.info('Submission has no completed laps, not updating submission performance.');
       }
 
-      if (stats.completedLapCount >= leaderboardItem.minimumLaps) {
+      if (!skipRanking && stats.completedLapCount >= leaderboardItem.minimumLaps) {
         logger.info('Submission met leaderboard requirements, performing ranking handling.', {
           completedLapCount: stats.completedLapCount,
           minimumLaps: leaderboardItem.minimumLaps,
         });
         await this.persistRankingStats(workflowContext, stats, rankingScore, submissionItem, leaderboardItem);
       } else {
-        logger.info('Submission did not meet leaderboard requirements, skipping ranking handling.', {
+        logger.info('Submission did not meet leaderboard requirements or job failed, skipping ranking handling.', {
           completedLapCount: stats.completedLapCount,
           minimumLaps: leaderboardItem.minimumLaps,
+          skipRanking,
         });
       }
     } catch (error) {

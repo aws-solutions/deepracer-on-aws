@@ -73,6 +73,9 @@ class JobInitializer implements WorkflowTaskHandler {
       await this.deleteOldSimulationHeartbeatFile(jobItem.assetS3Locations.simulationHeartbeatS3Location);
     }
 
+    // Use context jobName if provided (live races use a unique suffix), otherwise fall back to DDB name
+    jobItem.name = workflowContext.jobName ?? jobItem.name;
+
     const trainingJobArn = await sageMakerHelper.createTrainingJob({ jobItem, modelItem });
 
     workflowContext.simulationJob = {

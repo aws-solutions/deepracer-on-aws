@@ -1,8 +1,8 @@
 {
   "communityRaces": {
     "button": "Manage race",
-    "description": "Create your own community race and invite your colleagues, classmates, or friends by sharing a race invitation link. Access open races in this instance.",
-    "header": "Community Races"
+    "description": "Create your own community or live races and invite your colleagues, classmates, or friends. Access open races in this instance.",
+    "header": "Races"
   },
   "fundamentals": {
     "button": "Get started",

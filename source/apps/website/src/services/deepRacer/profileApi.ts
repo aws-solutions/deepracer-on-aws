@@ -13,9 +13,8 @@ import {
   DeleteProfileModelsCommandOutput,
   GetProfileCommand,
   GetProfileCommandOutput,
-  ListProfilesCommand,
-  ListProfilesCommandOutput,
   Profile,
+  paginateListProfiles,
   UpdateGroupMembershipCommand,
   UpdateGroupMembershipCommandInput,
   UpdateGroupMembershipCommandOutput,
@@ -25,7 +24,7 @@ import {
 } from '@deepracer-indy/typescript-client';
 
 import { DeepRacerApiQueryTagType } from './constants.js';
-import { deepRacerApi } from './deepRacerApi.js';
+import { deepRacerApi, paginatedQuery } from './deepRacerApi.js';
 
 export const createProfile = {
   createProfileCommand: (input: CreateProfileCommandInput) => ({
@@ -40,14 +39,6 @@ export const updateProfile = {
     command: new UpdateProfileCommand(input),
   }),
   updateProfileTransformResponse: (response: UpdateProfileCommandOutput) => response.profile,
-};
-
-export const listProfiles = {
-  listProfilesCommand: () => ({
-    command: new ListProfilesCommand(),
-    displayNotificationOnError: false,
-  }),
-  listProfilesTransformResponse: (response: ListProfilesCommandOutput) => response.profiles,
 };
 
 export const deleteProfile = {
@@ -95,8 +86,7 @@ export const profileApi = deepRacerApi.injectEndpoints({
       invalidatesTags: [{ type: DeepRacerApiQueryTagType.PROFILE }],
     }),
     listProfiles: build.query<Profile[], void>({
-      query: listProfiles.listProfilesCommand,
-      transformResponse: listProfiles.listProfilesTransformResponse,
+      queryFn: (_input, { dispatch }) => paginatedQuery({}, paginateListProfiles, dispatch, 'profiles'),
       providesTags: [{ type: DeepRacerApiQueryTagType.PROFILE }],
     }),
     deleteProfile: build.mutation<void, DeleteProfileCommandInput>({

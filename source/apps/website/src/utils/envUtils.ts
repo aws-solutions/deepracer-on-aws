@@ -8,6 +8,9 @@ export interface EnvironmentConfig {
   identityPoolId: string;
   region: string;
   uploadBucketName: string;
+  iotEndpoint?: string;
+  namespace?: string;
+  solutionVersion?: string;
 }
 
 declare global {
@@ -23,4 +26,7 @@ export const environmentConfig: EnvironmentConfig = {
   userPoolClientId: window.EnvironmentConfig?.userPoolClientId ?? 'placeholder-user-pool-client-id',
   region: window.EnvironmentConfig?.region ?? 'us-east-1',
   uploadBucketName: window.EnvironmentConfig?.uploadBucketName ?? 'upload-bucket',
+  iotEndpoint: window.EnvironmentConfig?.iotEndpoint,
+  namespace: window.EnvironmentConfig?.namespace,
+  solutionVersion: window.EnvironmentConfig?.solutionVersion,
 };

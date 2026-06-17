@@ -10,8 +10,17 @@ import { screen } from '#utils/testUtils';
 
 import * as SubmitModelToRaceStories from '../SubmitModelToRace.stories';
 
-const { Default, ModelNotFound, ModelNotReady, NoOpenRaces, ModelError, ModelImporting } =
-  composeStories(SubmitModelToRaceStories);
+const {
+  Default,
+  ModelNotFound,
+  ModelNotReady,
+  NoOpenRaces,
+  ModelError,
+  ModelImporting,
+  LiveRaceSubmissionsOpen,
+  LiveRaceSubmissionsClosed,
+  LiveRaceCompleted,
+} = composeStories(SubmitModelToRaceStories);
 
 const mockDispatch = vi.fn();
 const mockNavigate = vi.fn();
@@ -139,13 +148,9 @@ describe('<SubmitModelToRace />', () => {
     });
 
     await vi.waitFor(() => {
-      expect(mockDispatch).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: expect.stringContaining('displaySuccessNotification'),
-        }),
-      );
-
-      expect(mockNavigate).toHaveBeenCalledWith('/models/test-model-id');
+      expect(mockNavigate).toHaveBeenCalledWith('/models/test-model-id', {
+        state: { successMessage: expect.any(String) },
+      });
     });
   });
 
@@ -219,6 +224,35 @@ describe('<SubmitModelToRace />', () => {
         expect.stringContaining('dr-race-facilitators'),
         expect.stringContaining('dr-admins'),
       ]);
+    });
+  });
+
+  describe('Live race submission filtering', () => {
+    it('should show live race when submissions are open', async () => {
+      await LiveRaceSubmissionsOpen.run();
+
+      const selectButton = await screen.findByText(i18n.t('submitModelToRace:chooseARace'));
+      await userEvent.click(selectButton);
+
+      expect(await screen.findByText('Live Race Open')).toBeInTheDocument();
+    });
+
+    it('should hide live race when submissions are closed', async () => {
+      await LiveRaceSubmissionsClosed.run();
+
+      const selectButton = await screen.findByText(i18n.t('submitModelToRace:chooseARace'));
+      await userEvent.click(selectButton);
+
+      expect(await screen.findByText(/no open races/i)).toBeInTheDocument();
+    });
+
+    it('should hide completed live race', async () => {
+      await LiveRaceCompleted.run();
+
+      const selectButton = await screen.findByText(i18n.t('submitModelToRace:chooseARace'));
+      await userEvent.click(selectButton);
+
+      expect(await screen.findByText(/no open races/i)).toBeInTheDocument();
     });
   });
 });

@@ -5,6 +5,8 @@ import { Logger } from '@aws-lambda-powertools/logger';
 import { LogAttributes } from '@aws-lambda-powertools/logger/types';
 
 import {
+  CreateLeaderboardInput,
+  CreateSubmissionInput,
   DeepRacerJobInput,
   DownloadModelInput,
   HeartbeatInput,
@@ -58,16 +60,16 @@ export class MetricsLogger {
     this.log({ metricsLogSubscriptionKey: MetricsSubscriptionKeyValue.CREATE_EVALUATION }, message);
   }
 
-  logCreateLeaderboard(message?: string): void {
-    this.log({ metricsLogSubscriptionKey: MetricsSubscriptionKeyValue.CREATE_LEADERBOARD }, message);
+  logCreateLeaderboard(data?: CreateLeaderboardInput, message?: string): void {
+    this.log({ ...data, metricsLogSubscriptionKey: MetricsSubscriptionKeyValue.CREATE_LEADERBOARD }, message);
   }
 
   logCreateModel(message?: string): void {
     this.log({ metricsLogSubscriptionKey: MetricsSubscriptionKeyValue.CREATE_MODEL }, message);
   }
 
-  logCreateSubmission(message?: string): void {
-    this.log({ metricsLogSubscriptionKey: MetricsSubscriptionKeyValue.CREATE_SUBMISSION }, message);
+  logCreateSubmission(data?: CreateSubmissionInput, message?: string): void {
+    this.log({ ...data, metricsLogSubscriptionKey: MetricsSubscriptionKeyValue.CREATE_SUBMISSION }, message);
   }
 
   logDeleteModel(message?: string): void {

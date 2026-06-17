@@ -94,12 +94,12 @@ const getModelCount = async (profileId: ResourceId) => {
  * @param storageUsed - the amount of storage used by the profile in bytes.
  * @param modelCount - the number of models associated with the profile.
  */
-const updateProfileStorageData = async (profileId: ResourceId, storageUsed: number, modelCount: number) => {
+const updateProfileStorageData = async (profileId: ResourceId, storageUsed: number, totalModelCount: number) => {
   await profileDao.update(
     { profileId },
     {
       modelStorageUsage: storageUsed,
-      modelCount: modelCount,
+      totalModelCount,
     },
   );
 };

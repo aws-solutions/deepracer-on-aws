@@ -1,0 +1,101 @@
+{
+  "header": "Live Race",
+  "header.live": "LIVE",
+  "header.raceCompleted": "Race completed",
+  "header.startingSoon": "Starting soon",
+  "videoPanel": {
+    "upNext": "Up Next",
+    "preparingEvaluation": "Preparing evaluation...",
+    "allComplete": "All evaluations finished",
+    "raceComplete": "Race complete",
+    "declareWinnerPrompt": "Ready to declare a winner",
+    "declareOrRetry": "Declare a winner or reset failed models to retry",
+    "waitingForLaunch": "Waiting for the facilitator to start the race"
+  },
+  "leaderboardPanel": {
+    "header": "Leaderboard",
+    "rank": "Rank",
+    "participant": "Racer",
+    "bestLapTime": "Best Lap Time",
+    "totalTime": "Total Time",
+    "avgLapTime": "Avg Lap Time",
+    "empty": "No results yet"
+  },
+  "racerInfoBanner": {
+    "nowRacing": "Now racing:",
+    "model": "Model",
+    "waiting": "Waiting for next evaluation...",
+    "modelPosition": "Model {{position}} of {{total}}"
+  },
+  "raceProgressBar": {
+    "label": "Race Progress",
+    "description": "{{completed}} of {{total}} models evaluated"
+  },
+  "participantNotification": {
+    "EVALUATION_STARTED": "Your model is now being evaluated!",
+    "EVALUATION_COMPLETE": "Your model has finished evaluation!",
+    "TOP_3": "Congratulations! You're in the top 3!",
+    "FASTEST_TIME": "You have the fastest time!"
+  },
+  "winnerOverlay": {
+    "title": "Winner!",
+    "time": "Best Lap: {{time}}s",
+    "dismiss": "Close"
+  },
+  "raceStatusBanner": {
+    "SUBMISSIONS_OPEN": "Submissions are now open",
+    "SUBMISSIONS_CLOSED": "Submissions are now closed",
+    "IN_PROGRESS": "Race is in progress",
+    "COMPLETED": "Race completed",
+    "dismiss": "Close"
+  },
+  "raceInfoPanel": {
+    "raceType": "Race type",
+    "track": "Track",
+    "ranking": "Ranking method",
+    "startTime": "Start time",
+    "startsIn": "Starts in",
+    "status": "Status"
+  },
+  "facilitatorPanel": {
+    "header": "Race Organizer Controls",
+    "launch": "Launch",
+    "resetting": "Reset in progress — this may take up to 30 seconds",
+    "resetSuccess": "Reset complete — ready to continue",
+    "declareWinner": "Declare Winner",
+    "clearLeaderboard": "Clear Leaderboard",
+    "autolaunch": "Autolaunch",
+    "submissions": "Submissions Open",
+    "actions": "Actions",
+    "openBroadcast": "Open Broadcast Mode",
+    "cancel": "Cancel",
+    "clearConfirmTitle": "Clear Leaderboard",
+    "clearConfirmMessage": "This will reset all evaluation results and cannot be undone. Are you sure?",
+    "confirmClear": "Clear Leaderboard",
+    "declareConfirmTitle": "Declare Winner",
+    "declareConfirmMessage": "This will lock the leaderboard and finalize the race results.",
+    "confirmDeclare": "Declare Winner"
+  },
+  "queuePanel": {
+    "header": "Racer Queue",
+    "participant": "Racer",
+    "model": "Model",
+    "status": "Status",
+    "actions": "Actions",
+    "order": "Order",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "remove": "Remove",
+    "reset": "Reset",
+    "empty": "No models in queue",
+    "removeConfirmTitle": "Remove from Queue",
+    "removeConfirmMessage": "This model will be removed from the evaluation queue.",
+    "confirmRemove": "Remove",
+    "statusLabels": {
+      "PENDING": "Pending",
+      "IN_PROGRESS": "Evaluating",
+      "COMPLETED": "Completed",
+      "FAILED": "Failed"
+    }
+  }
+}

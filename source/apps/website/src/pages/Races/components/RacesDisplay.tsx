@@ -8,13 +8,11 @@ import Header from '@cloudscape-design/components/header';
 import Pagination from '@cloudscape-design/components/pagination';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import TextFilter from '@cloudscape-design/components/text-filter';
-import { Leaderboard, UserGroups } from '@deepracer-indy/typescript-client';
-import { useEffect, useState } from 'react';
+import { Leaderboard } from '@deepracer-indy/typescript-client';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
 import { PageId } from '#constants/pages.js';
-import { checkUserGroupMembership } from '#utils/authUtils.js';
 import { getPath } from '#utils/pageUtils.js';
 
 import useRacesDisplayConfig from './RacesDisplayConfig';
@@ -23,20 +21,13 @@ interface RacesDisplayProps {
   leaderboards: Leaderboard[];
   isClosed: boolean;
   isLoading: boolean;
+  canManageRaces: boolean;
+  title?: string;
 }
 const RacesDisplay = (props: RacesDisplayProps) => {
-  const { leaderboards, isClosed, isLoading } = props;
+  const { leaderboards, isClosed, isLoading, canManageRaces, title } = props;
   const { t } = useTranslation('races');
   const navigate = useNavigate();
-  const [canManageRaces, setCanManageRaces] = useState(false);
-
-  useEffect(() => {
-    const checkRaceManagementPermissions = async () => {
-      setCanManageRaces(await checkUserGroupMembership([UserGroups.RACE_FACILITATORS, UserGroups.ADMIN]));
-    };
-
-    void checkRaceManagementPermissions();
-  }, []);
 
   const {
     collectionProps,
@@ -59,13 +50,15 @@ const RacesDisplay = (props: RacesDisplayProps) => {
             isClosed || !canManageRaces ? null : (
               <SpaceBetween direction="horizontal" size="xs">
                 <Button onClick={() => navigate(getPath(PageId.MANAGE_RACES))}>{t('manageRace')}</Button>
-                <Button onClick={() => navigate(getPath(PageId.CREATE_RACE))}>{t('createRace')}</Button>
+                <Button variant="primary" onClick={() => navigate(getPath(PageId.CREATE_RACE))}>
+                  {t('createRace')}
+                </Button>
               </SpaceBetween>
             )
           }
           counter={`(${leaderboards.length})`}
         >
-          {isClosed ? t('completedRaces') : t('communityRaces')}
+          {title ?? (isClosed ? t('completedRaces') : t('communityRaces'))}
         </Header>
       }
     >

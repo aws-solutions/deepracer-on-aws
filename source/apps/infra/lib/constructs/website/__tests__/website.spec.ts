@@ -47,6 +47,7 @@ describe.skip('StaticWebsite', () => {
       modelStorageBucket,
       uploadBucket,
       namespace: TEST_NAMESPACE,
+      solutionVersion: 'v1.0.0',
     });
 
     template = Template.fromStack(stack);

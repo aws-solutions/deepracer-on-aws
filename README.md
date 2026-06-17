@@ -72,6 +72,22 @@ Deploying this solution with the default parameters deploys the following compon
 
 1. A user data bucket ([Amazon S3](https://aws.amazon.com/s3/)) stores all user data including trained models, evaluation results, and other assets generated during the DeepRacer workflow.
 
+1. An [Amazon DynamoDB Stream](https://aws.amazon.com/dynamodb/) captures item-level changes from the main table and delivers them to downstream Lambda consumers, enabling event-driven orchestration of live race evaluations and real-time broadcast of race state to spectators.
+
+1. A [AWS Lambda](https://aws.amazon.com/lambda/) Broadcast Handler (LiveBroadcastHandler) is triggered by the DynamoDB stream and detects relevant state changes — such as evaluation started/completed, leaderboard updates, and winner declarations — and publishes corresponding events to the IoT Core MQTT topic for the active race, delivering real-time updates to connected spectator browsers.
+
+1. [AWS IoT Core](https://aws.amazon.com/iot-core/) provides a managed WebSocket pub/sub channel for delivering live race state updates to spectator and participant browsers. Each live race uses a dedicated MQTT topic scoped by leaderboard ID. Spectators subscribe via WebSocket; the Broadcast Handler publishes via IAM-authorized HTTPS. IoT Core handles connection management, fan-out, and scaling without requiring a connections table or custom connect/disconnect handlers.
+
+1. [AWS EventBridge Schedules](https://aws.amazon.com/eventbridge/) triggers the SafetyNet Lambda whenever a live race Step Functions execution reaches a terminal state (succeeded, failed, aborted, or timed out), ensuring the execution lock is cleared and pending evaluations are retriggered without manual intervention.
+
+1. [AWS Lambda](https://aws.amazon.com/lambda/) Queue API Handlers are a set of Lambda functions that back the live race queue management endpoints. They handle facilitator operations including listing the queue, reordering submissions via fractional indexing, removing submissions, resetting in-progress or failed models, clearing the leaderboard, launching the live race, and declaring a winner.
+
+1. An [AWS Lambda](https://aws.amazon.com/lambda/) Attach IoT Policy function grants newly authenticated users the IoT Core policy required to subscribe to live race MQTT topics over WebSocket, enabling real-time race state delivery to their browser sessions.
+
+1. A [AWS Lambda](https://aws.amazon.com/lambda/) Stream Handler is triggered by the DynamoDB stream and is responsible for auto-starting a new Step Functions execution for a live race when one or more submissions with PENDING status exist in the queue, the race is IN_PROGRESS, autolaunch is enabled, and no execution is currently running. It acquires the execution lock via a conditional write before starting the execution.
+
+1. A [AWS Lambda](https://aws.amazon.com/lambda/) SafetyNet function is invoked by EventBridge when a live race Step Functions execution reaches any terminal state. It clears the execution lock with a conditional write, applies a backoff check if the execution has failed repeatedly, and touches a PENDING queue item to generate a DynamoDB stream event — retriggering the Stream Handler to start a new execution if items remain in the queue.
+
 ## Package layout
 
 - The source code for the **DeepRacer on AWS** is located in `./source`.

@@ -37,11 +37,13 @@
     "status": {
       "open": "Open",
       "closed": "Closed",
+      "scheduled": "Scheduled",
+      "inProgress": "In progress",
       "toRace": "to race"
     },
-    "raceType": {
-      "timeTrial": "Time trial",
-      "objectAvoidance": "Object avoidance"
+    "raceMode": {
+      "live": "Live race",
+      "community": "Community race"
     },
     "filters": {
       "filteringAriaLabel": "Filter races",

@@ -148,3 +148,105 @@ describe('CreateLeaderboard operation for Object Avoidance', () => {
     ).rejects.toStrictEqual(new BadRequestError({ message: 'Number of obstacle positions is invalid.' }));
   });
 });
+
+describe('CreateLeaderboard operation for Live Race', () => {
+  const TEST_LEADERBOARD_DEFINITION: LeaderboardDefinition = {
+    name: TEST_LEADERBOARD_ITEM.name,
+    description: '',
+    openTime: new Date('2022-10-08T00:46:31.378493Z'),
+    closeTime: new Date('2022-10-11T00:46:31.378493Z'),
+    trackConfig: TEST_LEADERBOARD_ITEM.trackConfig,
+    raceType: TEST_LEADERBOARD_ITEM.raceType,
+    resettingBehaviorConfig: TEST_LEADERBOARD_ITEM.resettingBehaviorConfig,
+    submissionTerminationConditions: {
+      maximumLaps: TEST_LEADERBOARD_ITEM.submissionTerminationConditions.maxLaps,
+      minimumLaps: TEST_LEADERBOARD_ITEM.minimumLaps,
+      maxTimeInMinutes: TEST_LEADERBOARD_ITEM.submissionTerminationConditions.maxTimeInMinutes,
+    },
+    timingMethod: TEST_LEADERBOARD_ITEM.timingMethod,
+    maxSubmissionsPerUser: TEST_LEADERBOARD_ITEM.maxSubmissionsPerUser,
+  };
+
+  it('should create a live race with valid fields', async () => {
+    vi.spyOn(leaderboardDao, 'create').mockResolvedValue(TEST_LEADERBOARD_ITEM);
+
+    const output = await CreateLeaderboardOperation(
+      {
+        leaderboardDefinition: {
+          ...TEST_LEADERBOARD_DEFINITION,
+          isLive: true,
+          liveEventTime: new Date(Date.now() + 86400000),
+          maxResets: 5,
+        },
+      },
+      TEST_OPERATION_CONTEXT,
+    );
+
+    expect(output.leaderboardId).toEqual(TEST_LEADERBOARD_ITEM.leaderboardId);
+  });
+
+  it('should throw error if liveEventTime is missing for live race', async () => {
+    await expect(
+      CreateLeaderboardOperation(
+        {
+          leaderboardDefinition: {
+            ...TEST_LEADERBOARD_DEFINITION,
+            isLive: true,
+          },
+        },
+        TEST_OPERATION_CONTEXT,
+      ),
+    ).rejects.toStrictEqual(new BadRequestError({ message: 'liveEventTime is required for live races.' }));
+  });
+
+  it('should throw error if liveEventTime is in the past', async () => {
+    await expect(
+      CreateLeaderboardOperation(
+        {
+          leaderboardDefinition: {
+            ...TEST_LEADERBOARD_DEFINITION,
+            isLive: true,
+            liveEventTime: new Date('2020-01-01T00:00:00Z'),
+          },
+        },
+        TEST_OPERATION_CONTEXT,
+      ),
+    ).rejects.toStrictEqual(new BadRequestError({ message: 'Event time must be in the future.' }));
+  });
+
+  it('should default maxResets to 3 when not provided', async () => {
+    const createSpy = vi.spyOn(leaderboardDao, 'create').mockResolvedValue(TEST_LEADERBOARD_ITEM);
+
+    await CreateLeaderboardOperation(
+      {
+        leaderboardDefinition: {
+          ...TEST_LEADERBOARD_DEFINITION,
+          isLive: true,
+          liveEventTime: new Date(Date.now() + 86400000),
+        },
+      },
+      TEST_OPERATION_CONTEXT,
+    );
+
+    expect(createSpy).toHaveBeenCalledWith(expect.objectContaining({ isLive: true, maxResets: 3 }));
+  });
+
+  it('should set liveEventStatus to SCHEDULED and submissionPeriodOpen to false', async () => {
+    const createSpy = vi.spyOn(leaderboardDao, 'create').mockResolvedValue(TEST_LEADERBOARD_ITEM);
+
+    await CreateLeaderboardOperation(
+      {
+        leaderboardDefinition: {
+          ...TEST_LEADERBOARD_DEFINITION,
+          isLive: true,
+          liveEventTime: new Date(Date.now() + 86400000),
+        },
+      },
+      TEST_OPERATION_CONTEXT,
+    );
+
+    expect(createSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ liveEventStatus: 'SCHEDULED', submissionPeriodOpen: false }),
+    );
+  });
+});

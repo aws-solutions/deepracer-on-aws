@@ -6,6 +6,7 @@ import intervalPlural from 'i18next-intervalplural-postprocessor';
 import { initReactI18next } from 'react-i18next';
 
 import account from '#i18n/en/account.json';
+import adminModelDownload from '#i18n/en/adminModelDownload.json';
 import auth from '#i18n/en/auth.json';
 import avatar from '#i18n/en/avatar.json';
 import breadcrumbs from '#i18n/en/breadcrumbs.json';
@@ -18,6 +19,7 @@ import getStarted from '#i18n/en/getStarted.json';
 import home from '#i18n/en/home.json';
 import importModel from '#i18n/en/importModel.json';
 import leaderboards from '#i18n/en/leaderboards.json';
+import liveRace from '#i18n/en/liveRace.json';
 import modelDetails from '#i18n/en/modelDetails.json';
 import models from '#i18n/en/models.json';
 import navigation from '#i18n/en/navigation.json';
@@ -32,6 +34,7 @@ const defaultNS = 'common';
 const resources = {
   en: {
     account,
+    adminModelDownload,
     auth,
     avatar,
     breadcrumbs,
@@ -43,6 +46,7 @@ const resources = {
     getStarted,
     home,
     leaderboards,
+    liveRace,
     modelDetails,
     models,
     navigation,

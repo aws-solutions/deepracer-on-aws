@@ -4,6 +4,7 @@
 import { deepRacerIndyAppConfig } from '@deepracer-indy/config';
 import { vi } from 'vitest';
 
+import { DynamoDBItemAttribute } from '../../constants/itemAttributes.js';
 import { TEST_PROFILE_ITEM, TEST_NAMESPACE } from '../../constants/testConstants.js';
 import { ProfilesEntity } from '../../entities/ProfilesEntity.js';
 import { ProfileDao } from '../ProfileDao.js';
@@ -149,6 +150,53 @@ describe('ProfileDao', () => {
         limit: 10,
         cursor: inputCursor,
       });
+    });
+  });
+
+  describe('listProjected', () => {
+    const attrs = [
+      DynamoDBItemAttribute.PROFILE_ID,
+      DynamoDBItemAttribute.ALIAS,
+      DynamoDBItemAttribute.EMAIL_ADDRESS,
+      DynamoDBItemAttribute.TOTAL_MODEL_COUNT,
+    ] as const;
+
+    const projectedProfile = {
+      profileId: 'profile-1',
+      alias: 'User One',
+      emailAddress: 'user@example.com',
+      totalModelCount: 3,
+    };
+
+    it('should return only projected fields from a single page', async () => {
+      const mockGo = vi.fn().mockResolvedValue({ data: [projectedProfile], cursor: null });
+      mockProfilesEntity.query.bySortKey.mockReturnValue({ go: mockGo });
+
+      const result = await profileDao.listProjected(attrs);
+
+      expect(result).toEqual([projectedProfile]);
+      expect(mockGo).toHaveBeenCalledWith(expect.objectContaining({ attributes: attrs }));
+    });
+
+    it('should paginate through multiple pages and aggregate all results', async () => {
+      const mockGo = vi.fn().mockResolvedValueOnce({
+        data: [projectedProfile, { ...projectedProfile, profileId: 'profile-2' }],
+        cursor: null,
+      });
+      mockProfilesEntity.query.bySortKey.mockReturnValue({ go: mockGo });
+
+      const result = await profileDao.listProjected(attrs);
+
+      expect(result).toHaveLength(2);
+      expect(mockGo).toHaveBeenCalledTimes(1);
+      expect(mockGo).toHaveBeenCalledWith(expect.objectContaining({ pages: 'all' }));
+    });
+
+    it('should propagate DynamoDB errors naturally', async () => {
+      const mockGo = vi.fn().mockRejectedValue(new Error('DynamoDB error'));
+      mockProfilesEntity.query.bySortKey.mockReturnValue({ go: mockGo });
+
+      await expect(profileDao.listProjected(attrs)).rejects.toThrow('DynamoDB error');
     });
   });
 

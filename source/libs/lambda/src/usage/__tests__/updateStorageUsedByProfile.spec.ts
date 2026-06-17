@@ -229,7 +229,7 @@ describe('updateStorageUsedByProfile', () => {
       expect(profileDao.update).toHaveBeenCalledWith(
         { profileId: 'profile-123' },
         expect.objectContaining({
-          modelCount: 7,
+          totalModelCount: 7,
         }),
       );
     });
@@ -288,7 +288,7 @@ describe('updateStorageUsedByProfile', () => {
         { profileId: 'profile-123' },
         {
           modelStorageUsage: 3000,
-          modelCount: 5,
+          totalModelCount: 5,
         },
       );
     });

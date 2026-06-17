@@ -35,3 +35,13 @@ export const checkUserGroupMembership = async (groupsToCheck: UserGroups[]): Pro
     return false;
   }
 };
+
+export const getUserGroups = async (): Promise<UserGroups[]> => {
+  try {
+    const authSession = await fetchAuthSession();
+    const raw = (authSession.tokens?.accessToken?.payload['cognito:groups'] as string[]) ?? [];
+    return raw.filter((g): g is UserGroups => Object.values(UserGroups).includes(g as UserGroups));
+  } catch {
+    return [];
+  }
+};

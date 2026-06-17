@@ -20,12 +20,17 @@ service DeepRacerIndy {
     operations: [
         ImportModel
         TestRewardFunction
+        ListAdminProfiles
+        ListModelsForProfile
+        GetAdminAssetUrl
+        AttachLiveRacePolicy
     ]
     resources: [
         ModelResource
         LeaderboardResource
         ProfileResource
         GlobalSettingResource
+        LiveQueueItemResource
     ]
     errors: [
         BadRequestError
@@ -77,6 +82,13 @@ resource LeaderboardResource {
         JoinLeaderboard
         ListRankings
         ListSubmissions
+        GetLiveRaceState
+        ReorderLiveQueue
+        RemoveLiveQueueItem
+        ResetLiveQueueModel
+        ClearLiveLeaderboard
+        LaunchLiveRace
+        DeclareWinner
     ]
 }
 
@@ -93,3 +105,11 @@ resource ProfileResource {
 }
 
 resource GlobalSettingResource { read: GetGlobalSetting, update: UpdateGlobalSetting }
+
+resource LiveQueueItemResource {
+    identifiers: {
+        leaderboardId: ResourceIdentifier
+        submissionId: ResourceIdentifier
+    }
+    list: ListLiveQueueItems
+}

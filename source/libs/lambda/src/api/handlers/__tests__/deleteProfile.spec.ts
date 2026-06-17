@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ResourceId } from '@deepracer-indy/database';
-import { BadRequestError, UserGroups } from '@deepracer-indy/typescript-server-client';
+import { BadRequestError, InternalFailureError, UserGroups } from '@deepracer-indy/typescript-server-client';
 import { logger, metricsLogger } from '@deepracer-indy/utils';
 
 import { cognitoClient } from '../../../utils/clients/cognitoClient.js';
@@ -71,7 +71,7 @@ describe('DeleteProfile operation', () => {
     vi.spyOn(cognitoClient, 'send').mockRejectedValue(new Error('Cognito error'));
 
     await expect(DeleteProfileOperation(input, context)).rejects.toStrictEqual(
-      new BadRequestError({
+      new InternalFailureError({
         message: 'Failed to verify user permissions.',
       }),
     );

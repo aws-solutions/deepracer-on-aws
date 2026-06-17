@@ -59,6 +59,8 @@ export interface UserIdentityProps {
   namespace: string;
   isSesEnabled?: CfnCondition;
   sesVerifiedEmail?: string;
+  sesIdentity?: string;
+  isSesIdentityProvided?: CfnCondition;
 }
 
 export const BASE_IDENTITY_POOL_NAME = 'dr-idp';
@@ -264,7 +266,14 @@ export class UserIdentity extends Construct {
       });
       emailVolumeAnomalyAlarm.cfnOptions.condition = props.isSesEnabled;
 
-      const sesIdentityArn = `arn:${Stack.of(this).partition}:ses:${Stack.of(this).region}:${Stack.of(this).account}:identity/${props.sesVerifiedEmail}`;
+      const sesIdentityForArn = props.isSesIdentityProvided
+        ? Fn.conditionIf(
+            props.isSesIdentityProvided.logicalId,
+            props.sesIdentity ?? '',
+            props.sesVerifiedEmail ?? '',
+          ).toString()
+        : props.sesVerifiedEmail;
+      const sesIdentityArn = `arn:${Stack.of(this).partition}:ses:${Stack.of(this).region}:${Stack.of(this).account}:identity/${sesIdentityForArn}`;
 
       cfnUserPool.emailConfiguration = {
         emailSendingAccount: Token.asString(
