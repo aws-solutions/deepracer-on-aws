@@ -28,7 +28,7 @@
     "@types/aws-lambda": "^8.10.140",
     "aws-cdk-lib": "2.197.0",
     "constructs": "^10.3.0",
-    "js-yaml": "^4.1.0",
+    "js-yaml": "^4.2.0",
     "uuid": "^11.0.3",
     "vitest": "4.1.0"
   },
