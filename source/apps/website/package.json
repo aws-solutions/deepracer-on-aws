@@ -40,7 +40,7 @@
     "react-i18next": "^15.4.1",
     "react-multi-carousel": "^2.8.5",
     "react-redux": "^9.2.0",
-    "react-router-dom": "^6.30.3",
+    "react-router-dom": "^6.30.4",
     "three": "^0.174.0",
     "three-stdlib": "^2.35.14",
     "yup": "^1.6.1"

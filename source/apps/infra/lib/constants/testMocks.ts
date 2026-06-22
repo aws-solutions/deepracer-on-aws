@@ -2,11 +2,35 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Duration, Stack, type CfnResource } from 'aws-cdk-lib';
+import { Key } from 'aws-cdk-lib/aws-kms';
 import { Architecture, Code, Function, Runtime, Tracing } from 'aws-cdk-lib/aws-lambda';
-import type { LogGroup } from 'aws-cdk-lib/aws-logs';
+import { LogGroup } from 'aws-cdk-lib/aws-logs';
 import type { Construct } from 'constructs';
 
 import type { NodeLambdaFunctionProps } from '../constructs/common/nodeLambdaFunction.js';
+
+/**
+ * Creates a mock factory for KmsHelper that returns a proper IKey from CDK.
+ * CDK 2.246+ validates encryptionKey implements IKey interface via prop-injectable.
+ *
+ * Usage in test files:
+ * ```ts
+ * vi.mock('../../common/kmsHelper.js', () => createKmsHelperMock());
+ * ```
+ */
+export function createKmsHelperMock() {
+  return {
+    KmsHelper: {
+      get: vi.fn((scope: Construct) => {
+        return Key.fromKeyArn(
+          Stack.of(scope),
+          `MockKey-${Math.random().toString(36).slice(2)}`,
+          'arn:aws:kms:us-east-1:123456789012:key/mock-key-id',
+        );
+      }),
+    },
+  };
+}
 
 /**
  * Creates a mock factory for LogGroupsHelper that returns stub log group objects.
@@ -26,10 +50,13 @@ export async function createLogGroupsHelperMock() {
     LogGroupsHelper: {
       ...actual.LogGroupsHelper,
       getAllLogGroups: () => [],
-      getOrCreateLogGroup: vi.fn().mockImplementation((_scope: unknown, id: string) => ({
-        logGroupName: `mocked-log-group-${id}`,
-        logGroupArn: `arn:aws:logs:us-east-1:123456789012:log-group:mocked-log-group-${id}`,
-      })),
+      getOrCreateLogGroup: vi.fn().mockImplementation((scope: Construct, id: string) => {
+        return LogGroup.fromLogGroupArn(
+          Stack.of(scope),
+          `MockLogGroup-${id}-${Math.random().toString(36).slice(2)}`,
+          `arn:aws:logs:us-east-1:123456789012:log-group:mocked-log-group-${id}`,
+        );
+      }),
     },
   };
 }

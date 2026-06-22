@@ -8,22 +8,18 @@ import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { describe, expect, it } from 'vitest';
 
 import { TEST_NAMESPACE } from '../../../constants/testConstants.js';
-import { createNodeLambdaFunctionMock, createLogGroupsHelperMock } from '../../../constants/testMocks.js';
+import {
+  createNodeLambdaFunctionMock,
+  createLogGroupsHelperMock,
+  createKmsHelperMock,
+} from '../../../constants/testMocks.js';
 import { NodeLambdaFunction } from '../../common/nodeLambdaFunction.js';
 import { LiveRaceWorkflow } from '../liveRaceWorkflow.js';
 
 // Mock NodeLambdaFunction to use inline code instead of esbuild bundling.
 vi.mock('../../common/nodeLambdaFunction.js', () => createNodeLambdaFunctionMock());
 
-vi.mock('#constructs/common/kmsHelper.js', () => ({
-  KmsHelper: {
-    get: vi.fn(() => ({
-      grantEncryptDecrypt: vi.fn(),
-      keyId: 'mock-key-id',
-      keyArn: 'arn:aws:kms:us-east-1:123456789012:key/mock-key-id',
-    })),
-  },
-}));
+vi.mock('#constructs/common/kmsHelper.js', () => createKmsHelperMock());
 
 // Mock the LogGroupsHelper to avoid having the static log groups shared between stacks
 vi.mock('#constructs/common/logGroupsHelper.js', () => createLogGroupsHelperMock());

@@ -2144,6 +2144,9 @@ exports[`UserRolePolicies > should match snapshot 1`] = `
       "UpdateReplacePolicy": "Retain",
     },
     "TestApiDeployment8541C0A042dbeed27fbe0b08f86e6a9f3a07881f": {
+      "Metadata": {
+        "aws:cdk:do-not-refactor": true,
+      },
       "Properties": {
         "Description": "Automatically created by the RestApi construct",
         "RestApiId": {

@@ -12,10 +12,10 @@ import { EventSourceMapping, FilterCriteria, FilterRule, StartingPosition } from
 import { SqsDlq } from 'aws-cdk-lib/aws-lambda-event-sources';
 import { Queue, QueueEncryption } from 'aws-cdk-lib/aws-sqs';
 import { AwsCustomResource, AwsCustomResourcePolicy, PhysicalResourceId, Provider } from 'aws-cdk-lib/custom-resources';
-import { Construct, IConstruct } from 'constructs';
+import { Construct } from 'constructs';
 
 import { iotTopicPrefix } from '../../constants/iotTopics.js';
-import { addCfnGuardSuppression, addCfnGuardSuppressionForAutoCreatedLambdas } from '../common/cfnGuardHelper.js';
+import { addCfnGuardSuppressionForAutoCreatedLambdas } from '../common/cfnGuardHelper.js';
 import { LogGroupCategory } from '../common/logGroupsHelper.js';
 import { NodeLambdaFunction } from '../common/nodeLambdaFunction.js';
 
@@ -120,10 +120,6 @@ export class LiveRaceEvents extends Construct {
       properties: { policyName },
     });
     addCfnGuardSuppressionForAutoCreatedLambdas(this, deleteIoTPolicyProviderName);
-    const waiterStateMachine = deletePolicyProvider.node.findChild('waiter-state-machine');
-    addCfnGuardSuppression(waiterStateMachine.node.tryFindChild('LogGroup') as IConstruct, [
-      'CLOUDWATCH_LOG_GROUP_ENCRYPTED',
-    ]);
 
     // AwsCustomResource to retrieve the IoT ATS endpoint at deploy time.
     // IoT ATS endpoints are account-scoped and never change, so no onUpdate needed.

@@ -10,7 +10,7 @@ import { ManagedPolicy, Policy, PolicyDocument, PolicyStatement, Role, ServicePr
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { Asset } from 'aws-cdk-lib/aws-s3-assets';
 import { Provider } from 'aws-cdk-lib/custom-resources';
-import { Construct, IConstruct } from 'constructs';
+import { Construct } from 'constructs';
 
 import { extractEcrLoginMap, generateEcrLoginCommands } from './helpers.js';
 import { addCfnGuardSuppression, addCfnGuardSuppressionForAutoCreatedLambdas } from '../common/cfnGuardHelper.js';
@@ -343,11 +343,5 @@ export class EcrImageDownloaderWithTrigger extends Construct {
 
     // Ensure the custom resource depends on the CodeBuild project
     this.autoTriggerResource.node.addDependency(this.codeBuildProject);
-
-    // Suppress CFN Guard rule for internal waiter state machine log group - created by CDK Provider construct
-    // We need to find the log group in the Provider's child constructs
-    const waiterStateMachine = this.customResourceProvider.node.findChild('waiter-state-machine');
-    const waiterLogGroup = waiterStateMachine.node.tryFindChild('LogGroup');
-    addCfnGuardSuppression(waiterLogGroup as IConstruct, ['CLOUDWATCH_LOG_GROUP_ENCRYPTED']);
   }
 }
