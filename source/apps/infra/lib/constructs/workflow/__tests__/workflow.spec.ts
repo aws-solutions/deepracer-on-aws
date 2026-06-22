@@ -9,23 +9,15 @@ import { Queue } from 'aws-cdk-lib/aws-sqs';
 import { describe, expect, it } from 'vitest';
 
 import { TEST_NAMESPACE } from '../../../constants/testConstants.js';
-import { createNodeLambdaFunctionMock, createLogGroupsHelperMock } from '../../../constants/testMocks.js';
+import {
+  createNodeLambdaFunctionMock,
+  createLogGroupsHelperMock,
+  createKmsHelperMock,
+} from '../../../constants/testMocks.js';
 import { Workflow } from '../workflow.js';
 
 // Mock the KmsHelper to avoid having the single key shared between stacks
-vi.mock('#constructs/common/kmsHelper.js', () => {
-  return {
-    KmsHelper: {
-      get: vi.fn(() => {
-        return {
-          grantEncryptDecrypt: vi.fn(),
-          keyId: 'mock-key-id',
-          keyArn: 'arn:aws:kms:us-east-1:123456789012:key/mock-key-id',
-        };
-      }),
-    },
-  };
-});
+vi.mock('#constructs/common/kmsHelper.js', () => createKmsHelperMock());
 
 // Mock the LogGroupsHelper to avoid having the static log groups shared between stacks
 vi.mock('#constructs/common/logGroupsHelper.js', () => createLogGroupsHelperMock());
@@ -674,7 +666,11 @@ describe('Workflow', () => {
         PolicyDocument: {
           Statement: Match.arrayWith([
             Match.objectLike({
-              Action: Match.arrayWith(['dynamodb:BatchGetItem', 'dynamodb:GetRecords', 'dynamodb:GetShardIterator']),
+              Action: Match.arrayWith(['dynamodb:BatchGetItem', 'dynamodb:PutItem', 'dynamodb:UpdateItem']),
+              Effect: 'Allow',
+            }),
+            Match.objectLike({
+              Action: Match.arrayWith(['dynamodb:GetRecords', 'dynamodb:GetShardIterator']),
               Effect: 'Allow',
             }),
           ]),

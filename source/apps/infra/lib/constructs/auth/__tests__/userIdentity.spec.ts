@@ -227,8 +227,6 @@ describe('UserIdentity', () => {
               Match.objectLike({
                 Action: Match.arrayWith([
                   'dynamodb:BatchGetItem',
-                  'dynamodb:GetRecords',
-                  'dynamodb:GetShardIterator',
                   'dynamodb:Query',
                   'dynamodb:GetItem',
                   'dynamodb:Scan',
@@ -239,6 +237,11 @@ describe('UserIdentity', () => {
                   'dynamodb:DeleteItem',
                   'dynamodb:DescribeTable',
                 ]),
+                Effect: 'Allow',
+                Resource: Match.anyValue(),
+              }),
+              Match.objectLike({
+                Action: Match.arrayWith(['dynamodb:GetRecords', 'dynamodb:GetShardIterator']),
                 Effect: 'Allow',
                 Resource: Match.anyValue(),
               }),

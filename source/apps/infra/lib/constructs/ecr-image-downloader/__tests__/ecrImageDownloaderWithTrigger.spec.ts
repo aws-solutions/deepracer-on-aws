@@ -7,26 +7,18 @@ import { ComputeType } from 'aws-cdk-lib/aws-codebuild';
 import { Repository } from 'aws-cdk-lib/aws-ecr';
 
 import { TEST_NAMESPACE } from '../../../constants/testConstants.js';
-import { createNodeLambdaFunctionMock, createLogGroupsHelperMock } from '../../../constants/testMocks.js';
+import {
+  createNodeLambdaFunctionMock,
+  createLogGroupsHelperMock,
+  createKmsHelperMock,
+} from '../../../constants/testMocks.js';
 import { EcrImageDownloaderWithTrigger, ImageRepositoryMapping } from '../ecrImageDownloaderWithTrigger.js';
 
 // Mock NodeLambdaFunction to use inline code instead of esbuild bundling.
 vi.mock('../../common/nodeLambdaFunction.js', () => createNodeLambdaFunctionMock());
 
 // Mock the KmsHelper to avoid having the single key shared between stacks
-vi.mock('../../common/kmsHelper.js', () => {
-  return {
-    KmsHelper: {
-      get: vi.fn(() => {
-        return {
-          grantEncryptDecrypt: vi.fn(),
-          keyId: 'mock-key-id',
-          keyArn: 'arn:aws:kms:us-east-1:123456789012:key/mock-key-id',
-        };
-      }),
-    },
-  };
-});
+vi.mock('../../common/kmsHelper.js', () => createKmsHelperMock());
 
 // Mock the LogGroupsHelper to avoid having the static log groups shared between stacks
 vi.mock('#constructs/common/logGroupsHelper.js', () => createLogGroupsHelperMock());

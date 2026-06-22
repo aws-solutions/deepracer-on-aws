@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2026-06-22
+
+### Security
+
+- Update dependencies to mitigate [CVE-2026-11417](https://nvd.nist.gov/vuln/detail/CVE-2026-11417), [CVE-2026-33750](https://nvd.nist.gov/vuln/detail/CVE-2026-33750), [CVE-2026-34419](https://nvd.nist.gov/vuln/detail/CVE-2026-34419), [CVE-2026-37920](https://nvd.nist.gov/vuln/detail/CVE-2026-37920), [CVE-2026-48863](https://nvd.nist.gov/vuln/detail/CVE-2026-48863), [CVE-2026-48864](https://nvd.nist.gov/vuln/detail/CVE-2026-48864), [CVE-2026-42055](https://nvd.nist.gov/vuln/detail/CVE-2026-42055), [CVE-2026-42530](https://nvd.nist.gov/vuln/detail/CVE-2026-42530), [GHSA-537c-gmf6-5ccf](https://github.com/advisories/GHSA-537c-gmf6-5ccf), [GHSA-96hv-2xvq-fx4p](https://github.com/advisories/GHSA-96hv-2xvq-fx4p), [CVE-2026-49982](https://nvd.nist.gov/vuln/detail/CVE-2026-49982), [CVE-2026-12143](https://nvd.nist.gov/vuln/detail/CVE-2026-12143), [GHSA-x9g3-xrwr-cwfg](https://github.com/advisories/GHSA-x9g3-xrwr-cwfg), [GHSA-f886-m6hf-6m8v](https://github.com/advisories/GHSA-f886-m6hf-6m8v), [GHSA-r4q5-vmmm-2653](https://github.com/advisories/GHSA-r4q5-vmmm-2653), [GHSA-qx2v-qp2m-jg93](https://github.com/advisories/GHSA-qx2v-qp2m-jg93), [GHSA-q8mj-m7cp-5q26](https://github.com/advisories/GHSA-q8mj-m7cp-5q26), [GHSA-48c2-rrv3-qjmp](https://github.com/advisories/GHSA-48c2-rrv3-qjmp), [GHSA-gmq8-994r-jv83](https://github.com/advisories/GHSA-gmq8-994r-jv83), [GHSA-q7cg-457f-vx79](https://github.com/advisories/GHSA-q7cg-457f-vx79), [GHSA-4x5r-pxfx-6jf8](https://github.com/advisories/GHSA-4x5r-pxfx-6jf8), [GHSA-jxxr-4gwj-5jf2](https://github.com/advisories/GHSA-jxxr-4gwj-5jf2).
+
 ## [1.2.0] - 2026-06-17
 
 ### Added
