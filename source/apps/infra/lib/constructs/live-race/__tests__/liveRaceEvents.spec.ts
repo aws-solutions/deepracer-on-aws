@@ -88,8 +88,21 @@ describe('LiveRaceEvents', () => {
         PolicyDocument: {
           Statement: Match.arrayWith([
             Match.objectLike({
-              Action: Match.arrayWith(['iot:ListTargetsForPolicy', 'iot:DetachPolicy']),
+              Action: 'iot:ListTargetsForPolicy',
               Effect: 'Allow',
+            }),
+          ]),
+        },
+      }),
+    ).not.toThrow();
+    expect(() =>
+      template.hasResourceProperties('AWS::IAM::Policy', {
+        PolicyDocument: {
+          Statement: Match.arrayWith([
+            Match.objectLike({
+              Action: 'iot:DetachPolicy',
+              Effect: 'Allow',
+              Resource: '*',
             }),
           ]),
         },

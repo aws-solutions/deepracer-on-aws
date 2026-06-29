@@ -34,6 +34,8 @@ structure LiveQueueItem {
     submittedAt: Timestamp
 
     lastTriggeredAt: Long
+
+    avatar: AvatarConfig
 }
 
 list LiveQueueItemList {

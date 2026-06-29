@@ -32,7 +32,13 @@ const BASE_RETRY_MS = 1000;
 const MAX_RETRY_MS = 30000;
 
 const getRetryDelay = (attempt: number): number => {
-  return Math.min(BASE_RETRY_MS * Math.pow(2, attempt), MAX_RETRY_MS) + Math.random() * 1000;
+  //  Create holding unsigned 32 bit array of length 1
+  const array = new Uint32Array(1);
+  //  Modify array in place
+  crypto.getRandomValues(array);
+  //  Normalize to [0, 1) (exclusive of 1). 0xffffffff + 1 is used because we provided 32 bit array; need to divide by Uint32.Max + 1
+  const random = array[0] / (0xffffffff + 1);
+  return Math.min(BASE_RETRY_MS * Math.pow(2, attempt), MAX_RETRY_MS) + random * 1000;
 };
 
 const callAttachPolicy = async (signal: AbortSignal): Promise<void> => {

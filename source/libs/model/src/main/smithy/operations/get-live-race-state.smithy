@@ -65,6 +65,8 @@ structure CurrentEvaluationInfo {
     status: LiveQueueItemStatus
 
     streamUrl: String
+
+    avatar: AvatarConfig
 }
 
 structure LiveQueueSummary {
