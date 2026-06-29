@@ -14,7 +14,6 @@ import {
   Leaderboard,
   LiveEventStatus,
   ListLiveQueueItemsCommand,
-  ListProfilesCommand,
 } from '@deepracer-indy/typescript-client';
 import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
@@ -1207,25 +1206,19 @@ describe('<LiveRace />', () => {
         status: 'IN_PROGRESS' as const,
         resetCount: 0,
         submittedAt: new Date('2026-01-01T00:00:00Z'),
+        avatar: { top: 'short', skinColor: 'light', eyes: 'default' },
       },
     ];
 
-    it('renders RacerInfoBanner when profiles and queue items are both available', async () => {
-      mockDeepRacerClient.on(GetLiveRaceStateCommand).resolves(baseRaceState);
-      mockDeepRacerClient.on(ListLiveQueueItemsCommand).resolves({ items: queueItems });
-      mockDeepRacerClient.on(ListProfilesCommand).resolves({
-        profiles: [
-          {
-            profileId: 'profile-alice',
-            alias: 'alice',
-            avatar: { top: 'short', skinColor: 'light', eyes: 'default' },
-            computeMinutesUsed: 0,
-            computeMinutesQueued: 0,
-            maxTotalComputeMinutes: 600,
-            maxModelCount: 10,
-          },
-        ],
+    it('renders RacerInfoBanner when queue items are available with avatar data', async () => {
+      mockDeepRacerClient.on(GetLiveRaceStateCommand).resolves({
+        ...baseRaceState,
+        currentEvaluation: {
+          ...baseRaceState.currentEvaluation,
+          avatar: { top: 'short', skinColor: 'light', eyes: 'default' },
+        },
       });
+      mockDeepRacerClient.on(ListLiveQueueItemsCommand).resolves({ items: queueItems });
 
       render(<LiveRace />, {
         componentRoute: '/races/:leaderboardId/live',
@@ -1237,10 +1230,11 @@ describe('<LiveRace />', () => {
       });
     });
 
-    it('renders RacerInfoBanner even when no matching profile exists (graceful fallback)', async () => {
+    it('renders RacerInfoBanner even when avatar is missing (graceful fallback)', async () => {
       mockDeepRacerClient.on(GetLiveRaceStateCommand).resolves(baseRaceState);
-      mockDeepRacerClient.on(ListLiveQueueItemsCommand).resolves({ items: queueItems });
-      mockDeepRacerClient.on(ListProfilesCommand).resolves({ profiles: [] });
+      mockDeepRacerClient.on(ListLiveQueueItemsCommand).resolves({
+        items: [{ ...queueItems[0], avatar: undefined }],
+      });
 
       render(<LiveRace />, {
         componentRoute: '/races/:leaderboardId/live',
@@ -1250,32 +1244,6 @@ describe('<LiveRace />', () => {
       await waitFor(() => {
         expect(screen.getByTestId('racer-info-banner')).toBeInTheDocument();
       });
-    });
-
-    it('renders RacerInfoBanner even when profiles resolve after queue items', async () => {
-      mockDeepRacerClient.on(GetLiveRaceStateCommand).resolves(baseRaceState);
-      mockDeepRacerClient.on(ListLiveQueueItemsCommand).resolves({ items: queueItems });
-
-      let resolveProfiles!: (value: unknown) => void;
-      mockDeepRacerClient.on(ListProfilesCommand).callsFake(
-        () =>
-          new Promise((resolve) => {
-            resolveProfiles = resolve;
-          }),
-      );
-
-      render(<LiveRace />, {
-        componentRoute: '/races/:leaderboardId/live',
-        initialRouteEntries: ['/races/test-lb/live'],
-      });
-
-      // Banner renders before profiles arrive
-      await waitFor(() => {
-        expect(screen.getByTestId('racer-info-banner')).toBeInTheDocument();
-      });
-
-      // Profiles resolve late — should not crash
-      resolveProfiles({ profiles: [] });
     });
   });
 });

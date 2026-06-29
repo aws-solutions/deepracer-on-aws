@@ -2,7 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { Operation } from '@aws-smithy/server-common';
-import { leaderboardDao, liveQueueItemDao, rankingDao, submissionDao, ResourceId } from '@deepracer-indy/database';
+import {
+  leaderboardDao,
+  liveQueueItemDao,
+  profileDao,
+  rankingDao,
+  submissionDao,
+  ResourceId,
+} from '@deepracer-indy/database';
 import {
   BadRequestError,
   getGetLiveRaceStateHandler,
@@ -36,17 +43,20 @@ export const GetLiveRaceStateOperation: Operation<
   const currentItem = queue.find((queueItem) => queueItem.status === LiveQueueItemStatus.IN_PROGRESS);
 
   let streamUrl: string | undefined;
+  let avatar: Awaited<ReturnType<typeof profileDao.load>>['avatar'] | undefined;
   if (currentItem) {
-    try {
-      const submission = await submissionDao.get({
-        profileId: currentItem.profileId,
-        leaderboardId,
-        submissionId: currentItem.submissionId as ResourceId,
-      });
-      streamUrl = submission?.videoStreamUrl;
-    } catch {
-      /** no-op — streamUrl remains undefined */
-    }
+    const [submission, profile] = await Promise.all([
+      submissionDao
+        .get({
+          profileId: currentItem.profileId,
+          leaderboardId,
+          submissionId: currentItem.submissionId as ResourceId,
+        })
+        .catch(() => undefined),
+      profileDao.load({ profileId: currentItem.profileId }).catch(() => undefined),
+    ]);
+    streamUrl = submission?.videoStreamUrl;
+    avatar = profile?.avatar;
   }
 
   return {
@@ -65,6 +75,7 @@ export const GetLiveRaceStateOperation: Operation<
           modelName: currentItem.modelName,
           status: currentItem.status,
           streamUrl,
+          avatar,
         }
       : undefined,
     queue: {

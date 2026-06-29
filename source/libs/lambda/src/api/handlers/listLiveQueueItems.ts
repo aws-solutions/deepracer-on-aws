@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { Operation } from '@aws-smithy/server-common';
-import { liveQueueItemDao, type ResourceId } from '@deepracer-indy/database';
+import { liveQueueItemDao, profileDao, type ResourceId } from '@deepracer-indy/database';
 import {
   getListLiveQueueItemsHandler,
   type ListLiveQueueItemsServerInput,
@@ -22,6 +22,14 @@ export const ListLiveQueueItemsOperation: Operation<
   const leaderboardId = input.leaderboardId as ResourceId;
   const queueItems = await liveQueueItemDao.getQueue({ leaderboardId });
 
+  // Avatars live on the profile, not the queue item. Batch-load the unique profileIds
+  // referenced by the queue and attach each item's avatar from the resulting map.
+  const uniqueProfileIds = Array.from(new Set(queueItems.map((item) => item.profileId)));
+  const profiles = uniqueProfileIds.length
+    ? await profileDao.batchGet(uniqueProfileIds.map((profileId) => ({ profileId }))).catch(() => [])
+    : [];
+  const avatarByProfileId = new Map(profiles.map((profile) => [profile.profileId, profile.avatar]));
+
   const items: LiveQueueItem[] = queueItems.map((item) => ({
     leaderboardId: item.leaderboardId,
     submissionId: item.submissionId,
@@ -33,6 +41,7 @@ export const ListLiveQueueItemsOperation: Operation<
     status: item.status,
     resetCount: item.resetCount,
     submittedAt: new Date(item.submittedAt),
+    avatar: avatarByProfileId.get(item.profileId),
   }));
 
   return { items } satisfies ListLiveQueueItemsServerOutput;

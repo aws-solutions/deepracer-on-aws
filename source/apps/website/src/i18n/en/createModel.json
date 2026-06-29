@@ -147,7 +147,7 @@
       "rightSteeringAngle": "Right steering angle",
       "rightSteeringAngleConstraintText": "Values are between -30 and 0.",
       "minimumSpeed": "Minimum speed",
-      "speedConstraintText": "Values are between 0.1 and 4.",
+      "speedConstraintText": "Values are between 0.5 and 4.",
       "maximumSpeed": "Maximum speed",
       "resetButton": "Reset to default values",
       "graphLabel": "Dynamic sector graph",
