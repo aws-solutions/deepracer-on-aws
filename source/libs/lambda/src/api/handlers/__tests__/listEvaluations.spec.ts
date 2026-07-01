@@ -20,6 +20,16 @@ describe('ListEvaluations operation', () => {
     vi.spyOn(s3Helper, 'getPresignedUrl').mockImplementation((location) => Promise.resolve(location));
   });
 
+  it('should request presigned URLs with video/mp4 content type for completed evaluations', async () => {
+    vi.spyOn(modelDao, 'load').mockResolvedValue(TEST_MODEL_ITEM);
+    vi.spyOn(evaluationDao, 'list').mockResolvedValue({ data: TEST_EVALUATION_ITEMS, cursor: null });
+    vi.spyOn(modelPerformanceMetricsHelper, 'getEvaluationMetrics').mockResolvedValue(MOCK_EVALUATION_METRICS);
+
+    await ListEvaluationsOperation({ modelId: TEST_MODEL_ITEM.modelId }, TEST_OPERATION_CONTEXT);
+
+    expect(s3Helper.getPresignedUrl).toHaveBeenCalledWith(expect.any(String), undefined, undefined, 'video/mp4');
+  });
+
   it('should return a list of evaluations on success', async () => {
     vi.spyOn(modelDao, 'load').mockResolvedValue(TEST_MODEL_ITEM);
     vi.spyOn(evaluationDao, 'list').mockResolvedValue({ data: TEST_EVALUATION_ITEMS, cursor: null });

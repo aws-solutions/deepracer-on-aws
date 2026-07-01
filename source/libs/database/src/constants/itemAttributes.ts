@@ -277,18 +277,27 @@ export const getWorkflowJobAttributes = <
         [Attribute.PRIMARY_VIDEO_S3_LOCATION]: '',
       },
       watch: [Attribute.NAME],
-      set: (_, { modelId, profileId, name: jobName }) => ({
-        [Attribute.METRICS_S3_LOCATION]: s3PathHelper.getMetricsS3Location(modelId, profileId, jobName),
-        [Attribute.SIM_TRACE_S3_LOCATION]: s3PathHelper.getSimTraceS3Location(modelId, profileId, jobName),
-        [Attribute.SIMULATION_HEARTBEAT_S3_LOCATION]: s3PathHelper.getSimulationHeartbeatS3Location(
-          modelId,
-          profileId,
-          jobName,
-        ),
-        [Attribute.SIMULATION_YAML_S3_LOCATION]: s3PathHelper.getSimulationYamlS3Location(modelId, profileId),
-        [Attribute.VIDEOS_S3_LOCATION]: s3PathHelper.getVideosS3Location(modelId, profileId, jobName),
-        [Attribute.PRIMARY_VIDEO_S3_LOCATION]: s3PathHelper.getPrimaryVideoS3Location(modelId, profileId, jobName),
-      }),
+      set: (_, { modelId, profileId, name: jobName }) => {
+        const timestamp = new Date().toISOString();
+
+        return {
+          [Attribute.METRICS_S3_LOCATION]: s3PathHelper.getMetricsS3Location(modelId, profileId, jobName, timestamp),
+          [Attribute.SIM_TRACE_S3_LOCATION]: s3PathHelper.getSimTraceS3Location(modelId, profileId, jobName, timestamp),
+          [Attribute.SIMULATION_HEARTBEAT_S3_LOCATION]: s3PathHelper.getSimulationHeartbeatS3Location(
+            modelId,
+            profileId,
+            jobName,
+          ),
+          [Attribute.SIMULATION_YAML_S3_LOCATION]: s3PathHelper.getSimulationYamlS3Location(modelId, profileId),
+          [Attribute.VIDEOS_S3_LOCATION]: s3PathHelper.getVideosS3Location(modelId, profileId, jobName, timestamp),
+          [Attribute.PRIMARY_VIDEO_S3_LOCATION]: s3PathHelper.getPrimaryVideoS3Location(
+            modelId,
+            profileId,
+            jobName,
+            timestamp,
+          ),
+        };
+      },
       properties: {
         [Attribute.METRICS_S3_LOCATION]: {
           type: 'string',

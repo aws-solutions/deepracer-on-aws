@@ -39,9 +39,17 @@ const RaceDetails = () => {
   const { leaderboardId = '' } = useParams();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { data: rankings = [] } = useListRankingsQuery({ leaderboardId }, { refetchOnMountOrArgChange: true });
+  const {
+    data: rankings = [],
+    refetch: refetchRankings,
+    isFetching: isRankingsFetching,
+  } = useListRankingsQuery({ leaderboardId }, { refetchOnMountOrArgChange: true });
   const { data: personalRanking } = useGetRankingQuery({ leaderboardId }, { refetchOnMountOrArgChange: true });
-  const { data: submissions = [] } = useListSubmissionsQuery({ leaderboardId }, { refetchOnMountOrArgChange: true });
+  const {
+    data: submissions = [],
+    refetch: refetchSubmissions,
+    isFetching: isSubmissionsFetching,
+  } = useListSubmissionsQuery({ leaderboardId }, { refetchOnMountOrArgChange: true });
   const [deleteLeaderboard] = useDeleteLeaderboardMutation();
   const {
     data: leaderboard,
@@ -145,6 +153,8 @@ const RaceDetails = () => {
                     rankings={rankings}
                     leaderboard={leaderboard}
                     submissionPeriodOpen={liveRaceState?.race?.submissionPeriodOpen}
+                    onRefresh={refetchRankings}
+                    isRefreshing={isRankingsFetching}
                   />
                 ),
                 id: 'leaderboard',
@@ -156,6 +166,8 @@ const RaceDetails = () => {
                     submissions={submissions}
                     leaderboard={leaderboard}
                     submissionPeriodOpen={liveRaceState?.race?.submissionPeriodOpen}
+                    onRefresh={refetchSubmissions}
+                    isRefreshing={isSubmissionsFetching}
                   />
                 ),
                 id: 'yourSubmissions',
