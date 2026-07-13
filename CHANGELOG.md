@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Update dependencies to mitigate [CVE-2026-10536](https://nvd.nist.gov/vuln/detail/CVE-2026-10536), [CVE-2026-11564](https://nvd.nist.gov/vuln/detail/CVE-2026-11564), [CVE-2026-11856](https://nvd.nist.gov/vuln/detail/CVE-2026-11856), [CVE-2026-11352](https://nvd.nist.gov/vuln/detail/CVE-2026-11352), [CVE-2026-11586](https://nvd.nist.gov/vuln/detail/CVE-2026-11586), and [CVE-2026-53486](https://nvd.nist.gov/vuln/detail/CVE-2026-53486).
 
+### Updated
+
+- Reduce nested components on AdminModelDownload page
+
 ## [1.2.2] - 2026-06-29
 
 ### Fixed
