@@ -162,6 +162,29 @@ const ModelRows = ({ profileId, onDownloadError }: ModelRowsProps) => {
   );
 };
 
+// --- Profile alias cell ---
+
+interface ProfileCellProps {
+  profile: AdminProfile;
+  expandedIds: Set<string>;
+  onToggle: (profileId: string) => void;
+  onDownloadError: (msg: string) => void;
+}
+
+const ProfileCell = ({ profile, expandedIds, onToggle, onDownloadError }: ProfileCellProps) => {
+  const isExpanded = expandedIds.has(profile.profileId);
+  return (
+    <ExpandableSection
+      headerText={profile.alias}
+      expanded={isExpanded}
+      onChange={() => onToggle(profile.profileId)}
+      variant="inline"
+    >
+      {isExpanded && <ModelRows profileId={profile.profileId} onDownloadError={onDownloadError} />}
+    </ExpandableSection>
+  );
+};
+
 // --- Main page ---
 
 const PAGE_SIZE_OPTIONS = [
@@ -245,16 +268,12 @@ const AdminModelDownload = () => {
             header: t('profiles.columnHeader.racerName'),
             sortingField: 'alias',
             cell: (p: AdminProfile) => (
-              <ExpandableSection
-                headerText={p.alias}
-                expanded={expandedIds.has(p.profileId)}
-                onChange={() => toggleExpand(p.profileId)}
-                variant="inline"
-              >
-                {expandedIds.has(p.profileId) && (
-                  <ModelRows profileId={p.profileId} onDownloadError={handleDownloadError} />
-                )}
-              </ExpandableSection>
+              <ProfileCell
+                profile={p}
+                expandedIds={expandedIds}
+                onToggle={toggleExpand}
+                onDownloadError={handleDownloadError}
+              />
             ),
           },
           {

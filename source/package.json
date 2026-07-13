@@ -92,6 +92,7 @@
   },
   "pnpm": {
     "overrides": {
+      "@xhmikosr/decompress": "10.2.1",
       "fast-xml-parser": ">=5.7.0",
       "npm": "npm:empty-npm-package@1.0.0",
       "minimatch@>=9.0.0 <9.0.7": "9.0.7",
