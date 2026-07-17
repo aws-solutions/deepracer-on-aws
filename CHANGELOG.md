@@ -5,15 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.4] - 2026-07-17
+
+### Security
+
+- Update dependencies to mitigate [CVE-2026-11816](https://nvd.nist.gov/vuln/detail/CVE-2026-11816), [CVE-2026-55379](https://nvd.nist.gov/vuln/detail/CVE-2026-55379), [CVE-2026-42533](https://nvd.nist.gov/vuln/detail/CVE-2026-42533), [CVE-2026-60005](https://nvd.nist.gov/vuln/detail/CVE-2026-60005), [CVE-2026-56434](https://nvd.nist.gov/vuln/detail/CVE-2026-56434), and [CVE-2026-59203](https://nvd.nist.gov/vuln/detail/CVE-2026-59203).
+
+### Changed
+
+- Remove use of void in useLiveRaceMqtt.ts
+
 ## [1.2.3] - 2026-07-13
 
 ### Security
 
 - Update dependencies to mitigate [CVE-2026-10536](https://nvd.nist.gov/vuln/detail/CVE-2026-10536), [CVE-2026-11564](https://nvd.nist.gov/vuln/detail/CVE-2026-11564), [CVE-2026-11856](https://nvd.nist.gov/vuln/detail/CVE-2026-11856), [CVE-2026-11352](https://nvd.nist.gov/vuln/detail/CVE-2026-11352), [CVE-2026-11586](https://nvd.nist.gov/vuln/detail/CVE-2026-11586), and [CVE-2026-53486](https://nvd.nist.gov/vuln/detail/CVE-2026-53486).
 
-### Updated
+### Changed
 
-- Reduce nested components on AdminModelDownload page
+- Reduce nested components on AdminModelDownload page.
 
 ## [1.2.2] - 2026-06-29
 

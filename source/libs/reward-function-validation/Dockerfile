@@ -22,7 +22,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN rm -f /usr/local/bin/aws-lambda-rie
 
 # Upgrade packages to fix CVEs
-RUN pip install --no-cache-dir --upgrade pillow==12.2.0 urllib3==2.7.0
+RUN pip install --no-cache-dir --upgrade pillow==12.3.0 urllib3==2.7.0
 
 # Pass the name of the function handler as an argument to the runtime
 CMD [ "lambda_function.lambda_handler" ]

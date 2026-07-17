@@ -144,7 +144,11 @@ export const useLiveRaceMqtt = (leaderboardId: string, options: UseLiveRaceMqttO
         }
         hasConnectedBefore = true;
         setConnectionStatus(ConnectionStatus.CONNECTED);
-        void client.subscribe({ subscriptions: [{ topicFilter: topic, qos: mqtt5.QoS.AtLeastOnce }] });
+        client
+          .subscribe({ subscriptions: [{ topicFilter: topic, qos: mqtt5.QoS.AtLeastOnce }] })
+          .catch((error: unknown) => {
+            console.error('Failed to subscribe to MQTT topic', { error });
+          });
       });
 
       client.on('disconnection', () => {
