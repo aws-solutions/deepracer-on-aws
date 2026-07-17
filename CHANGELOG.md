@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
-- Update dependencies to mitigate [CVE-2026-11816](https://nvd.nist.gov/vuln/detail/CVE-2026-11816), [CVE-2026-55379](https://nvd.nist.gov/vuln/detail/CVE-2026-55379), and [CVE-2026-42533](https://nvd.nist.gov/vuln/detail/CVE-2026-42533), [CVE-2026-60005](https://nvd.nist.gov/vuln/detail/CVE-2026-60005), [CVE-2026-56434](https://nvd.nist.gov/vuln/detail/CVE-2026-56434), and [CVE-2026-59203](https://nvd.nist.gov/vuln/detail/CVE-2026-59203).
+- Update dependencies to mitigate [CVE-2026-11816](https://nvd.nist.gov/vuln/detail/CVE-2026-11816), [CVE-2026-55379](https://nvd.nist.gov/vuln/detail/CVE-2026-55379), [CVE-2026-42533](https://nvd.nist.gov/vuln/detail/CVE-2026-42533), [CVE-2026-60005](https://nvd.nist.gov/vuln/detail/CVE-2026-60005), [CVE-2026-56434](https://nvd.nist.gov/vuln/detail/CVE-2026-56434), and [CVE-2026-59203](https://nvd.nist.gov/vuln/detail/CVE-2026-59203).
 
 ### Changed
 
