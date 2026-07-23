@@ -36,7 +36,7 @@ export const GetRankingOperation: Operation<GetRankingServerInput, GetRankingSer
       stats: rankingItem.stats,
       submissionNumber: rankingItem.submissionNumber,
       submittedAt: new Date(rankingItem.createdAt),
-      videoUrl: await s3Helper.getPresignedUrl(rankingItem.submissionVideoS3Location),
+      videoUrl: await s3Helper.getPresignedUrl(rankingItem.submissionVideoS3Location, undefined, undefined, 'video/mp4'),
     },
   } satisfies GetRankingServerOutput;
 };

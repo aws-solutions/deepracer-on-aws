@@ -53,7 +53,12 @@ export const GetEvaluationOperation: Operation<
       videoStreamUrl: evaluationItem.videoStreamUrl, // Only present while SimApp is streaming
       videoUrl:
         evaluationItem.status === JobStatus.COMPLETED && evaluationItem.metrics?.length // We don't send videoUrl if the evaluation doesn't have any completed laps because SimApp does not save the video in that case
-          ? await s3Helper.getPresignedUrl(evaluationItem.assetS3Locations.primaryVideoS3Location)
+          ? await s3Helper.getPresignedUrl(
+              evaluationItem.assetS3Locations.primaryVideoS3Location,
+              undefined,
+              undefined,
+              'video/mp4',
+            )
           : undefined,
     },
   } satisfies GetEvaluationServerOutput;

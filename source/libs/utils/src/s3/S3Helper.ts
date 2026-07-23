@@ -104,16 +104,20 @@ export class S3Helper {
    * @param location S3 location as string
    * @param expiresIn URL expiration time in seconds
    * @param downloadFilename Optional filename for Content-Disposition header
+   * @param contentType Optional MIME type to set as ResponseContentType (e.g. 'video/mp4').
+   *   Use this when S3 stores the object as binary/octet-stream but the browser needs
+   *   the correct MIME type to play/display it inline.
    * @returns Presigned URL for the S3 object
    */
   async getPresignedUrl(
     location: string,
     expiresIn = this.DEFAULT_PRESIGNED_URL_EXPIRE_TIME,
     downloadFilename?: string,
+    contentType?: string,
   ) {
     const s3Location = new AmazonS3URI(location);
     const sanitizedFilename = downloadFilename?.replace(/[\r\n"\\;]/g, '_');
-    logger.info('Generating presigned URL', { s3Location, expiresIn, downloadFilename: sanitizedFilename });
+    logger.info('Generating presigned URL', { s3Location, expiresIn, downloadFilename: sanitizedFilename, contentType });
 
     try {
       const presignedUrl = await getSignedUrl(
@@ -122,6 +126,7 @@ export class S3Helper {
           Bucket: s3Location.bucket,
           Key: s3Location.key,
           ResponseContentDisposition: sanitizedFilename ? `attachment; filename="${sanitizedFilename}"` : undefined,
+          ResponseContentType: contentType,
         }),
         { expiresIn },
       );
