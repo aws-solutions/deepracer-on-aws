@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.5] - 2026-07-24
+
+### Security
+
+- Update dependencies to mitigate [GHSA-2p49-hgcm-8545](https://github.com/advisories/GHSA-2p49-hgcm-8545), [CVE-2026-29074](https://nvd.nist.gov/vuln/detail/CVE-2026-29074), [GHSA-3jxr-9vmj-r5cp](https://github.com/advisories/GHSA-3jxr-9vmj-r5cp), [CVE-2026-13149](https://nvd.nist.gov/vuln/detail/CVE-2026-13149), [GHSA-gcfj-64vw-6mp9](https://github.com/advisories/GHSA-gcfj-64vw-6mp9), [CVE-2026-44494](https://nvd.nist.gov/vuln/detail/CVE-2026-44494), [GHSA-v2hh-gcrm-f6hx](https://github.com/advisories/GHSA-v2hh-gcrm-f6hx), [CVE-2026-54369](https://nvd.nist.gov/vuln/detail/CVE-2026-54369),[CVE-2026-58016](https://nvd.nist.gov/vuln/detail/CVE-2026-58016), [CVE-2026-45623](https://nvd.nist.gov/vuln/detail/CVE-2026-45623) and [CVE-2026-6322](https://nvd.nist.gov/vuln/detail/CVE-2026-6322).
+
+### Changed
+
+- Updated linting in files to match expectations for new versions of transitive dependencies.
+
 ## [1.2.4] - 2026-07-17
 
 ### Security

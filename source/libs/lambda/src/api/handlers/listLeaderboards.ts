@@ -21,31 +21,29 @@ export const ListLeaderboardsOperation: Operation<
 > = async (input, _context) => {
   const { cursor, data: leaderboardItems } = await leaderboardDao.list({ cursor: input.token });
 
-  const leaderboards = leaderboardItems.map(
-    (leaderboardItem): Leaderboard => ({
-      name: leaderboardItem.name,
-      openTime: new Date(leaderboardItem.openTime),
-      closeTime: new Date(leaderboardItem.closeTime),
-      trackConfig: leaderboardItem.trackConfig,
-      raceType: leaderboardItem.raceType,
-      objectAvoidanceConfig: leaderboardItem.objectAvoidanceConfig,
-      resettingBehaviorConfig: leaderboardItem.resettingBehaviorConfig,
-      submissionTerminationConditions: {
-        minimumLaps: leaderboardItem.minimumLaps,
-        maximumLaps: leaderboardItem.submissionTerminationConditions.maxLaps,
-        maxTimeInMinutes: leaderboardItem.submissionTerminationConditions.maxTimeInMinutes,
-      },
-      timingMethod: leaderboardItem.timingMethod,
-      maxSubmissionsPerUser: leaderboardItem.maxSubmissionsPerUser,
-      leaderboardId: leaderboardItem.leaderboardId,
-      participantCount: leaderboardItem.participantCount,
-      isLive: leaderboardItem.isLive,
-      liveEventTime: leaderboardItem.liveEventTime ? new Date(leaderboardItem.liveEventTime) : undefined,
-      liveEventStatus: leaderboardItem.liveEventStatus,
-      maxResets: leaderboardItem.maxResets,
-      submissionPeriodOpen: leaderboardItem.submissionPeriodOpen,
-    }),
-  );
+  const leaderboards = leaderboardItems.map((leaderboardItem): Leaderboard => ({
+    name: leaderboardItem.name,
+    openTime: new Date(leaderboardItem.openTime),
+    closeTime: new Date(leaderboardItem.closeTime),
+    trackConfig: leaderboardItem.trackConfig,
+    raceType: leaderboardItem.raceType,
+    objectAvoidanceConfig: leaderboardItem.objectAvoidanceConfig,
+    resettingBehaviorConfig: leaderboardItem.resettingBehaviorConfig,
+    submissionTerminationConditions: {
+      minimumLaps: leaderboardItem.minimumLaps,
+      maximumLaps: leaderboardItem.submissionTerminationConditions.maxLaps,
+      maxTimeInMinutes: leaderboardItem.submissionTerminationConditions.maxTimeInMinutes,
+    },
+    timingMethod: leaderboardItem.timingMethod,
+    maxSubmissionsPerUser: leaderboardItem.maxSubmissionsPerUser,
+    leaderboardId: leaderboardItem.leaderboardId,
+    participantCount: leaderboardItem.participantCount,
+    isLive: leaderboardItem.isLive,
+    liveEventTime: leaderboardItem.liveEventTime ? new Date(leaderboardItem.liveEventTime) : undefined,
+    liveEventStatus: leaderboardItem.liveEventStatus,
+    maxResets: leaderboardItem.maxResets,
+    submissionPeriodOpen: leaderboardItem.submissionPeriodOpen,
+  }));
 
   return { leaderboards, token: cursor ?? undefined } satisfies ListLeaderboardsServerOutput;
 };
