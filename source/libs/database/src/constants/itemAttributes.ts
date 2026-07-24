@@ -259,7 +259,7 @@ export const RESETTING_BEHAVIOR_CONFIG_ATTRIBUTE = {
 
 export const getWorkflowJobAttributes = <
   IsTraining extends boolean,
-  IsEvaluationOrSubmission extends IsTraining extends true ? false : true,
+  IsEvaluationOrSubmission extends (IsTraining extends true ? false : true),
 >(
   isTrainingJob: IsTraining,
 ) =>
@@ -404,7 +404,7 @@ export const getWorkflowJobAttributes = <
 
 export const getSubmissionAndRankingSharedAttributes = <
   IsRanking extends boolean,
-  IsSubmission extends IsRanking extends true ? false : true,
+  IsSubmission extends (IsRanking extends true ? false : true),
 >(
   isRanking: IsRanking,
 ) =>

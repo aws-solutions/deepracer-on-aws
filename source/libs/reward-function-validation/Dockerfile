@@ -8,6 +8,8 @@ RUN microdnf update -y --releasever=latest \
     libnghttp2 \
     glibc glibc-common \
     libsolv \
+    libacl \
+    glib2 \
     && microdnf clean all
 
 # Set up the program in the image

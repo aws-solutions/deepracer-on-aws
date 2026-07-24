@@ -55,7 +55,7 @@ export const baseQuery: BaseQueryFn<{
 export const paginatedQuery = async <
   Input,
   Output,
-  OutputType extends OutputPath extends string ? Output[OutputPath] : Output,
+  OutputType extends (OutputPath extends string ? Output[OutputPath] : Output),
   OutputPath extends keyof Output | undefined = undefined,
 >(
   input: Input,
@@ -91,8 +91,4 @@ export const deepRacerApi = createApi({
 });
 
 export type DeepRacerServiceException =
-  | BadRequestError
-  | InternalFailureError
-  | NotAuthorizedError
-  | NotFoundError
-  | ValidationException;
+  BadRequestError | InternalFailureError | NotAuthorizedError | NotFoundError | ValidationException;

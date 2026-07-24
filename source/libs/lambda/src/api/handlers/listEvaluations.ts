@@ -31,31 +31,29 @@ export const ListEvaluationsOperation: Operation<
   const { cursor, data: evaluationItems } = await evaluationDao.list({ modelId, cursor: input.token });
 
   const evaluations = await waitForAll(
-    evaluationItems.map(
-      async (evaluationItem): Promise<Evaluation> => ({
-        config: {
-          evaluationName: evaluationItem.evaluationName,
-          maxLaps: evaluationItem.terminationConditions.maxLaps,
-          maxTimeInMinutes: evaluationItem.terminationConditions.maxTimeInMinutes,
-          objectAvoidanceConfig: evaluationItem.objectAvoidanceConfig,
-          raceType: evaluationItem.raceType,
-          resettingBehaviorConfig: evaluationItem.resettingBehaviorConfig,
-          trackConfig: evaluationItem.trackConfig,
-        },
-        createdAt: new Date(evaluationItem.createdAt),
-        evaluationId: evaluationItem.evaluationId,
-        metrics:
-          evaluationItem.metrics ??
-          (await modelPerformanceMetricsHelper.getEvaluationMetrics(evaluationItem.assetS3Locations.metricsS3Location)),
-        modelId: evaluationItem.modelId,
-        status: evaluationItem.status,
-        videoStreamUrl: evaluationItem.videoStreamUrl, // Only present while SimApp is streaming
-        videoUrl:
-          evaluationItem.status === JobStatus.COMPLETED && evaluationItem.metrics?.length // We don't send videoUrl if the evaluation doesn't have any completed laps because SimApp does not save the video in that case
-            ? await s3Helper.getPresignedUrl(evaluationItem.assetS3Locations.primaryVideoS3Location)
-            : undefined,
-      }),
-    ),
+    evaluationItems.map(async (evaluationItem): Promise<Evaluation> => ({
+      config: {
+        evaluationName: evaluationItem.evaluationName,
+        maxLaps: evaluationItem.terminationConditions.maxLaps,
+        maxTimeInMinutes: evaluationItem.terminationConditions.maxTimeInMinutes,
+        objectAvoidanceConfig: evaluationItem.objectAvoidanceConfig,
+        raceType: evaluationItem.raceType,
+        resettingBehaviorConfig: evaluationItem.resettingBehaviorConfig,
+        trackConfig: evaluationItem.trackConfig,
+      },
+      createdAt: new Date(evaluationItem.createdAt),
+      evaluationId: evaluationItem.evaluationId,
+      metrics:
+        evaluationItem.metrics ??
+        (await modelPerformanceMetricsHelper.getEvaluationMetrics(evaluationItem.assetS3Locations.metricsS3Location)),
+      modelId: evaluationItem.modelId,
+      status: evaluationItem.status,
+      videoStreamUrl: evaluationItem.videoStreamUrl, // Only present while SimApp is streaming
+      videoUrl:
+        evaluationItem.status === JobStatus.COMPLETED && evaluationItem.metrics?.length // We don't send videoUrl if the evaluation doesn't have any completed laps because SimApp does not save the video in that case
+          ? await s3Helper.getPresignedUrl(evaluationItem.assetS3Locations.primaryVideoS3Location)
+          : undefined,
+    })),
   );
 
   return { evaluations, token: cursor ?? undefined } satisfies ListEvaluationsServerOutput;
