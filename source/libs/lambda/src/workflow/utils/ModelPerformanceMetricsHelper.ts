@@ -52,17 +52,15 @@ class ModelPerformanceMetricsHelper {
       }
 
       // Convert to expected format in DDB & API
-      return metrics.map(
-        (metric): EvaluationMetric => ({
-          completionPercentage: metric.completion_percentage,
-          crashCount: metric.crash_count,
-          elapsedTimeInMilliseconds: metric.elapsed_time_in_milliseconds,
-          episodeStatus: metric.episode_status,
-          offTrackCount: metric.off_track_count,
-          resetCount: metric.reset_count,
-          trial: metric.trial,
-        }),
-      );
+      return metrics.map((metric): EvaluationMetric => ({
+        completionPercentage: metric.completion_percentage,
+        crashCount: metric.crash_count,
+        elapsedTimeInMilliseconds: metric.elapsed_time_in_milliseconds,
+        episodeStatus: metric.episode_status,
+        offTrackCount: metric.off_track_count,
+        resetCount: metric.reset_count,
+        trial: metric.trial,
+      }));
     } catch (error) {
       logger.error('Error fetching evaluation metrics', { metricsS3Location, error });
       return [];

@@ -12,7 +12,7 @@ import ProgressBar from '@cloudscape-design/components/progress-bar';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import StatusIndicator from '@cloudscape-design/components/status-indicator';
 import { UserGroups } from '@deepracer-indy/typescript-client';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useSearchParams } from 'react-router-dom';
 
@@ -34,7 +34,7 @@ import {
   useReorderLiveQueueMutation,
   useResetLiveQueueModelMutation,
 } from '#services/deepRacer/leaderboardsApi.js';
-import { useGetProfileQuery, useListProfilesQuery } from '#services/deepRacer/profileApi.js';
+import { useGetProfileQuery } from '#services/deepRacer/profileApi.js';
 import { displayInfoNotification, displaySuccessNotification } from '#store/notifications/notificationsSlice.js';
 import { checkUserGroupMembership } from '#utils/authUtils.js';
 import { millisToMinutesAndSeconds } from '#utils/dateTimeUtils.js';
@@ -88,7 +88,6 @@ const LiveRace = ({ __forceFacilitator }: LiveRaceProps = {}) => {
   );
   const { data: leaderboard } = useGetLeaderboardQuery({ leaderboardId });
   const { data: profile } = useGetProfileQuery();
-  const { data: profilesData } = useListProfilesQuery();
 
   // Seed reducer state from REST response
   useEffect(() => {
@@ -115,6 +114,7 @@ const LiveRace = ({ __forceFacilitator }: LiveRaceProps = {}) => {
         ? {
             participantName: liveRaceState.currentEvaluation.participantName,
             modelName: liveRaceState.currentEvaluation.modelName,
+            currentAvatar: liveRaceState.currentEvaluation.avatar ?? null,
             streamUrl: liveRaceState.currentEvaluation.streamUrl ?? null,
             isExecutionRunning: true,
           }
@@ -138,10 +138,6 @@ const LiveRace = ({ __forceFacilitator }: LiveRaceProps = {}) => {
 
   // Seed queue items from REST response
   const lastQueueRef = useRef<string>('');
-  const profileAvatarMap = useMemo(
-    () => new Map((profilesData ?? []).map((p) => [p.profileId, p.avatar])),
-    [profilesData],
-  );
   useEffect(() => {
     if (!liveQueueData?.items) return;
     const key = liveQueueData.items.map((i) => `${i.submissionId}:${i.status}`).join(',');
@@ -155,7 +151,7 @@ const LiveRace = ({ __forceFacilitator }: LiveRaceProps = {}) => {
       queuePosition: item.queuePosition,
       status: item.status as 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED',
       submittedAt: typeof item.submittedAt === 'string' ? item.submittedAt : new Date(item.submittedAt).toISOString(),
-      avatar: profileAvatarMap.get(item.profileId),
+      avatar: item.avatar,
     }));
     const nextPending = items.find((i) => i.status === 'PENDING');
     setRaceState((prev) => ({
@@ -169,25 +165,7 @@ const LiveRace = ({ __forceFacilitator }: LiveRaceProps = {}) => {
           }
         : {}),
     }));
-  }, [liveQueueData, profileAvatarMap]);
-
-  // When profiles load after queue items, back-fill avatars on existing queue items
-  useEffect(() => {
-    if (!profilesData?.length) return;
-    setRaceState((prev) => {
-      const enriched = prev.queueItems.map((item) =>
-        item.avatar ? item : { ...item, avatar: profileAvatarMap.get(item.profileId ?? '') },
-      );
-      const currentItem = enriched.find(
-        (i) => i.participantName === prev.participantName && i.status === 'IN_PROGRESS',
-      );
-      return {
-        ...prev,
-        queueItems: enriched,
-        currentAvatar: currentItem?.avatar ?? prev.currentAvatar,
-      };
-    });
-  }, [profilesData, profileAvatarMap]);
+  }, [liveQueueData]);
 
   // Check facilitator role
 

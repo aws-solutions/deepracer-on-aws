@@ -53,7 +53,12 @@ export const ListRankingsOperation: Operation<
         userProfile: rankingItem.userProfile,
         rankingScore: rankingItem.rankingScore,
         rank: (itemsSeen += 1), // Calculate rank based on itemsSeen
-        videoUrl: await s3Helper.getPresignedUrl(rankingItem.submissionVideoS3Location, undefined, undefined, 'video/mp4'),
+        videoUrl: await s3Helper.getPresignedUrl(
+          rankingItem.submissionVideoS3Location,
+          undefined,
+          undefined,
+          'video/mp4',
+        ),
       }),
     ),
   );

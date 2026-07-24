@@ -11,15 +11,13 @@ const Notifications = () => {
   const dispatch = useAppDispatch();
   const notifications = useAppSelector(getNotifications);
 
-  const items = notifications.map(
-    (notification): Notification => ({
-      ...notification,
-      onDismiss: (event) => {
-        dispatch(removeNotification({ id: notification.id as string }));
-        notification.onDismiss?.(event);
-      },
-    }),
-  );
+  const items = notifications.map((notification): Notification => ({
+    ...notification,
+    onDismiss: (event) => {
+      dispatch(removeNotification({ id: notification.id as string }));
+      notification.onDismiss?.(event);
+    },
+  }));
 
   return <Flashbar items={items} />;
 };

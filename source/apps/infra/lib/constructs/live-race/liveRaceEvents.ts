@@ -90,8 +90,17 @@ export class LiveRaceEvents extends Construct {
     deletePolicyEventHandlerFn.addToRolePolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
-        actions: ['iot:ListTargetsForPolicy', 'iot:DetachPolicy'],
+        actions: ['iot:ListTargetsForPolicy'],
         resources: [this.spectatorPolicyArn],
+      }),
+    );
+    // iot:DetachPolicy evaluates against the target (a Cognito Identity ID, not ARN-able),
+    // so it must be scoped to '*'. Blast radius is bounded by the preceding ListTargetsForPolicy.
+    deletePolicyEventHandlerFn.addToRolePolicy(
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        actions: ['iot:DetachPolicy'],
+        resources: ['*'],
       }),
     );
     const deletePolicyIsCompleteFn = new NodeLambdaFunction(this, 'DeleteIoTPolicyIsCompleteFn', {

@@ -350,19 +350,17 @@ export class Api extends Construct {
             'AWSManagedRulesAmazonIpReputationList',
             'AWSManagedRulesSQLiRuleSet',
             'AWSManagedRulesWordPressRuleSet',
-          ].map(
-            (name, priority): CfnWebACL.RuleProperty => ({
-              name,
-              priority,
-              overrideAction: { none: {} },
-              statement: { managedRuleGroupStatement: { vendorName: 'AWS', name } },
-              visibilityConfig: {
-                sampledRequestsEnabled: true,
-                cloudWatchMetricsEnabled: true,
-                metricName: name,
-              },
-            }),
-          ),
+          ].map((name, priority): CfnWebACL.RuleProperty => ({
+            name,
+            priority,
+            overrideAction: { none: {} },
+            statement: { managedRuleGroupStatement: { vendorName: 'AWS', name } },
+            visibilityConfig: {
+              sampledRequestsEnabled: true,
+              cloudWatchMetricsEnabled: true,
+              metricName: name,
+            },
+          })),
           // AdminProtectionRuleSet would block our own /admin/* routes — count only
           {
             name: 'AWSManagedRulesAdminProtectionRuleSet',

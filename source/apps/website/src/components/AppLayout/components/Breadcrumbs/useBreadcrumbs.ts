@@ -59,8 +59,7 @@ export const useBreadcrumbs = (currentPageDetails: ReturnType<typeof getPageDeta
           .join('/');
 
         const currentPartPageId = Object.entries(pages).find(([_, { path }]) => path.slice(1) === pathSoFar)?.[0] as
-          | PageId
-          | undefined;
+          PageId | undefined;
 
         if (!currentPartPageId) return null;
 

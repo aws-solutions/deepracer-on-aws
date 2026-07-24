@@ -230,6 +230,7 @@ This software includes third party software subject to the following copyrights:
 @babel/plugin-transform-unicode-property-regex under the MIT license.
 @babel/plugin-transform-unicode-regex under the MIT license.
 @babel/plugin-transform-unicode-sets-regex under the MIT license.
+@babel/plugin-bugfix-safari-rest-destructuring-rhs-array under the MIT license.
 @babel/preset-env under the MIT license.
 @babel/preset-modules under the MIT license.
 @babel/preset-react under the MIT license.
@@ -469,6 +470,7 @@ This software includes third party software subject to the following copyrights:
 @radix-ui/react-use-rect under the MIT license.
 @radix-ui/react-use-size under the MIT license.
 @radix-ui/rect under the MIT license.
+@radix-ui/react-use-is-hydrated under the MIT license.
 @react-spring/animated under the MIT license.
 @react-spring/core under the MIT license.
 @react-spring/rafz under the MIT license.
@@ -568,6 +570,7 @@ This software includes third party software subject to the following copyrights:
 @smithy/util-waiter under the Apache-2.0 license.
 @smithy/uuid under the Apache-2.0 license.
 @standard-schema/utils under the MIT license.
+@standard-schema/spec under the MIT license.
 @storybook/addon-actions under the MIT license.
 @storybook/addon-backgrounds under the MIT license.
 @storybook/addon-console under the MIT license.
@@ -630,6 +633,8 @@ This software includes third party software subject to the following copyrights:
 @swc/core-win32-arm64-msvc under the Apache-2.0 AND MIT licenses.
 @swc/core-win32-ia32-msvc under the Apache-2.0 AND MIT licenses.
 @swc/core-win32-x64-msvc under the Apache-2.0 AND MIT licenses.
+@swc/core-linux-ppc64-gnu under the Apache-2.0 license AND MIT licenses.
+@swc/core-linux-s390x-gnu under the Apache-2.0 license AND MIT licenses.
 @swc/core under the Apache-2.0 license.
 @swc/counter under the Apache-2.0 license.
 @swc/helpers under the Apache-2.0 license.
@@ -710,6 +715,7 @@ This software includes third party software subject to the following copyrights:
 @typescript-eslint/typescript-estree under the MIT license.
 @typescript-eslint/utils under the MIT license.
 @typescript-eslint/visitor-keys under the MIT license.
+@types/set-cookie-parser under the MIT license.
 @ungap/structured-clone under the ISC license.
 @unrs/resolver-binding-android-arm-eabi under the MIT license.
 @unrs/resolver-binding-android-arm64 under the MIT license.
@@ -730,6 +736,9 @@ This software includes third party software subject to the following copyrights:
 @unrs/resolver-binding-win32-arm64-msvc under the MIT license.
 @unrs/resolver-binding-win32-ia32-msvc under the MIT license.
 @unrs/resolver-binding-win32-x64-msvc under the MIT license.
+@unrs/resolver-binding-linux-loong64-gnu under the MIT license.
+@unrs/resolver-binding-linux-loong64-musl under the MIT license.
+@unrs/resolver-binding-openharmony-arm64 under the MIT license.
 @use-gesture/core under the MIT license.
 @use-gesture/react under the MIT license.
 @vitejs/plugin-react-swc under the MIT license.

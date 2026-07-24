@@ -84,6 +84,7 @@ describe('useLiveRaceMqtt', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     eventHandlers = {};
+    mockSubscribe.mockResolvedValue(undefined);
     mockFetchAuthSession.mockResolvedValue({
       tokens: { idToken: { toString: () => 'mock-jwt-token' } },
       credentials: mockCredentials,
@@ -313,5 +314,47 @@ describe('useLiveRaceMqtt', () => {
     });
 
     expect(onEvent).not.toHaveBeenCalled();
+  });
+
+  it('logs error when subscribe fails on connectionSuccess', async () => {
+    mockSubscribe.mockRejectedValue(new Error('Subscribe failed'));
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {
+      /** no-op */
+    });
+
+    renderHook(() => useLiveRaceMqtt('lb-1', { onEvent: vi.fn() }));
+
+    await waitFor(() => {
+      expect(mockStart).toHaveBeenCalled();
+    });
+
+    act(() => {
+      emitEvent('connectionSuccess');
+    });
+
+    await waitFor(() => {
+      expect(consoleSpy).toHaveBeenCalledWith('Failed to subscribe to MQTT topic', expect.anything());
+    });
+    consoleSpy.mockRestore();
+  });
+
+  it('sets ERROR status on client error event', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {
+      /** no-op */
+    });
+
+    const { result } = renderHook(() => useLiveRaceMqtt('lb-1', { onEvent: vi.fn() }));
+
+    await waitFor(() => {
+      expect(mockStart).toHaveBeenCalled();
+    });
+
+    act(() => {
+      emitEvent('error', new Error('Connection lost'));
+    });
+
+    expect(result.current.connectionStatus).toBe(ConnectionStatus.ERROR);
+    expect(consoleSpy).toHaveBeenCalledWith('MQTT client error', expect.anything());
+    consoleSpy.mockRestore();
   });
 });
