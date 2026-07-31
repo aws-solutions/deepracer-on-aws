@@ -63,7 +63,7 @@
     "eslint-plugin-vitest": "^0.5.4",
     "jsdom": "~26.0.0",
     "npm-check-updates": "^17.1.18",
-    "nx": "19.4.4",
+    "nx": "22.7.2",
     "prettier": "^3.8.2",
     "tsx": "^4.21.0",
     "typescript": "5.8.2",
