@@ -10,6 +10,9 @@ RUN microdnf update -y --releasever=latest \
     libsolv \
     libacl \
     glib2 \
+    gawk \
+    rpm-libs \
+    rpm \
     && microdnf clean all
 
 # Set up the program in the image
