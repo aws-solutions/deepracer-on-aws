@@ -53,6 +53,8 @@ export interface ApiProps {
 export class Api extends Construct {
   public readonly api: SpecRestApi;
   public readonly workflowJobQueue: Queue;
+
+  public readonly workflowJobDeadLetterQueue: Queue;
   public readonly assetPackagingDLQAlarm: Alarm;
   public readonly importModelJobQueue: Queue;
   public readonly importModelWorkflow: ImportWorkflow;
@@ -64,13 +66,33 @@ export class Api extends Construct {
 
     const { namespace } = props;
 
+    // Dead-letter queue for the workflow job queue. Every message on that queue shares
+    // a single MessageGroupId, so a message at the head that keeps failing blocks the
+    // entire queue (head-of-line blocking). Without a redrive policy such a message is
+    // retried for the whole retention period and the queue never recovers. Capping the
+    // receive count moves the message aside so later jobs can still be dispatched.
+    this.workflowJobDeadLetterQueue = new Queue(this, 'WorkflowJobDeadLetterQueue', {
+      encryption: QueueEncryption.KMS_MANAGED,
+      enforceSSL: true,
+      fifo: true,
+      removalPolicy: RemovalPolicy.DESTROY,
+      retentionPeriod: Duration.days(14),
+    });
+
     this.workflowJobQueue = new Queue(this, 'WorkflowJobQueue', {
       encryption: QueueEncryption.KMS_MANAGED,
       enforceSSL: true,
       fifo: true,
       removalPolicy: RemovalPolicy.DESTROY, // TODO: link to config value
       retentionPeriod: Duration.days(14),
-      visibilityTimeout: Duration.minutes(1),
+      // Should be at least six times the consumer Lambda timeout (JobDispatcher is now
+      // 2 minutes); otherwise a message can be delivered again while it is still being
+      // processed, causing the same training job to be dispatched twice.
+      visibilityTimeout: Duration.minutes(12),
+      deadLetterQueue: {
+        queue: this.workflowJobDeadLetterQueue,
+        maxReceiveCount: 10,
+      },
     });
 
     // Entry points for api lambda handlers in the lambda lib
