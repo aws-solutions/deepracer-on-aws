@@ -30,16 +30,23 @@ export const ListSubmissionsOperation: Operation<
   });
 
   const submissions = await waitForAll(
-    submissionItems.map(async (submissionItem): Promise<Submission> => ({
-      modelId: submissionItem.modelId,
-      modelName: submissionItem.modelName,
-      rankingScore: submissionItem.rankingScore,
-      stats: submissionItem.stats,
-      status: submissionItem.status,
-      submissionNumber: submissionItem.submissionNumber,
-      submittedAt: new Date(submissionItem.createdAt),
-      videoUrl: await s3Helper.getPresignedUrl(submissionItem.assetS3Locations.primaryVideoS3Location),
-    })),
+    submissionItems.map(
+      async (submissionItem): Promise<Submission> => ({
+        modelId: submissionItem.modelId,
+        modelName: submissionItem.modelName,
+        rankingScore: submissionItem.rankingScore,
+        stats: submissionItem.stats,
+        status: submissionItem.status,
+        submissionNumber: submissionItem.submissionNumber,
+        submittedAt: new Date(submissionItem.createdAt),
+        videoUrl: await s3Helper.getPresignedUrl(
+          submissionItem.assetS3Locations.primaryVideoS3Location,
+          undefined,
+          undefined,
+          'video/mp4',
+        ),
+      }),
+    ),
   );
 
   return { submissions, token: cursor ?? undefined } satisfies ListSubmissionsServerOutput;

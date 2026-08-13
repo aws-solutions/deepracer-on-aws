@@ -108,9 +108,16 @@ class JobFinalizer implements WorkflowTaskHandler {
 
     try {
       logger.info('Writing training logs to S3');
+      const timestamp = new Date().toISOString();
 
-      const trainingLogsS3Location = s3PathHelper.getLogsS3Location(modelId, profileId, jobName, 'training');
-      const simulationLogsS3Location = s3PathHelper.getLogsS3Location(modelId, profileId, jobName, 'simulation');
+      const trainingLogsS3Location = s3PathHelper.getLogsS3Location(modelId, profileId, jobName, 'training', timestamp);
+      const simulationLogsS3Location = s3PathHelper.getLogsS3Location(
+        modelId,
+        profileId,
+        jobName,
+        'simulation',
+        timestamp,
+      );
 
       await waitForAll([
         cloudWatchLogsHelper.writeLogStreamToS3(TRAINING_TRAINING_LOG_GROUP, jobName, trainingLogsS3Location),

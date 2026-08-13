@@ -13,6 +13,14 @@ describe('ListSubmissions operation', () => {
     vi.spyOn(s3Helper, 'getPresignedUrl').mockImplementation((location) => Promise.resolve(location));
   });
 
+  it('should request presigned URLs with video/mp4 content type', async () => {
+    vi.spyOn(submissionDao, 'listByCreatedAt').mockResolvedValue({ data: TEST_SUBMISSION_ITEMS, cursor: null });
+
+    await ListSubmissionsOperation({ leaderboardId: TEST_LEADERBOARD_ITEM.leaderboardId }, TEST_OPERATION_CONTEXT);
+
+    expect(s3Helper.getPresignedUrl).toHaveBeenCalledWith(expect.any(String), undefined, undefined, 'video/mp4');
+  });
+
   it('should return a list of submissions on success', async () => {
     vi.spyOn(submissionDao, 'listByCreatedAt').mockResolvedValue({ data: TEST_SUBMISSION_ITEMS, cursor: null });
 

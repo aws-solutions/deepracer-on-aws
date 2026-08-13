@@ -45,15 +45,22 @@ export const ListRankingsOperation: Operation<
   });
 
   const rankings = await waitForAll(
-    rankingItems.map(async (rankingItem): Promise<Ranking> => ({
-      submittedAt: new Date(rankingItem.createdAt),
-      stats: rankingItem.stats,
-      submissionNumber: rankingItem.submissionNumber,
-      userProfile: rankingItem.userProfile,
-      rankingScore: rankingItem.rankingScore,
-      rank: (itemsSeen += 1), // Calculate rank based on itemsSeen
-      videoUrl: await s3Helper.getPresignedUrl(rankingItem.submissionVideoS3Location),
-    })),
+    rankingItems.map(
+      async (rankingItem): Promise<Ranking> => ({
+        submittedAt: new Date(rankingItem.createdAt),
+        stats: rankingItem.stats,
+        submissionNumber: rankingItem.submissionNumber,
+        userProfile: rankingItem.userProfile,
+        rankingScore: rankingItem.rankingScore,
+        rank: (itemsSeen += 1), // Calculate rank based on itemsSeen
+        videoUrl: await s3Helper.getPresignedUrl(
+          rankingItem.submissionVideoS3Location,
+          undefined,
+          undefined,
+          'video/mp4',
+        ),
+      }),
+    ),
   );
 
   // Encode the updated LastEvaluatedKey (including itemsSeen) as the new cursor

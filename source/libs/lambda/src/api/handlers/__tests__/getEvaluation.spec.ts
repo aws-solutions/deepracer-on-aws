@@ -18,6 +18,24 @@ import { MOCK_EVALUATION_METRICS, TEST_OPERATION_CONTEXT } from '../../constants
 import { GetEvaluationOperation } from '../getEvaluation.js';
 
 describe('GetEvaluation operation', () => {
+  it('should request presigned URL with video/mp4 content type for completed evaluation', async () => {
+    const mockEvaluationItem: EvaluationItem = { ...TEST_EVALUATION_ITEM_OA, status: JobStatus.COMPLETED };
+    vi.spyOn(evaluationDao, 'load').mockResolvedValue(mockEvaluationItem);
+    vi.spyOn(s3Helper, 'getPresignedUrl').mockImplementation((location) => Promise.resolve(location));
+
+    await GetEvaluationOperation(
+      { modelId: TEST_MODEL_ITEM.modelId, evaluationId: mockEvaluationItem.evaluationId },
+      TEST_OPERATION_CONTEXT,
+    );
+
+    expect(s3Helper.getPresignedUrl).toHaveBeenCalledWith(
+      mockEvaluationItem.assetS3Locations.primaryVideoS3Location,
+      undefined,
+      undefined,
+      'video/mp4',
+    );
+  });
+
   it('should return evaluation in response', async () => {
     const mockEvaluationItem: EvaluationItem = { ...TEST_EVALUATION_ITEM_OA, status: JobStatus.COMPLETED };
 

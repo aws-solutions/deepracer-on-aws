@@ -54,9 +54,7 @@ describe('<RaceDetails />', () => {
     await screen.findByText(i18n.t('raceDetails:submissionsTable.header.modelName'));
     await screen.findByText(i18n.t('raceDetails:submissionsTable.header.date'));
 
-    await waitFor(() =>
-      expect(screen.queryByText(i18n.t('raceDetails:raceLeaderboardTable.header.rank'))).not.toBeInTheDocument(),
-    );
+    // rank header is now '#', same as submissionNumber — use uniquely-leaderboard columns to confirm the leaderboard table is hidden
     await waitFor(() =>
       expect(screen.queryByText(i18n.t('raceDetails:raceLeaderboardTable.header.racer'))).not.toBeInTheDocument(),
     );
@@ -99,9 +97,7 @@ describe('<RaceDetails />', () => {
     await screen.findByText(i18n.t('raceDetails:submissionsTable.header.modelName'));
     await screen.findByText(i18n.t('raceDetails:submissionsTable.header.date'));
 
-    await waitFor(() =>
-      expect(screen.queryByText(i18n.t('raceDetails:raceLeaderboardTable.header.rank'))).not.toBeInTheDocument(),
-    );
+    // rank header is now '#', same as submissionNumber — use uniquely-leaderboard columns to confirm the leaderboard table is hidden
     await waitFor(() =>
       expect(screen.queryByText(i18n.t('raceDetails:raceLeaderboardTable.header.racer'))).not.toBeInTheDocument(),
     );
@@ -177,6 +173,103 @@ describe('<RaceDetails />', () => {
       await waitFor(() => {
         expect(screen.queryByText(i18n.t('raceDetails:watchLive'))).not.toBeInTheDocument();
       });
+    });
+  });
+
+  describe('Refresh buttons', () => {
+    it('renders a refresh button on the leaderboard tab', async () => {
+      await OALeaderboard.run();
+
+      await screen.findByText(i18n.t('raceDetails:raceType.OBJECT_AVOIDANCE'));
+
+      const refreshButton = await screen.findByRole('button', {
+        name: i18n.t('raceDetails:raceLeaderboardTable.refresh'),
+      });
+      expect(refreshButton).toBeInTheDocument();
+    });
+
+    it('renders a refresh button on the submissions tab', async () => {
+      await OALeaderboard.run();
+
+      const tabButton = screen.getAllByText(`${i18n.t('raceDetails:submissionsTable.tableHeader')} (3)`);
+      fireEvent.click(tabButton[0]);
+
+      const refreshButton = await screen.findByRole('button', {
+        name: i18n.t('raceDetails:submissionsTable.refresh'),
+      });
+      expect(refreshButton).toBeInTheDocument();
+    });
+  });
+
+  describe('Video buttons', () => {
+    it('renders watch and download video buttons on the leaderboard tab', async () => {
+      await OALeaderboard.run();
+
+      await screen.findByText(i18n.t('raceDetails:raceType.OBJECT_AVOIDANCE'));
+
+      const watchButtons = await screen.findAllByRole('button', {
+        name: i18n.t('raceDetails:videoModal.watchVideo'),
+      });
+      const downloadButtons = await screen.findAllByRole('button', {
+        name: i18n.t('raceDetails:videoModal.downloadVideo'),
+      });
+
+      expect(watchButtons.length).toBeGreaterThan(0);
+      expect(downloadButtons.length).toBeGreaterThan(0);
+    });
+
+    it('opens the video modal when the watch button is clicked on a leaderboard ranking', async () => {
+      await OALeaderboard.run();
+
+      await screen.findByText(i18n.t('raceDetails:raceType.OBJECT_AVOIDANCE'));
+
+      const watchButtons = await screen.findAllByRole('button', {
+        name: i18n.t('raceDetails:videoModal.watchVideo'),
+      });
+      fireEvent.click(watchButtons[0]);
+
+      // Wait for the video element to appear inside the modal
+      const video = await waitFor(() => {
+        const el = document.querySelector('video');
+        if (!el) throw new Error('video not found');
+        return el;
+      });
+      expect(video).toHaveAttribute('src', 'https://mock-submission-video-url');
+    });
+
+    it('renders watch and download video buttons on the submissions tab', async () => {
+      await OALeaderboard.run();
+
+      const tabButton = screen.getAllByText(`${i18n.t('raceDetails:submissionsTable.tableHeader')} (3)`);
+      fireEvent.click(tabButton[0]);
+
+      const watchButtons = await screen.findAllByRole('button', {
+        name: i18n.t('raceDetails:videoModal.watchVideo'),
+      });
+      expect(watchButtons.length).toBeGreaterThan(0);
+    });
+
+    it('opens the video modal when the watch button is clicked on a completed submission', async () => {
+      await OALeaderboard.run();
+
+      const tabButton = screen.getAllByText(`${i18n.t('raceDetails:submissionsTable.tableHeader')} (3)`);
+      fireEvent.click(tabButton[0]);
+
+      // Only the COMPLETED submission has an enabled watch button
+      const watchButtons = await screen.findAllByRole('button', {
+        name: i18n.t('raceDetails:videoModal.watchVideo'),
+      });
+      const enabledWatchButton = watchButtons.find((btn) => !btn.hasAttribute('disabled'));
+      expect(enabledWatchButton).toBeDefined();
+      if (enabledWatchButton) fireEvent.click(enabledWatchButton);
+
+      // Wait for the video element to appear inside the modal
+      const video = await waitFor(() => {
+        const el = document.querySelector('video');
+        if (!el) throw new Error('video not found');
+        return el;
+      });
+      expect(video).toHaveAttribute('src', 'https://mock-submission-video-url');
     });
   });
 });

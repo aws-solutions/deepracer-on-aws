@@ -13,6 +13,15 @@ describe('ListRankings operation', () => {
     vi.spyOn(s3Helper, 'getPresignedUrl').mockImplementation((location) => Promise.resolve(location));
   });
 
+  it('should request presigned URLs with video/mp4 content type', async () => {
+    vi.spyOn(leaderboardDao, 'load').mockResolvedValue(TEST_LEADERBOARD_ITEM);
+    vi.spyOn(rankingDao, 'listByRank').mockResolvedValue({ data: TEST_RANKING_ITEMS, cursor: null });
+
+    await ListRankingsOperation({ leaderboardId: TEST_LEADERBOARD_ITEM.leaderboardId }, TEST_OPERATION_CONTEXT);
+
+    expect(s3Helper.getPresignedUrl).toHaveBeenCalledWith(expect.any(String), undefined, undefined, 'video/mp4');
+  });
+
   it('should return rankings when available', async () => {
     vi.spyOn(leaderboardDao, 'load').mockResolvedValue(TEST_LEADERBOARD_ITEM);
     vi.spyOn(rankingDao, 'listByRank').mockResolvedValue({ data: TEST_RANKING_ITEMS, cursor: null });

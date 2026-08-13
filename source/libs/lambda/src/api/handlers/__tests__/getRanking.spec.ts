@@ -8,6 +8,21 @@ import { TEST_OPERATION_CONTEXT } from '../../constants/testConstants.js';
 import { GetRankingOperation } from '../getRanking.js';
 
 describe('GetRanking operation', () => {
+  it('should request presigned URL with video/mp4 content type', async () => {
+    const personalRanking = { ...TEST_RANKING_ITEM, rank: 1 };
+    vi.spyOn(rankingDao, 'getWithRank').mockResolvedValueOnce(personalRanking);
+    vi.spyOn(s3Helper, 'getPresignedUrl').mockImplementation((location) => Promise.resolve(location));
+
+    await GetRankingOperation({ leaderboardId: personalRanking.leaderboardId }, TEST_OPERATION_CONTEXT);
+
+    expect(s3Helper.getPresignedUrl).toHaveBeenCalledWith(
+      personalRanking.submissionVideoS3Location,
+      undefined,
+      undefined,
+      'video/mp4',
+    );
+  });
+
   it('should return ranking', async () => {
     const personalRanking = { ...TEST_RANKING_ITEM, rank: 1 };
 

@@ -9,13 +9,17 @@ export class S3PathHelper {
   private readonly REWARD_FUNCTION_S3_OBJECT_KEY_SUFFIX = 'reward_function.py';
   private readonly SAGEMAKER_ARTIFACTS_S3_SUFFIX = 'sagemaker-artifacts/';
 
+  private getIsoTimestamp(timestamp?: string) {
+    return timestamp ?? new Date().toISOString();
+  }
+
   getModelRootS3Location(modelId: string, profileId: string) {
     return `s3://${this.modelDataBucket}/${profileId}/models/${modelId}/`;
   }
 
   /** `s3://{modelBucket}/{profileId}/models/{modelId}/metrics/{jobType}/{timeStamp}-{jobName}.json` */
-  getMetricsS3Location(modelId: string, profileId: string, jobName: JobName) {
-    return `${this.getModelRootS3Location(modelId, profileId)}metrics/${jobNameHelper.getJobType(jobName)}/${new Date().toISOString()}-${jobName}.json`;
+  getMetricsS3Location(modelId: string, profileId: string, jobName: JobName, timestamp?: string) {
+    return `${this.getModelRootS3Location(modelId, profileId)}metrics/${jobNameHelper.getJobType(jobName)}/${this.getIsoTimestamp(timestamp)}-${jobName}.json`;
   }
 
   /** `s3://{modelBucket}/{profileId}/models/{modelId}/model_metadata.json` */
@@ -34,8 +38,8 @@ export class S3PathHelper {
   }
 
   /** `s3://{modelBucket}/{profileId}/models/{modelId}/sim-trace/{jobType}/{timestamp}-{jobName}/` */
-  getSimTraceS3Location(modelId: string, profileId: string, jobName: JobName) {
-    return `${this.getModelRootS3Location(modelId, profileId)}sim-trace/${jobNameHelper.getJobType(jobName)}/${new Date().toISOString()}-${jobName}/`;
+  getSimTraceS3Location(modelId: string, profileId: string, jobName: JobName, timestamp?: string) {
+    return `${this.getModelRootS3Location(modelId, profileId)}sim-trace/${jobNameHelper.getJobType(jobName)}/${this.getIsoTimestamp(timestamp)}-${jobName}/`;
   }
 
   /** `s3://{modelBucket}/{profileId}/models/{modelId}/sagemaker-artifacts/training_params.yaml` */
@@ -49,18 +53,18 @@ export class S3PathHelper {
   }
 
   /** `s3://{modelBucket}/{profileId}/models/{modelId}/videos/{jobType}/{timeStamp}-{jobName}/` */
-  getVideosS3Location(modelId: string, profileId: string, jobName: JobName) {
-    return `${this.getModelRootS3Location(modelId, profileId)}videos/${jobNameHelper.getJobType(jobName)}/${new Date().toISOString()}-${jobName}/`;
+  getVideosS3Location(modelId: string, profileId: string, jobName: JobName, timestamp?: string) {
+    return `${this.getModelRootS3Location(modelId, profileId)}videos/${jobNameHelper.getJobType(jobName)}/${this.getIsoTimestamp(timestamp)}-${jobName}/`;
   }
 
   /** `s3://{modelBucket}/{profileId}/models/{modelId}/videos/{jobType}/{timeStamp}-{jobName}/camera-pip/0-video.mp4` */
-  getPrimaryVideoS3Location(modelId: string, profileId: string, jobName: JobName) {
-    return `${this.getVideosS3Location(modelId, profileId, jobName)}camera-pip/0-video.mp4`;
+  getPrimaryVideoS3Location(modelId: string, profileId: string, jobName: JobName, timestamp?: string) {
+    return `${this.getVideosS3Location(modelId, profileId, jobName, timestamp)}camera-pip/0-video.mp4`;
   }
 
   /** `s3://{modelBucket}/{profileId}/models/{modelId}/logs/{jobType}/{timeStamp}-{jobName}-{logType}.log` */
-  getLogsS3Location(modelId: string, profileId: string, jobName: JobName, logType: string) {
-    return `${this.getModelRootS3Location(modelId, profileId)}logs/${jobNameHelper.getJobType(jobName)}/${new Date().toISOString()}-${jobName}-${logType}.log`;
+  getLogsS3Location(modelId: string, profileId: string, jobName: JobName, logType: string, timestamp?: string) {
+    return `${this.getModelRootS3Location(modelId, profileId)}logs/${jobNameHelper.getJobType(jobName)}/${this.getIsoTimestamp(timestamp)}-${jobName}-${logType}.log`;
   }
 
   getLogsArchiveS3Location(modelId: string, profileId: string, jobName: JobName) {
