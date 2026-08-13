@@ -4,6 +4,7 @@
 import {
   CreateTrainingJobCommand,
   DescribeTrainingJobCommandOutput,
+  ListTrainingJobsCommand,
   SageMakerClient,
   StopTrainingJobCommand,
   TrainingJobStatus,
@@ -175,6 +176,123 @@ describe('SageMakerHelper', () => {
       );
 
       expect(mockSageMakerClient.commandCalls(StopTrainingJobCommand)).toHaveLength(0);
+    });
+  });
+  describe('isTrainingInstanceCapacityAvailable()', () => {
+    const QUOTA = 4;
+
+    /**
+     * The quota and usage caches are module-level state, so each test imports a fresh
+     * copy of the module to start from an empty cache.
+     */
+    const importFreshHelper = async () => {
+      vi.resetModules();
+      const module = await import('../SageMakerHelper.js');
+      return module.sageMakerHelper;
+    };
+
+    const mockQuota = async (value = QUOTA) => {
+      const { serviceQuotasHelper } = await import('../ServiceQuotasHelper.js');
+      return vi.spyOn(serviceQuotasHelper, 'getServiceQuota').mockResolvedValue({ Value: value });
+    };
+
+    /** Mocks ListTrainingJobs so that it reports `count` in-progress jobs on a single page. */
+    const mockInProgressJobs = (count: number) => {
+      mockSageMakerClient.on(ListTrainingJobsCommand).resolves({
+        TrainingJobSummaries: Array.from({ length: count }, (_, index) => ({
+          TrainingJobName: `deepracerindy-job-${index}`,
+        })),
+        NextToken: undefined,
+      });
+    };
+
+    beforeEach(() => {
+      vi.restoreAllMocks();
+      mockSageMakerClient.reset();
+    });
+
+    it('should request the maximum page size to limit the number of ListTrainingJobs calls', async () => {
+      const helper = await importFreshHelper();
+      await mockQuota();
+      mockInProgressJobs(1);
+
+      await helper.isTrainingInstanceCapacityAvailable();
+
+      const calls = mockSageMakerClient.commandCalls(ListTrainingJobsCommand);
+      expect(calls.length).toBeGreaterThan(0);
+      calls.forEach((call) => {
+        expect(call.args[0].input.MaxResults).toBe(100);
+      });
+    });
+
+    it('should return true when usage is below the quota', async () => {
+      const helper = await importFreshHelper();
+      await mockQuota();
+      mockInProgressJobs(1);
+
+      await expect(helper.isTrainingInstanceCapacityAvailable()).resolves.toBe(true);
+    });
+
+    it('should return false when usage has reached the quota', async () => {
+      const helper = await importFreshHelper();
+      await mockQuota(2);
+      // Both the IN_PROGRESS and the STOPPING query resolve to one job each.
+      mockInProgressJobs(1);
+
+      await expect(helper.isTrainingInstanceCapacityAvailable()).resolves.toBe(false);
+    });
+
+    it('should cache the quota lookup between consecutive checks', async () => {
+      const helper = await importFreshHelper();
+      const getServiceQuota = await mockQuota();
+      mockInProgressJobs(1);
+
+      await helper.isTrainingInstanceCapacityAvailable();
+      await helper.isTrainingInstanceCapacityAvailable();
+
+      expect(getServiceQuota).toHaveBeenCalledTimes(1);
+    });
+
+    it('should cache the usage lookup so a second check issues no further ListTrainingJobs calls', async () => {
+      const helper = await importFreshHelper();
+      await mockQuota(10);
+      mockInProgressJobs(1);
+
+      await helper.isTrainingInstanceCapacityAvailable();
+      const callsAfterFirstCheck = mockSageMakerClient.commandCalls(ListTrainingJobsCommand).length;
+
+      await helper.isTrainingInstanceCapacityAvailable();
+
+      expect(mockSageMakerClient.commandCalls(ListTrainingJobsCommand)).toHaveLength(callsAfterFirstCheck);
+    });
+
+    it('should optimistically increment cached usage so consecutive dispatches cannot exceed the quota', async () => {
+      const helper = await importFreshHelper();
+      // Quota of 3 with two jobs already running (one IN_PROGRESS, one STOPPING).
+      await mockQuota(3);
+      mockInProgressJobs(1);
+
+      // First check sees usage 2 < 3 and increments the cached usage to 3.
+      await expect(helper.isTrainingInstanceCapacityAvailable()).resolves.toBe(true);
+      // Second check must observe the incremented value instead of the stale usage.
+      await expect(helper.isTrainingInstanceCapacityAvailable()).resolves.toBe(false);
+    });
+
+    it('should clear the usage cache when no capacity is available', async () => {
+      const helper = await importFreshHelper();
+      await mockQuota(2);
+      mockInProgressJobs(1);
+
+      await expect(helper.isTrainingInstanceCapacityAvailable()).resolves.toBe(false);
+      const callsAfterFirstCheck = mockSageMakerClient.commandCalls(ListTrainingJobsCommand).length;
+
+      // The cache was cleared, so the next check must query the real usage again rather
+      // than staying stuck believing the account is at capacity.
+      await helper.isTrainingInstanceCapacityAvailable();
+
+      expect(mockSageMakerClient.commandCalls(ListTrainingJobsCommand).length).toBeGreaterThan(
+        callsAfterFirstCheck,
+      );
     });
   });
 });
