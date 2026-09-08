@@ -354,7 +354,25 @@ export class Api extends Construct {
             name,
             priority,
             overrideAction: { none: {} },
-            statement: { managedRuleGroupStatement: { vendorName: 'AWS', name } },
+            statement: {
+              managedRuleGroupStatement: {
+                vendorName: 'AWS',
+                name,
+                // SizeRestrictions_BODY's 8KB body limit rejects legitimate reward function
+                // payloads. Change action to count; a dedicated rule below re-blocks it
+                // everywhere except the endpoints that need larger bodies.
+                ...(name === 'AWSManagedRulesCommonRuleSet'
+                  ? {
+                      ruleActionOverrides: [
+                        {
+                          name: 'SizeRestrictions_BODY',
+                          actionToUse: { count: {} },
+                        } satisfies CfnWebACL.RuleActionOverrideProperty,
+                      ],
+                    }
+                  : {}),
+              },
+            },
             visibilityConfig: {
               sampledRequestsEnabled: true,
               cloudWatchMetricsEnabled: true,
@@ -373,6 +391,47 @@ export class Api extends Construct {
               sampledRequestsEnabled: true,
               cloudWatchMetricsEnabled: true,
               metricName: 'AWSManagedRulesAdminProtectionRuleSet',
+            },
+          } satisfies CfnWebACL.RuleProperty,
+          // Re-block SizeRestrictions_BODY except on paths that legitimately need larger bodies.
+          // Matches with ENDS_WITH (not EXACTLY) since WAF sees the stage prefix (e.g. /prod/models),
+          // which also keeps /models/{modelId} sub-paths fully enforced.
+          {
+            name: 'ReenforceBodySizeExceptRewardFunctionEndpoints',
+            priority: 8,
+            action: { block: {} },
+            statement: {
+              andStatement: {
+                statements: [
+                  {
+                    labelMatchStatement: {
+                      scope: 'LABEL',
+                      key: 'awswaf:managed:aws:core-rule-set:SizeRestrictions_Body',
+                    },
+                  },
+                  {
+                    notStatement: {
+                      statement: {
+                        orStatement: {
+                          statements: ['/models', '/rewardFunction'].map((exemptPath): CfnWebACL.StatementProperty => ({
+                            byteMatchStatement: {
+                              searchString: exemptPath,
+                              fieldToMatch: { uriPath: {} },
+                              positionalConstraint: 'ENDS_WITH',
+                              textTransformations: [{ priority: 0, type: 'NONE' }],
+                            },
+                          })),
+                        },
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+            visibilityConfig: {
+              sampledRequestsEnabled: true,
+              cloudWatchMetricsEnabled: true,
+              metricName: 'ReenforceBodySizeExceptRewardFunctionEndpoints',
             },
           } satisfies CfnWebACL.RuleProperty,
           {
