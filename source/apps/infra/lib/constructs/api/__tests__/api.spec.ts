@@ -560,4 +560,77 @@ describe('Api', () => {
       });
     });
   });
+
+  describe('WAF Body Size Restriction', () => {
+    it('downgrades SizeRestrictions_BODY to count without disabling the rest of CommonRuleSet', () => {
+      expect(() =>
+        template.hasResourceProperties('AWS::WAFv2::WebACL', {
+          Rules: Match.arrayWith([
+            Match.objectLike({
+              Name: 'AWSManagedRulesCommonRuleSet',
+              OverrideAction: { None: {} },
+              Statement: {
+                ManagedRuleGroupStatement: Match.objectLike({
+                  Name: 'AWSManagedRulesCommonRuleSet',
+                  RuleActionOverrides: [
+                    {
+                      Name: 'SizeRestrictions_BODY',
+                      ActionToUse: { Count: {} },
+                    },
+                  ],
+                }),
+              },
+            }),
+          ]),
+        }),
+      ).not.toThrow();
+    });
+
+    it('re-blocks oversized bodies everywhere except the reward function endpoints', () => {
+      expect(() =>
+        template.hasResourceProperties('AWS::WAFv2::WebACL', {
+          Rules: Match.arrayWith([
+            Match.objectLike({
+              Name: 'ReenforceBodySizeExceptRewardFunctionEndpoints',
+              Action: { Block: {} },
+              Statement: {
+                AndStatement: {
+                  Statements: Match.arrayWith([
+                    Match.objectLike({
+                      LabelMatchStatement: {
+                        Scope: 'LABEL',
+                        Key: 'awswaf:managed:aws:core-rule-set:SizeRestrictions_Body',
+                      },
+                    }),
+                    Match.objectLike({
+                      NotStatement: {
+                        Statement: {
+                          OrStatement: {
+                            Statements: Match.arrayWith([
+                              Match.objectLike({
+                                ByteMatchStatement: Match.objectLike({
+                                  SearchString: '/models',
+                                  PositionalConstraint: 'ENDS_WITH',
+                                }),
+                              }),
+                              Match.objectLike({
+                                ByteMatchStatement: Match.objectLike({
+                                  SearchString: '/rewardFunction',
+                                  PositionalConstraint: 'ENDS_WITH',
+                                }),
+                              }),
+                            ]),
+                          },
+                        },
+                      },
+                    }),
+                  ]),
+                },
+              },
+            }),
+          ]),
+        }),
+      ).not.toThrow();
+    });
+  });
 });

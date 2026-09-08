@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.10] - 2026-09-08
+
+### Security
+
+- Update dependencies to mitigate [CVE-2026-75931](https://github.com/aws-solutions/deepracer-on-aws/security/dependabot/167) and [CVE-2026-81934](https://nvd.nist.gov/vuln/detail/CVE-2026-81934).
+
+### Fixed
+
+- Fix WAF blocking `CreateModel`/`TestRewardFunction` requests with a reward function over 8 KB. See [#89](https://github.com/aws-solutions/deepracer-on-aws/issues/89).
+
 ## [1.2.9] - 2026-08-12
 
 ### Security
