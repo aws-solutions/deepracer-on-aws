@@ -357,6 +357,12 @@ export class Workflow extends Construct {
         POWERTOOLS_METRICS_NAMESPACE: 'DeepRacerIndyWorkflow',
       },
       memorySize: 256,
+      // The ListTrainingJobs rate quota is 2 requests/second and is not adjustable, so
+      // the SageMaker client uses adaptive retries with exponential backoff. A single
+      // dispatch can therefore take noticeably longer than before. The 30 second default
+      // is not enough: a Lambda timeout would return the message to the queue and cause
+      // the same training job to be dispatched twice.
+      timeout: Duration.minutes(2),
       role: jobDispatcherRole,
     });
 

@@ -148,7 +148,18 @@ describe('Api', () => {
           FifoQueue: true,
           MessageRetentionPeriod: Duration.days(14).toSeconds(),
           KmsMasterKeyId: 'alias/aws/sqs',
-          VisibilityTimeout: Duration.minutes(1).toSeconds(),
+          VisibilityTimeout: Duration.minutes(12).toSeconds(),
+        }),
+      ).not.toThrow();
+
+      // The workflow job queue must have a dead-letter queue so that a message which
+      // keeps failing cannot block the queue for its entire retention period.
+      expect(() =>
+        template.hasResourceProperties('AWS::SQS::Queue', {
+          FifoQueue: true,
+          RedrivePolicy: {
+            maxReceiveCount: 10,
+          },
         }),
       ).not.toThrow();
 

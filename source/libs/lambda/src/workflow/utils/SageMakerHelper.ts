@@ -24,6 +24,26 @@ import { TrainingInstanceQuotaCode } from '../constants/sageMaker.js';
 import { SimulationLaunchFile } from '../constants/simulation.js';
 import type { SageMakerHyperparameters } from '../types/sageMakerHyperparameters.js';
 
+/**
+ * In-process cache for the training instance quota and current usage.
+ *
+ * Background: JobDispatcher queries the quota and the current usage for every SQS
+ * message it processes. The account-level quota for ListTrainingJobs is 2
+ * requests/second and is not adjustable. Once a burst triggers a
+ * ThrottlingException the dispatcher fails and the message is returned to the FIFO
+ * queue; because every message on that queue shares a single MessageGroupId, a
+ * repeatedly failing message at the head blocks the whole queue (head-of-line
+ * blocking). Caching reduces the call rate enough to avoid that deadlock.
+ *
+ * Lambda execution environments are reused, so module-level state survives across
+ * invocations.
+ */
+const QUOTA_CACHE_TTL_MS = 5 * 60 * 1000; // The quota rarely changes, so it can be cached for longer.
+const USAGE_CACHE_TTL_MS = 10 * 1000; // Usage changes quickly, so cache it only briefly.
+
+let quotaCache: { value: number; expiresAt: number } | undefined;
+let usageCache: { value: number; expiresAt: number } | undefined;
+
 class SageMakerHelper {
   @logMethod
   async createTrainingJob({ jobItem, modelItem }: { jobItem: JobItem; modelItem: ModelItem }) {
@@ -220,6 +240,10 @@ class SageMakerHelper {
   }
 
   async getTrainingInstanceQuota() {
+    if (quotaCache && quotaCache.expiresAt > Date.now()) {
+      return quotaCache.value;
+    }
+
     const instanceQuota = await serviceQuotasHelper.getServiceQuota(
       'sagemaker',
       TrainingInstanceQuotaCode[deepRacerIndyAppConfig.sageMaker.instanceType],
@@ -229,10 +253,17 @@ class SageMakerHelper {
       `SageMaker ${deepRacerIndyAppConfig.sageMaker.instanceType} training instance quota is set to ${instanceQuota.Value}`,
     );
 
-    return instanceQuota.Value as number;
+    const value = instanceQuota.Value as number;
+    quotaCache = { value, expiresAt: Date.now() + QUOTA_CACHE_TTL_MS };
+
+    return value;
   }
 
   async getTrainingInstanceUsage() {
+    if (usageCache && usageCache.expiresAt > Date.now()) {
+      return usageCache.value;
+    }
+
     const TWENTY_FOUR_HOURS_10_MINS_IN_MILLIS = 24 * 60 * 60 * 1000 + 10 * 60 * 1000; // Longest job duration + 10 min buffer
 
     let instanceUsage = 0;
@@ -244,6 +275,9 @@ class SageMakerHelper {
           CreationTimeAfter: new Date(Date.now() - TWENTY_FOUR_HOURS_10_MINS_IN_MILLIS),
           NameContains: 'deepracerindy',
           StatusEquals: TrainingJobStatus.IN_PROGRESS,
+          // Request the maximum page size (the default is only 10) to reduce the number
+          // of paginated requests and stay within the rate limit.
+          MaxResults: 100,
         },
       )) {
         instanceUsage += result.TrainingJobSummaries?.length ?? 0;
@@ -254,10 +288,13 @@ class SageMakerHelper {
           CreationTimeAfter: new Date(Date.now() - TWENTY_FOUR_HOURS_10_MINS_IN_MILLIS),
           NameContains: 'deepracerindy',
           StatusEquals: TrainingJobStatus.STOPPING,
+          MaxResults: 100,
         },
       )) {
         instanceUsage += result.TrainingJobSummaries?.length ?? 0;
       }
+
+      usageCache = { value: instanceUsage, expiresAt: Date.now() + USAGE_CACHE_TTL_MS };
 
       return instanceUsage;
     } catch (error) {
@@ -276,10 +313,21 @@ class SageMakerHelper {
 
     if (isCapacityAvailable) {
       logger.info(`Active SageMaker training instances [${instanceUsage}] is less than quota [${instanceQuota}]`);
+      // Capacity is available, so the caller is about to dispatch a job. Increment the
+      // cached usage optimistically so that consecutive dispatches within the cache TTL
+      // do not all read the same stale value and exceed the quota.
+      // If the dispatch ultimately fails, this only errs on the conservative side
+      // (dispatching fewer jobs) and can never exceed the quota.
+      if (usageCache) {
+        usageCache.value += 1;
+      }
     } else {
       logger.warn(
         `Active SageMaker training instances [${instanceUsage}] is equal to or greater than quota [${instanceQuota}]`,
       );
+      // No capacity left: clear the cache so the next check reads the real usage and the
+      // dispatcher does not stay stuck believing it is at capacity.
+      usageCache = undefined;
     }
 
     return isCapacityAvailable;
