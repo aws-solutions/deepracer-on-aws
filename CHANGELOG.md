@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.11] - 2026-09-15
+
+### Security
+
+- Update dependencies to mitigate [CVE-2026-18924](https://nvd.nist.gov/vuln/detail/CVE-2026-18924), [CVE-2026-19931](https://nvd.nist.gov/vuln/detail/CVE-2026-19931), [CVE-2026-84375](https://nvd.nist.gov/vuln/detail/CVE-2026-84375), and [CVE-2026-84370](https://nvd.nist.gov/vuln/detail/CVE-2026-84370).
+
 ## [1.2.10] - 2026-09-08
 
 ### Security
