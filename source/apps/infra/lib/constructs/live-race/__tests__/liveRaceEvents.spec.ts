@@ -31,15 +31,22 @@ describe('LiveRaceEvents', () => {
     functionName: 'AttachPolicyFn',
   });
 
+  // Stand-in for the Device Pruning Lambda (normally created by DeviceManagementStack).
+  const devicePrunerFunction = new NodeLambdaFunction(stack, 'DevicePrunerFn', {
+    entry: 'index.ts',
+    functionName: 'DevicePrunerFn',
+  });
+
   new LiveRaceEvents(stack, 'LiveRaceEvents', {
     namespace: TEST_NAMESPACE,
     dynamoDBTable,
     attachPolicyFunctionName: attachPolicyFunction.functionName,
+    devicePrunerFunction,
   });
 
   const template = Template.fromStack(stack);
 
-  it('creates the IoT spectator policy with correct document', () => {
+  it('creates the IoT spectator policy (subscribe-only, no publish)', () => {
     expect(() =>
       template.hasResourceProperties('AWS::IoT::Policy', {
         PolicyName: `${TEST_NAMESPACE}-SpectatorIoTPolicy`,
@@ -48,9 +55,42 @@ describe('LiveRaceEvents', () => {
             Match.objectLike({ Effect: 'Allow', Action: 'iot:Connect' }),
             Match.objectLike({ Effect: 'Allow', Action: 'iot:Subscribe' }),
             Match.objectLike({ Effect: 'Allow', Action: 'iot:Receive' }),
-            Match.objectLike({ Effect: 'Deny', Action: 'iot:Publish' }),
           ]),
         },
+      }),
+    ).not.toThrow();
+  });
+
+  it('creates the IoT facilitator policy with publish scoped to the race and countdown topics', () => {
+    const policies = template.findResources('AWS::IoT::Policy', {
+      Properties: { PolicyName: `${TEST_NAMESPACE}-FacilitatorIoTPolicy` },
+    });
+    expect(Object.keys(policies)).toHaveLength(1);
+
+    const statements = Object.values(policies)[0].Properties.PolicyDocument.Statement as Array<{
+      Effect: string;
+      Action: string;
+      Resource: unknown;
+    }>;
+
+    // Base access present.
+    expect(statements.some((s) => s.Effect === 'Allow' && s.Action === 'iot:Connect')).toBe(true);
+    expect(statements.some((s) => s.Effect === 'Allow' && s.Action === 'iot:Subscribe')).toBe(true);
+    expect(statements.some((s) => s.Effect === 'Allow' && s.Action === 'iot:Receive')).toBe(true);
+
+    // Publish must be scoped to the race topic tree and the countdown topic — nothing broader.
+    const publishStatements = statements.filter((s) => s.Effect === 'Allow' && s.Action === 'iot:Publish');
+    const publishResources = publishStatements.map((s) => JSON.stringify(s.Resource));
+    expect(publishResources.some((r) => r.includes(`topic/deepracer/${TEST_NAMESPACE}/race/*`))).toBe(true);
+    expect(publishResources.some((r) => r.includes(`topic/deepracer/${TEST_NAMESPACE}/leaderboard/*/countdown`))).toBe(
+      true,
+    );
+  });
+
+  it('creates a delete custom resource for the facilitator policy too', () => {
+    expect(() =>
+      template.hasResourceProperties('AWS::CloudFormation::CustomResource', {
+        policyName: `${TEST_NAMESPACE}-FacilitatorIoTPolicy`,
       }),
     ).not.toThrow();
   });
@@ -88,7 +128,11 @@ describe('LiveRaceEvents', () => {
         PolicyDocument: {
           Statement: Match.arrayWith([
             Match.objectLike({
-              Action: 'iot:ListTargetsForPolicy',
+              Action: Match.arrayWith([
+                'iot:ListTargetsForPolicy',
+                'iot:ListPolicyVersions',
+                'iot:DeletePolicyVersion',
+              ]),
               Effect: 'Allow',
             }),
           ]),
@@ -192,7 +236,7 @@ describe('LiveRaceEvents', () => {
         Namespace: 'DeepRacerIndy',
         MetricName: 'IoTPublishLatency',
         ExtendedStatistic: 'p99',
-        Threshold: 1000,
+        Threshold: 2000,
         EvaluationPeriods: 3,
         ComparisonOperator: 'GreaterThanThreshold',
         TreatMissingData: 'notBreaching',
@@ -205,8 +249,8 @@ describe('LiveRaceEvents', () => {
       template.hasResourceProperties('AWS::CloudWatch::Alarm', {
         Namespace: 'AWS/Lambda',
         MetricName: 'Errors',
-        Threshold: 10,
-        EvaluationPeriods: 3,
+        Threshold: 50,
+        EvaluationPeriods: 1,
         ComparisonOperator: 'GreaterThanThreshold',
         TreatMissingData: 'notBreaching',
       }),

@@ -10,6 +10,7 @@
     "visibleContentTitle": "Select visible content"
   },
   "COUNTER_CLOCKWISE": "Counterclockwise",
+  "difficulty": "Difficulty",
   "difficultyAsc": "Difficulty: Least to most",
   "difficultyDesc": "Difficulty: Most to least",
   "direction": "Direction",

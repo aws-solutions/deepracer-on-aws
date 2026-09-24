@@ -35,9 +35,11 @@ describe('ListModels operation', () => {
         description: TEST_MODEL_ITEMS[i].description,
         metadata: TEST_MODEL_ITEMS[i].metadata,
         modelId: TEST_MODEL_ITEMS[i].modelId,
+        modelSource: TEST_MODEL_ITEMS[i].modelSource,
         name: TEST_MODEL_ITEMS[i].name,
         fileSizeInBytes: TEST_MODEL_ITEMS[i].fileSizeInBytes,
         importErrorMessage: TEST_MODEL_ITEMS[i].importErrorMessage,
+        optimizationStatus: TEST_MODEL_ITEMS[i].optimizationStatus,
         status: TEST_MODEL_ITEMS[i].status,
         trainingConfig: {
           maxTimeInMinutes: TEST_TRAINING_ITEMS[i].terminationConditions.maxTimeInMinutes,
@@ -68,9 +70,11 @@ describe('ListModels operation', () => {
         description: TEST_MODEL_ITEMS[i].description,
         metadata: TEST_MODEL_ITEMS[i].metadata,
         modelId: TEST_MODEL_ITEMS[i].modelId,
+        modelSource: TEST_MODEL_ITEMS[i].modelSource,
         name: TEST_MODEL_ITEMS[i].name,
         fileSizeInBytes: TEST_MODEL_ITEMS[i].fileSizeInBytes,
         importErrorMessage: TEST_MODEL_ITEMS[i].importErrorMessage,
+        optimizationStatus: TEST_MODEL_ITEMS[i].optimizationStatus,
         status: TEST_MODEL_ITEMS[i].status,
         trainingConfig: {
           maxTimeInMinutes: TEST_TRAINING_ITEMS[i].terminationConditions.maxTimeInMinutes,

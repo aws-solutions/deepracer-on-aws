@@ -32,6 +32,16 @@ export type WorkflowContext<JT extends JobType = JobType> = {
   /** Workflow error details */
   errorDetails?: Error;
 
+  /**
+   * Set by JobInitializer when a SageMaker training quota left no room for this job. The state
+   * machine routes this to cleanup and a successful end rather than the failure branch, because the
+   * model is still valid and the user can retry it manually.
+   */
+  capacityWaiting?: boolean;
+
+  /** User-facing explanation persisted alongside a WAITING_FOR_CAPACITY status */
+  statusMessage?: string;
+
   /** Final job status set by JobFinalizer (used by live race SF to route to SetFailed) */
   jobStatus?: string;
 

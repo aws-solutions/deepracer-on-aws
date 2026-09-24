@@ -1,0 +1,3 @@
+aws-lambda-powertools==3.31.1
+openvino==2025.2.0
+tensorflow==2.21.0

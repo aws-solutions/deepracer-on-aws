@@ -34,5 +34,9 @@ source_dir=$PWD
 pnpm check
 pnpm test:coverage
 
+# Run Python quality checks (model-optimizer)
+# echo "Running Python checks..."
+# make -C libs/model-optimizer check
+
 # Return to the source/ level where we started
 cd $starting_dir

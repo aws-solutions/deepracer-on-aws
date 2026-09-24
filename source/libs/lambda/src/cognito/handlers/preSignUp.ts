@@ -31,8 +31,11 @@ export const PreSignUp: PreSignUpTriggerHandler = async (event) => {
 
   const { newUserComputeMinutesLimit, newUserModelCountLimit } = newUserLimits;
 
-  // Get racer alias from client metadata, fallback to default if not provided
-  const racerAlias = request.clientMetadata?.racerAlias || 'RacerAlias';
+  // Get racer alias: self-service SignUp passes it via clientMetadata; admin-created users
+  // (bulk invite) have no ClientMetadata parameter available on AdminCreateUser, so they instead
+  // carry a pre-sanitized alias candidate via the custom:racerAlias user attribute. Falls back
+  // to the hardcoded default if neither source is present.
+  const racerAlias = request.clientMetadata?.racerAlias || request.userAttributes['custom:racerAlias'] || 'RacerAlias';
 
   // Validate alias format
   if (!isValidAlias(racerAlias)) {
@@ -46,6 +49,10 @@ export const PreSignUp: PreSignUpTriggerHandler = async (event) => {
     [DynamoDBItemAttribute.MAX_MODEL_COUNT]: Number(newUserModelCountLimit),
     [DynamoDBItemAttribute.CREATED_AT]: new Date().toISOString(),
     [DynamoDBItemAttribute.EMAIL_ADDRESS]: event.request.userAttributes.email,
+    // Optional racer country (2-letter code) supplied at sign-up; surfaced on leaderboards.
+    ...(event.request.userAttributes['custom:countryCode']
+      ? { [DynamoDBItemAttribute.COUNTRY_CODE]: event.request.userAttributes['custom:countryCode'] }
+      : {}),
   });
 
   metricsLogger.logCreateUser();

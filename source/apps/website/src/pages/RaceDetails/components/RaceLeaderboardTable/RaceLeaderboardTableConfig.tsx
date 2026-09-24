@@ -6,6 +6,7 @@ import Button from '@cloudscape-design/components/button';
 import CollectionPreferences, {
   CollectionPreferencesProps,
 } from '@cloudscape-design/components/collection-preferences';
+import SpaceBetween from '@cloudscape-design/components/space-between';
 import { TableProps } from '@cloudscape-design/components/table';
 import { Ranking, Leaderboard, TimingMethod } from '@deepracer-indy/typescript-client';
 import { useMemo, useState } from 'react';
@@ -18,6 +19,7 @@ import { getRacingTimeGap, millisToMinutesAndSeconds } from '#utils/dateTimeUtil
 import { getPath } from '#utils/pageUtils.js';
 
 import { isEnterRaceDisabled } from '../../raceDetailsHelpers';
+import { buildVideoFilename, useVideoDownload, type SelectedVideo } from '../videoDownload';
 
 enum RaceLeaderboardTableColumn {
   RANK = 'Rank',
@@ -35,6 +37,8 @@ export const useRaceLeaderboardTableConfig = (
 ) => {
   const { t } = useTranslation('raceDetails');
   const navigate = useNavigate();
+  const [selectedVideo, setSelectedVideo] = useState<SelectedVideo | null>(null);
+  const handleVideoDownload = useVideoDownload();
 
   const pageSizeOptions: CollectionPreferencesProps.PageSizeOption[] = [
     { value: 10, label: t('raceLeaderboardTable.collectionPreferences.pageSizeOptionsLabel', { count: 10 }) },
@@ -141,8 +145,35 @@ export const useRaceLeaderboardTableConfig = (
           return get(item1) - get(item2);
         },
       },
+      {
+        id: RaceLeaderboardTableColumn.VIDEO,
+        header: t('raceLeaderboardTable.header.video'),
+        cell: (e) => (
+          <SpaceBetween direction="horizontal" size="xs">
+            <Button
+              variant="link"
+              iconName="play"
+              ariaLabel={t('videoModal.watchVideo')}
+              disabled={!e.videoUrl}
+              onClick={() => setSelectedVideo({ url: e.videoUrl, title: e.userProfile.alias })}
+            />
+            <Button
+              variant="link"
+              iconName="download"
+              ariaLabel={t('videoModal.downloadVideo')}
+              disabled={!e.videoUrl}
+              onClick={() =>
+                handleVideoDownload(
+                  e.videoUrl,
+                  buildVideoFilename(leaderboard.name, e.userProfile.alias, e.submissionNumber, e.submittedAt),
+                )
+              }
+            />
+          </SpaceBetween>
+        ),
+      },
     ],
-    [rankings, t, leaderboard.timingMethod],
+    [rankings, t, setSelectedVideo, leaderboard, handleVideoDownload],
   );
 
   const RaceLeaderboardTablePreferences = () => (
@@ -181,6 +212,10 @@ export const useRaceLeaderboardTableConfig = (
             id: RaceLeaderboardTableColumn.OFF_TRACK,
             label: t('raceLeaderboardTable.header.offtrack'),
           },
+          {
+            id: RaceLeaderboardTableColumn.VIDEO,
+            label: t('raceLeaderboardTable.header.video'),
+          },
         ],
       }}
     />
@@ -196,5 +231,7 @@ export const useRaceLeaderboardTableConfig = (
     RaceLeaderboardTablePreferences,
     filteredItemsCount,
     filterProps,
+    selectedVideo,
+    setSelectedVideo,
   };
 };

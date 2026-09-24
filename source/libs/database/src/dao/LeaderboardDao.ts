@@ -24,6 +24,15 @@ export class LeaderboardDao extends BaseDao<LeaderboardsEntity> {
   }
 
   /**
+   * Lists all tracks (leaderboards) belonging to the given event via the sparse byEventId GSI.
+   * Standalone virtual leaderboards (no eventId) never appear in this index.
+   */
+  @logMethod
+  listByEventId(eventId: ResourceId) {
+    return this.entity.query.byEventId({ eventId }).go({ pages: 'all' });
+  }
+
+  /**
    * Clear execution lock. Only clears if the ARN matches (or unconditionally if no ARN provided).
    */
   @logMethod

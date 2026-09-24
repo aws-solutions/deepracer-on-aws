@@ -6,17 +6,40 @@ import {
   CreateModelCommandOutput,
   DeleteModelCommand,
   DeleteModelCommandInput,
+  DeployModelCommand,
+  DeployModelCommandInput,
+  DeployModelCommandOutput,
+  DeploymentDetail,
+  DeploymentSummary,
   GetAssetUrlCommand,
   GetAssetUrlCommandInput,
   GetAssetUrlCommandOutput,
+  GetDeploymentCommand,
+  GetDeploymentCommandInput,
+  GetDeploymentCommandOutput,
   GetModelCommand,
   GetModelCommandInput,
   GetModelCommandOutput,
   ImportModelCommand,
+  ImportPhysicalModelCommand,
+  ImportPhysicalModelCommandInput,
+  ImportPhysicalModelCommandOutput,
+  ListDeploymentsByBatchCommand,
+  ListDeploymentsByBatchCommandInput,
+  ListDeploymentsByBatchCommandOutput,
+  ListDeploymentsByEventCommand,
+  ListDeploymentsByEventCommandInput,
+  ListDeploymentsByEventCommandOutput,
   Model,
   ModelStatus,
+  PackageModelCommand,
+  PackageModelCommandInput,
+  PackageModelCommandOutput,
   paginateListModels,
   RewardFunctionError,
+  RetryTrainingCommand,
+  RetryTrainingCommandInput,
+  RetryTrainingCommandOutput,
   StopModelCommand,
   StopModelCommandInput,
   TestRewardFunctionCommand,
@@ -86,6 +109,18 @@ export const modelsApi = deepRacerApi.injectEndpoints({
         { type: DeepRacerApiQueryTagType.SUBMISSIONS },
       ],
     }),
+    retryTraining: build.mutation<RetryTrainingCommandOutput, RetryTrainingCommandInput>({
+      query: (input) => ({
+        command: new RetryTrainingCommand(input),
+        // The waiting-for-capacity outcome is a successful response, not an error; the page shows the
+        // returned message itself.
+        displayNotificationOnError: false,
+      }),
+      invalidatesTags: (_result, _meta, { modelId }) => [
+        { type: DeepRacerApiQueryTagType.MODELS, id: modelId },
+        { type: DeepRacerApiQueryTagType.MODELS, id: LIST_QUERY_TAG_ID },
+      ],
+    }),
     getAssetUrl: build.mutation<string, GetAssetUrlCommandInput>({
       query: (input) => ({
         command: new GetAssetUrlCommand(input),
@@ -133,6 +168,54 @@ export const modelsApi = deepRacerApi.injectEndpoints({
       },
       invalidatesTags: [{ type: DeepRacerApiQueryTagType.MODELS, id: LIST_QUERY_TAG_ID }],
     }),
+    importPhysicalModel: build.mutation<string, ImportPhysicalModelCommandInput>({
+      query: (input) => ({
+        command: new ImportPhysicalModelCommand(input),
+      }),
+      transformResponse: (response: ImportPhysicalModelCommandOutput) => response.modelId,
+      invalidatesTags: [{ type: DeepRacerApiQueryTagType.MODELS, id: LIST_QUERY_TAG_ID }],
+    }),
+    packageModel: build.mutation<string, PackageModelCommandInput>({
+      query: (input) => ({
+        command: new PackageModelCommand(input),
+        displayNotificationOnError: false,
+      }),
+      transformResponse: (response: PackageModelCommandOutput) => response.modelId,
+      invalidatesTags: (_result, _meta, { modelId }) => [
+        { type: DeepRacerApiQueryTagType.MODELS, id: modelId },
+        { type: DeepRacerApiQueryTagType.MODELS, id: LIST_QUERY_TAG_ID },
+      ],
+    }),
+    deployModel: build.mutation<DeployModelCommandOutput, DeployModelCommandInput>({
+      query: (input) => ({
+        command: new DeployModelCommand(input),
+        displayNotificationOnError: false,
+      }),
+      invalidatesTags: [{ type: DeepRacerApiQueryTagType.DEPLOYMENTS }],
+    }),
+    getDeployment: build.query<DeploymentDetail, GetDeploymentCommandInput>({
+      query: (input) => ({
+        command: new GetDeploymentCommand(input),
+      }),
+      transformResponse: (response: GetDeploymentCommandOutput) => response.deployment,
+      providesTags: (_result, _meta, { deploymentId }) => [
+        { type: DeepRacerApiQueryTagType.DEPLOYMENTS, id: deploymentId },
+      ],
+    }),
+    listDeploymentsByBatch: build.query<DeploymentSummary[], ListDeploymentsByBatchCommandInput>({
+      query: (input) => ({
+        command: new ListDeploymentsByBatchCommand(input),
+      }),
+      transformResponse: (response: ListDeploymentsByBatchCommandOutput) => response.deployments,
+      providesTags: (_result, _meta, { batchId }) => [{ type: DeepRacerApiQueryTagType.DEPLOYMENTS, id: batchId }],
+    }),
+    listDeploymentsByEvent: build.query<DeploymentSummary[], ListDeploymentsByEventCommandInput>({
+      query: (input) => ({
+        command: new ListDeploymentsByEventCommand(input),
+      }),
+      transformResponse: (response: ListDeploymentsByEventCommandOutput) => response.deployments,
+      providesTags: (_result, _meta, { eventId }) => [{ type: DeepRacerApiQueryTagType.DEPLOYMENTS, id: eventId }],
+    }),
   }),
 });
 
@@ -144,6 +227,13 @@ export const {
   useCreateModelMutation,
   useDeleteModelMutation,
   useStopModelMutation,
+  useRetryTrainingMutation,
   useTestRewardFunctionMutation,
   useImportModelMutation,
+  useImportPhysicalModelMutation,
+  usePackageModelMutation,
+  useDeployModelMutation,
+  useGetDeploymentQuery,
+  useListDeploymentsByBatchQuery,
+  useListDeploymentsByEventQuery,
 } = modelsApi;

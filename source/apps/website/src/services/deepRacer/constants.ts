@@ -2,11 +2,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
 export enum DeepRacerApiQueryTagType {
+  DEPLOYMENTS = 'Deployments',
+  DEVICES = 'Devices',
   EVALUATIONS = 'Evaluations',
+  EVENTS = 'Events',
+  FLEETS = 'Fleets',
+  LAPS = 'Laps',
   LEADERBOARDS = 'Leaderboards',
   MODELS = 'Models',
   PROFILE = 'Profile',
   RANKINGS = 'Rankings',
+  RUNS = 'Runs',
   SETTINGS = 'Settings',
   SUBMISSIONS = 'Submissions',
 }

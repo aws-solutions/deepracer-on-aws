@@ -4,11 +4,13 @@
 import { Alert, AppLayout, Button, Header, SpaceBetween } from '@cloudscape-design/components';
 import { Profile, UserGroups } from '@deepracer-indy/typescript-client';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 
 import { useGetProfileQuery, useListProfilesQuery } from '#services/deepRacer/profileApi.js';
 import { checkUserGroupMembership } from '#utils/authUtils.js';
 
+import BulkInviteUsersModal from './BulkInviteUsersModal/BulkInviteUsersModal.js';
 import ChangeUserRoleModal from './ChangeUserRoleModal';
 import DeleteUserModal from './DeleteUserModal';
 import DeleteUserModelsModal from './DeleteUserModelsModal';
@@ -17,22 +19,27 @@ import ProfilesTable from './ProfilesTable/ProfilesTable';
 import InstanceQuotasModal from './QuotasModal/InstanceQuotas';
 import NewUserQuotasModal from './QuotasModal/NewUserQuotas';
 import UserQuotasModal from './QuotasModal/UserQuotas';
+import ResendInviteModal from './ResendInviteModal/ResendInviteModal.js';
 import UsageSummary from './UsageSummary/UsageSummary';
 
 const ManageInstance = () => {
+  const { t } = useTranslation('manageInstance');
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isInstanceQuotasModalOpen, setIsInstanceQuotasModalOpen] = useState<boolean>(false);
   const [isNewUserQuotasModalOpen, setIsNewUserQuotasModalOpen] = useState<boolean>(false);
   const [isInviteUserModalOpen, setIsInviteUserModalOpen] = useState<boolean>(false);
+  const [isBulkInviteUsersModalOpen, setIsBulkInviteUsersModalOpen] = useState<boolean>(false);
   const [isDeleteUserModalOpen, setIsDeleteUserModalOpen] = useState<boolean>(false);
   const [isDeleteUserModelsModalOpen, setIsDeleteUserModelsModalOpen] = useState<boolean>(false);
   const [isUserQuotasModalOpen, setIsUserQuotasModalOpen] = useState<boolean>(false);
   const [isChangeUserRoleModalOpen, setIsChangeUserRoleModalOpen] = useState<boolean>(false);
+  const [isResendInviteModalOpen, setIsResendInviteModalOpen] = useState<boolean>(false);
   const [selectedUserToDelete, setSelectedUserToDelete] = useState<Profile | null>(null);
   const [selectedUserForModelsDelete, setSelectedUserForModelsDelete] = useState<Profile | null>(null);
   const [selectedUserForQuotas, setSelectedUserForQuotas] = useState<Profile | null>(null);
   const [selectedUserForRoleChange, setSelectedUserForRoleChange] = useState<Profile | null>(null);
+  const [selectedUsersForResendInvite, setSelectedUsersForResendInvite] = useState<Profile[]>([]);
   const [clearTableSelection, setClearTableSelection] = useState<(() => void) | null>(null);
 
   const profiles = useListProfilesQuery();
@@ -52,14 +59,14 @@ const ManageInstance = () => {
   }, []);
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <div>{t('page.loading')}</div>;
   }
 
   if (!isAdmin) {
     return (
-      <Alert type="error" header="Unauthorized">
-        <p>The page you are trying to view is only available to administrators.</p>
-        <Link to="/">Return to Home</Link>
+      <Alert type="error" header={t('page.unauthorized.header')}>
+        <p>{t('page.unauthorized.message')}</p>
+        <Link to="/">{t('page.unauthorized.returnHome')}</Link>
       </Alert>
     );
   }
@@ -73,12 +80,12 @@ const ManageInstance = () => {
               variant="h1"
               actions={
                 <SpaceBetween direction="horizontal" size="xs">
-                  <Button onClick={() => setIsInstanceQuotasModalOpen(true)}>Instance quotas</Button>
-                  <Button onClick={() => setIsNewUserQuotasModalOpen(true)}>New user quotas</Button>
+                  <Button onClick={() => setIsInstanceQuotasModalOpen(true)}>{t('page.actions.instanceQuotas')}</Button>
+                  <Button onClick={() => setIsNewUserQuotasModalOpen(true)}>{t('page.actions.newUserQuotas')}</Button>
                 </SpaceBetween>
               }
             >
-              Instance management
+              {t('page.header')}
             </Header>
 
             <UsageSummary profiles={profiles.data} />
@@ -87,6 +94,7 @@ const ManageInstance = () => {
               profiles={profiles.data}
               currentUserProfileId={currentUserProfile.data?.profileId}
               onInviteUser={() => setIsInviteUserModalOpen(true)}
+              onInviteMultipleUsers={() => setIsBulkInviteUsersModalOpen(true)}
               onDeleteUser={(user: Profile, clearSelection: () => void) => {
                 setSelectedUserToDelete(user);
                 setClearTableSelection(() => clearSelection);
@@ -106,6 +114,11 @@ const ManageInstance = () => {
                 setClearTableSelection(() => clearSelection);
                 setIsChangeUserRoleModalOpen(true);
               }}
+              onResendInvite={(users: Profile[], clearSelection: () => void) => {
+                setSelectedUsersForResendInvite(users);
+                setClearTableSelection(() => clearSelection);
+                setIsResendInviteModalOpen(true);
+              }}
             />
           </SpaceBetween>
         }
@@ -114,6 +127,7 @@ const ManageInstance = () => {
         toolsHide
       />
       <InviteUserModal isOpen={isInviteUserModalOpen} setIsOpen={setIsInviteUserModalOpen} />
+      <BulkInviteUsersModal isOpen={isBulkInviteUsersModalOpen} setIsOpen={setIsBulkInviteUsersModalOpen} />
       <DeleteUserModal
         isOpen={isDeleteUserModalOpen}
         setIsOpen={setIsDeleteUserModalOpen}
@@ -137,6 +151,12 @@ const ManageInstance = () => {
         isOpen={isChangeUserRoleModalOpen}
         setIsOpen={setIsChangeUserRoleModalOpen}
         selectedUser={selectedUserForRoleChange}
+        onClearSelection={clearTableSelection}
+      />
+      <ResendInviteModal
+        isOpen={isResendInviteModalOpen}
+        setIsOpen={setIsResendInviteModalOpen}
+        selectedUsers={selectedUsersForResendInvite}
         onClearSelection={clearTableSelection}
       />
     </>

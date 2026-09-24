@@ -5,3 +5,4 @@ export * from './resourceUtils.js';
 export { jobNameHelper } from './JobNameHelper.js';
 export { s3PathHelper } from './S3PathHelper.js';
 export * from './cursorUtils.js';
+export * from './conditionalCheck.js';

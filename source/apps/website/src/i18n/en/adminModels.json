@@ -1,0 +1,142 @@
+{
+  "header": "Models",
+  "filtering": {
+    "username": "Username",
+    "usernameValues": "Username values",
+    "modelName": "Model name",
+    "modelNameValues": "Model name values",
+    "type": "Type",
+    "typeValues": "Type values",
+    "status": "Status",
+    "statusValues": "Status values",
+    "carOptimized": "Car optimized",
+    "carOptimizedValues": "Car optimized values",
+    "optimized": "Optimized",
+    "inProgress": "In progress",
+    "failed": "Failed"
+  },
+  "table": {
+    "loading": "Loading models",
+    "empty": {
+      "title": "No models",
+      "description": "No models exist yet."
+    },
+    "noMatch": {
+      "title": "No matches",
+      "description": "We can't find a match.",
+      "clearFilter": "Clear filters"
+    },
+    "error": "Failed to load models. Please try again.",
+    "retry": "Retry",
+    "downloadFailed": "Failed to download {{modelName}}. Please try again.",
+    "downloadSuccess": "Download started for \"{{modelName}}\"."
+  },
+  "columns": {
+    "group": "Model information",
+    "modelId": "ID",
+    "username": "Username",
+    "modelName": "Model name",
+    "type": "Type",
+    "typeVirtual": "Virtual",
+    "typePhysical": "Physical",
+    "status": "Status",
+    "carOptimized": "Car optimized",
+    "uploadDate": "Creation time",
+    "modelMD5": "Model MD5",
+    "metadataMD5": "Metadata MD5",
+    "sensors": "Sensors",
+    "actionSpaceType": "Action space type",
+    "trainingAlgorithm": "Agent algorithm",
+    "download": "Download physical model"
+  },
+  "actions": {
+    "clearSelected": "Clear selected",
+    "uploadToCar": "Upload model to car",
+    "optimizeForCar": "Optimize for car",
+    "optimizeDisabledReason": "Select exactly one model that has not been optimized.",
+    "optimizeStarted": "Optimization started for {{modelName}}.",
+    "optimizeFailed": "Failed to start optimization for {{modelName}}.",
+    "optimizeComplete": "{{modelName}} optimized successfully.",
+    "optimizeAsyncFailed": "Optimization failed for {{modelName}}.",
+    "optimizeTimeout": "Optimization for {{modelName}} is taking longer than expected. Check the model status in the table.",
+    "optimizeTimeoutGeneric": "A model optimization is taking longer than expected. The model may have been removed.",
+    "refresh": "Refresh",
+    "download": "Download"
+  },
+  "filter": {
+    "ariaLabel": "Filter models",
+    "placeholder": "Filter models",
+    "groupValues": "Values",
+    "groupProperties": "Properties",
+    "operators": "Operators",
+    "operationAnd": "and",
+    "operationOr": "or",
+    "clearFilters": "Clear filters",
+    "apply": "Apply",
+    "enteredText": "Use: \"{{text}}\"",
+    "matches": "matches"
+  },
+  "preferences": {
+    "title": "Preferences",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "pageSize": {
+      "title": "Select page size"
+    },
+    "wrapLines": "Wrap lines",
+    "wrapLinesDescription": "Check to see all the text and wrap the lines",
+    "stripedRows": "Striped rows",
+    "stripedRowsDescription": "Select to add alternating shaded rows",
+    "compactMode": "Compact mode",
+    "compactModeDescription": "Select to display content in a denser, more compact mode",
+    "visibleColumns": {
+      "title": "Select visible columns"
+    }
+  },
+  "upload": {
+    "header": "Select a car",
+    "progressHeader": "Upload to car status",
+    "loadingCars": "Loading cars",
+    "noCars": "No cars online",
+    "noCarsDescription": "No cars are currently online.",
+    "clearFirst": "Clear car models first?",
+    "confirmClear": {
+      "header": "Clear all models",
+      "message": "All existing models will be removed from:",
+      "confirm": "Clear & Upload"
+    },
+    "event": "Event",
+    "selectEvent": "Select an event",
+    "loadingEvents": "Loading events",
+    "confirm": "Upload",
+    "cancel": "Cancel",
+    "close": "Close",
+    "progress": "Upload progress",
+    "columns": {
+      "name": "Host name",
+      "ipAddress": "IP address",
+      "fleet": "Fleet",
+      "status": "Status"
+    },
+    "progressColumns": {
+      "status": "Status",
+      "modelName": "Model name",
+      "carName": "Car",
+      "duration": "Duration"
+    },
+    "deployStatus": {
+      "pending": "Pending",
+      "inProgress": "Uploading",
+      "completed": "Complete",
+      "failed": "Failed"
+    },
+    "deployResult": {
+      "completed": "{{expectedCount}} of {{expectedCount}} completed",
+      "failed": "{{failedCount}} of {{expectedCount}} failed"
+    },
+    "deployDispatchFailed": "Failed to start upload for: {{models}}",
+    "clearSucceededButAllDeploysFailed": "Car models were cleared but all uploads failed: {{models}}. The car currently has no models installed.",
+    "clearFailed": "Failed to clear existing models on car.",
+    "deployTimeout": "Some deployments may not have completed. Check the Upload Status page for details."
+  }
+}

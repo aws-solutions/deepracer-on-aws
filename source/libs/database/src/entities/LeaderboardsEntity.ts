@@ -11,7 +11,7 @@ import {
 } from '@deepracer-indy/typescript-server-client';
 import { CustomAttributeType, Entity, EntityItem } from 'electrodb';
 
-import { LocalSecondaryIndex } from '../constants/indexes.js';
+import { GlobalSecondaryIndex, LocalSecondaryIndex } from '../constants/indexes.js';
 import {
   DynamoDBItemAttribute,
   METADATA_ATTRIBUTES,
@@ -144,6 +144,32 @@ export const LeaderboardsEntity = new Entity(
         type: 'boolean',
         default: false,
       },
+      // Physical Event Management (v1.3.0) — links this Leaderboard (track) to an Event.
+      // All three are optional/null for standalone virtual leaderboards (non-breaking).
+      [DynamoDBItemAttribute.EVENT_ID]: {
+        type: CustomAttributeType<ResourceId>('string'),
+        readOnly: true,
+        required: false,
+      },
+      [DynamoDBItemAttribute.FLEET_ID]: {
+        type: CustomAttributeType<ResourceId>('string'),
+        readOnly: true,
+        required: false,
+      },
+      [DynamoDBItemAttribute.TRACK_TYPE]: {
+        type: Object.values(TrackId),
+        readOnly: true,
+        required: false,
+      },
+      [DynamoDBItemAttribute.LEADERBOARD_FOOTER]: {
+        type: 'string',
+        required: false,
+      },
+      [DynamoDBItemAttribute.TRACK_ORDER]: {
+        type: 'string',
+        required: false,
+        readOnly: true,
+      },
     },
     indexes: {
       byLeaderboardId: {
@@ -171,6 +197,26 @@ export const LeaderboardsEntity = new Entity(
         sk: {
           field: DynamoDBItemAttribute.CLOSE_TIME,
           composite: [DynamoDBItemAttribute.CLOSE_TIME],
+          casing: 'none',
+        },
+      },
+      // Sparse GSI — only populated for Leaderboards with an eventId (event tracks).
+      // DynamoDB/ElectroDB only omit a GSI entry when BOTH the PK and SK composite
+      // attributes are absent from the item, so eventId must be part of the SK
+      // composite too (not just PK) — otherwise the always-present leaderboardId
+      // would force ElectroDB to write a (sparse-defeating) placeholder key.
+      // Supports "list all tracks for an event" (combined-leaderboard aggregation,
+      // RemoveTrackFromEvent, DeleteEvent cascade).
+      byEventId: {
+        index: GlobalSecondaryIndex.GSI1,
+        pk: {
+          field: DynamoDBItemAttribute.GSI1_PK,
+          composite: [DynamoDBItemAttribute.EVENT_ID],
+          casing: 'none',
+        },
+        sk: {
+          field: DynamoDBItemAttribute.GSI1_SK,
+          composite: [DynamoDBItemAttribute.TRACK_ORDER],
           casing: 'none',
         },
       },

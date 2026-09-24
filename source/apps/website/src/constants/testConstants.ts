@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
+  AdminModelExtended,
   AgentAlgorithm,
   CameraSensor,
   CarColor,
@@ -14,7 +15,9 @@ import {
   LidarSensor,
   LossType,
   Model,
+  ModelSource,
   ModelStatus,
+  OptimizationStatus,
   PersonalRanking,
   Profile,
   RaceType,
@@ -23,6 +26,11 @@ import {
   TimingMethod,
   TrackDirection,
   TrackId,
+  CarType,
+  Device,
+  DeviceStatus,
+  DeviceType,
+  Fleet,
 } from '@deepracer-indy/typescript-client';
 
 export const mockRankings: Ranking[] = [
@@ -357,6 +365,15 @@ export const mockModel4: Model = {
 
 export const mockModelList = [mockModel, mockModel2];
 
+export const mockPhysicalModel: Model = {
+  ...mockModel,
+  name: 'my-physical-model',
+  modelId: 'physicalModel1',
+  status: ModelStatus.READY,
+  modelSource: 'IMPORTED_PHYSICAL',
+  optimizationStatus: 'OPTIMIZED',
+};
+
 export const mockEvaluationCompleted: Evaluation = {
   modelId: mockModel.modelId,
   evaluationId: 'mockEvaluationCompleted',
@@ -442,3 +459,99 @@ export const mockEvaluationInProgress: Evaluation = {
   videoUrl: undefined,
   videoStreamUrl: 'https://mock-deepracer-on-aws.com/evaluation/video-stream',
 };
+
+// ── Admin Models ─────────────────────────────────────────────────────────────
+
+export const mockAdminModel: AdminModelExtended = {
+  modelId: 'model-abc123',
+  name: 'CenterlineTracker-v2',
+  username: 'jaime.muniz',
+  profileId: 'profile-001',
+  status: ModelStatus.READY,
+  modelSource: ModelSource.IMPORTED_PHYSICAL,
+  optimizationStatus: OptimizationStatus.OPTIMIZED,
+  createdAt: new Date('2026-06-04T10:38:35Z'),
+  metadata: {
+    agentAlgorithm: AgentAlgorithm.PPO,
+    sensors: { camera: CameraSensor.FRONT_FACING_CAMERA },
+  },
+};
+
+export const mockAdminModel2: AdminModelExtended = {
+  modelId: 'model-def456',
+  name: 'SteeringPenalty-v1',
+  username: 'smartin',
+  profileId: 'profile-002',
+  status: ModelStatus.READY,
+  modelSource: ModelSource.TRAINED,
+  optimizationStatus: OptimizationStatus.OPTIMIZED,
+  createdAt: new Date('2026-06-03T08:44:34Z'),
+  metadata: {
+    agentAlgorithm: AgentAlgorithm.SAC,
+    sensors: { camera: CameraSensor.FRONT_FACING_CAMERA, lidar: LidarSensor.LIDAR },
+  },
+};
+
+export const mockAdminModelImporting: AdminModelExtended = {
+  modelId: 'model-ghi789',
+  name: 'NewUpload-pending',
+  username: 'MiguelEstatut',
+  profileId: 'profile-003',
+  status: ModelStatus.IMPORTING,
+  modelSource: ModelSource.IMPORTED_PHYSICAL,
+  createdAt: new Date('2026-06-04T12:00:00Z'),
+};
+
+// --- Device management fixtures ---
+
+export const mockFleet: Fleet = {
+  fleetId: 'FLEET0000000001',
+  name: 'Track A Fleet',
+  createdAt: new Date('2026-01-01T00:00:00'),
+  deviceCount: 2,
+};
+
+export const mockFleet2: Fleet = {
+  fleetId: 'FLEET0000000002',
+  name: 'Track B Fleet',
+  createdAt: new Date('2026-01-02T00:00:00'),
+  deviceCount: 0,
+};
+
+export const mockFleetList: Fleet[] = [mockFleet, mockFleet2];
+
+/** An online car assigned to a fleet — supports every DeviceDetail action. */
+export const mockDevice: Device = {
+  instanceId: 'mi-0aaaaaaaaaaaaaaaa',
+  name: 'Car Alpha',
+  deviceType: DeviceType.CAR,
+  carType: CarType.DEEPRACER,
+  status: DeviceStatus.ONLINE,
+  fleetId: mockFleet.fleetId,
+  activatedAt: new Date('2026-01-01T00:00:00'),
+  lastSeenAt: new Date('2026-01-10T10:00:00'),
+  metadata: { ssid: 'venue-net' },
+};
+
+/** An offline, unassigned timer — Emergency Stop is gated (CAR + ONLINE only). */
+export const mockDevice2: Device = {
+  instanceId: 'mi-0bbbbbbbbbbbbbbbb',
+  name: 'Timer Beta',
+  deviceType: DeviceType.TIMER,
+  status: DeviceStatus.OFFLINE,
+  activatedAt: new Date('2026-01-03T00:00:00'),
+};
+
+/** A pending car, still coming online. */
+export const mockDevice3: Device = {
+  instanceId: 'mi-0cccccccccccccccc',
+  name: 'Car Gamma',
+  deviceType: DeviceType.CAR,
+  carType: CarType.DEEPRACER,
+  status: DeviceStatus.PENDING,
+  fleetId: mockFleet2.fleetId,
+  activatedAt: new Date('2026-01-05T00:00:00'),
+  lastSeenAt: new Date('2026-01-06T08:30:00'),
+};
+
+export const mockDeviceList: Device[] = [mockDevice, mockDevice2, mockDevice3];

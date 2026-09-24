@@ -1,0 +1,4 @@
+aws-lambda-powertools==3.31.1
+moto[s3,dynamodb]==5.2.2
+pytest==9.1.1
+boto3==1.43.59

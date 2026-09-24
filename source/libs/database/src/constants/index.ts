@@ -10,3 +10,4 @@ export * from './regex.js';
 export * from './removableLiveQueueItemStatuses.js';
 export * from './resourceTypes.js';
 export * from './testConstants.js';
+export { ELECTRO_DB_MAX_CONCURRENCY } from './electroDB.js';

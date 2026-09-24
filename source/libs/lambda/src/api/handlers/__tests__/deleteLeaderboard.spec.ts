@@ -27,6 +27,7 @@ import {
 import type { MockInstance } from 'vitest';
 
 import { TEST_OPERATION_CONTEXT } from '../../constants/testConstants.js';
+import * as apiGatewayUtils from '../../utils/apiGateway.js';
 import { DeleteLeaderboardOperation } from '../deleteLeaderboard.js';
 
 describe('DeleteLeaderboard operation', () => {
@@ -63,12 +64,14 @@ describe('DeleteLeaderboard operation', () => {
 
   beforeEach(() => {
     deleteLeaderboardSpy = vi.spyOn(leaderboardDao, 'delete').mockResolvedValue({ leaderboardId: TEST_LEADERBOARD_ID });
-    deleteRankingsSpy = vi.spyOn(rankingDao, 'deleteByLeaderboardId').mockResolvedValue(undefined);
-    deleteSubmissionsSpy = vi.spyOn(submissionDao, 'deleteByLeaderboardId').mockResolvedValue(undefined);
+    deleteRankingsSpy = vi.spyOn(rankingDao, 'deleteByLeaderboardId').mockResolvedValue([]);
+    deleteSubmissionsSpy = vi.spyOn(submissionDao, 'deleteByLeaderboardId').mockResolvedValue([]);
     loadLeaderboardSpy = vi.spyOn(leaderboardDao, 'load');
     deleteQueueItemsSpy = vi.spyOn(liveQueueItemDao, 'deleteByLeaderboardId').mockResolvedValue(undefined);
     vi.spyOn(liveQueueItemDao, 'getQueue').mockResolvedValue([]);
     vi.spyOn(modelDao, 'update').mockResolvedValue(undefined as never);
+    // Default to non-admin so existing tests that test open-state rejection still pass
+    vi.spyOn(apiGatewayUtils, 'isUserAdmin').mockResolvedValue(false);
   });
 
   it('should successfully delete a closed community leaderboard', async () => {
@@ -164,6 +167,20 @@ describe('DeleteLeaderboard operation', () => {
     expect(deleteLeaderboardSpy).toHaveBeenCalledTimes(1);
   });
 
+  it('should allow delete of SCHEDULED live leaderboard even when within its open/close window', async () => {
+    // Live races are governed by liveEventStatus, not the open/close window.
+    // A SCHEDULED live race within its time window must still be deletable.
+    loadLeaderboardSpy.mockResolvedValue({
+      ...LIVE_LEADERBOARD_SCHEDULED,
+      openTime: new Date(Date.now() - 60 * 60 * 1000).toISOString(), // 1h ago
+      closeTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7d from now
+    });
+
+    await DeleteLeaderboardOperation({ leaderboardId: TEST_LEADERBOARD_ID }, TEST_OPERATION_CONTEXT);
+
+    expect(deleteLeaderboardSpy).toHaveBeenCalledTimes(1);
+  });
+
   it('should block delete of IN_PROGRESS live leaderboard with no winner', async () => {
     loadLeaderboardSpy.mockResolvedValue(LIVE_LEADERBOARD_IN_PROGRESS);
 
@@ -242,5 +259,60 @@ describe('DeleteLeaderboard operation', () => {
 
     expect(modelDao.update).not.toHaveBeenCalled();
     expect(deleteLeaderboardSpy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('DeleteLeaderboard — active community race', () => {
+  const ACTIVE_LEADERBOARD: LeaderboardItem = {
+    ...TEST_LEADERBOARD_ITEM,
+    openTime: new Date(Date.now() - 60 * 60 * 1000).toISOString(), // 1h ago
+    closeTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7d from now
+    isLive: false,
+  };
+
+  let deleteLeaderboardSpy: MockInstance<(typeof leaderboardDao)['delete']>;
+  let deleteRankingsSpy: MockInstance<(typeof rankingDao)['deleteByLeaderboardId']>;
+  let deleteSubmissionsSpy: MockInstance<(typeof submissionDao)['deleteByLeaderboardId']>;
+
+  beforeEach(() => {
+    deleteLeaderboardSpy = vi.spyOn(leaderboardDao, 'delete').mockResolvedValue({ leaderboardId: TEST_LEADERBOARD_ID });
+    deleteRankingsSpy = vi.spyOn(rankingDao, 'deleteByLeaderboardId').mockResolvedValue([]);
+    deleteSubmissionsSpy = vi.spyOn(submissionDao, 'deleteByLeaderboardId').mockResolvedValue([]);
+    vi.spyOn(leaderboardDao, 'load').mockResolvedValue(ACTIVE_LEADERBOARD);
+  });
+
+  it('should allow admin to delete an active community race', async () => {
+    vi.spyOn(apiGatewayUtils, 'isUserAdmin').mockResolvedValue(true);
+
+    await DeleteLeaderboardOperation({ leaderboardId: TEST_LEADERBOARD_ID }, TEST_OPERATION_CONTEXT);
+
+    expect(deleteLeaderboardSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('should NOT delete submissions or rankings for admin delete of active race (non-destructive)', async () => {
+    vi.spyOn(apiGatewayUtils, 'isUserAdmin').mockResolvedValue(true);
+
+    await DeleteLeaderboardOperation({ leaderboardId: TEST_LEADERBOARD_ID }, TEST_OPERATION_CONTEXT);
+
+    expect(deleteSubmissionsSpy).not.toHaveBeenCalled();
+    expect(deleteRankingsSpy).not.toHaveBeenCalled();
+  });
+
+  it('should reject non-admin attempting to delete an active community race', async () => {
+    vi.spyOn(apiGatewayUtils, 'isUserAdmin').mockResolvedValue(false);
+
+    await expect(
+      DeleteLeaderboardOperation({ leaderboardId: TEST_LEADERBOARD_ID }, TEST_OPERATION_CONTEXT),
+    ).rejects.toStrictEqual(new BadRequestError({ message: 'Unable to delete an open leaderboard.' }));
+  });
+
+  it('should not call leaderboard.delete when non-admin tries active race delete', async () => {
+    vi.spyOn(apiGatewayUtils, 'isUserAdmin').mockResolvedValue(false);
+
+    await expect(
+      DeleteLeaderboardOperation({ leaderboardId: TEST_LEADERBOARD_ID }, TEST_OPERATION_CONTEXT),
+    ).rejects.toThrow();
+
+    expect(deleteLeaderboardSpy).not.toHaveBeenCalled();
   });
 });

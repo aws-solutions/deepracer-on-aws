@@ -74,6 +74,28 @@ describe('PreSignUp lambda', () => {
       expect(metricsLogger.logCreateUser).toHaveBeenCalledWith();
     });
 
+    it('should persist countryCode to the profile when supplied as a sign-up attribute', async () => {
+      const eventWithCountry: lambda.PreSignUpTriggerEvent = {
+        ...event,
+        request: {
+          ...event.request,
+          userAttributes: { email: 'racer@example.com', 'custom:countryCode': 'GB' },
+          clientMetadata: { racerAlias: 'speedy' },
+        },
+      };
+
+      await PreSignUp(eventWithCountry, context, callback);
+
+      expect(profileDao.create).toHaveBeenCalledWith(expect.objectContaining({ countryCode: 'GB' }));
+    });
+
+    it('should not set countryCode on the profile when no country attribute is present', async () => {
+      await PreSignUp(event, context, callback);
+
+      const createArg = vi.mocked(profileDao.create).mock.calls[0][0] as Record<string, unknown>;
+      expect(createArg).not.toHaveProperty('countryCode');
+    });
+
     it('should handle different valid username formats', async () => {
       const validUsernames = ['UkJND3rvVbcLZ5-', 'A1B2C3D4E5F6G7H', 'ABC123DEF456GHI', 'X-Y-Z-123456789'];
 
@@ -336,6 +358,58 @@ describe('PreSignUp lambda', () => {
         [DynamoDBItemAttribute.CREATED_AT]: expect.any(String),
         [DynamoDBItemAttribute.EMAIL_ADDRESS]: undefined,
       });
+    });
+
+    it('should use custom:racerAlias user attribute when no clientMetadata is present (bulk-invite path)', async () => {
+      const eventWithCustomAttribute: lambda.PreSignUpTriggerEvent = {
+        ...event,
+        request: {
+          ...event.request,
+          clientMetadata: undefined,
+          userAttributes: { 'custom:racerAlias': 'AliceSmith' },
+        },
+      };
+
+      await PreSignUp(eventWithCustomAttribute, context, callback);
+
+      expect(profileDao.create).toHaveBeenCalledWith({
+        profileId: event.userName,
+        alias: 'AliceSmith',
+        maxTotalComputeMinutes: TEST_GLOBAL_CONFIG_NEW_USER.newUserComputeMinutesLimit,
+        maxModelCount: TEST_GLOBAL_CONFIG_NEW_USER.newUserModelCountLimit,
+        [DynamoDBItemAttribute.CREATED_AT]: expect.any(String),
+        [DynamoDBItemAttribute.EMAIL_ADDRESS]: undefined,
+      });
+    });
+
+    it('should prefer clientMetadata.racerAlias over custom:racerAlias when both are present', async () => {
+      const eventWithBoth: lambda.PreSignUpTriggerEvent = {
+        ...event,
+        request: {
+          ...event.request,
+          clientMetadata: { racerAlias: 'FromClientMetadata' },
+          userAttributes: { 'custom:racerAlias': 'FromCustomAttribute' },
+        },
+      };
+
+      await PreSignUp(eventWithBoth, context, callback);
+
+      expect(profileDao.create).toHaveBeenCalledWith(expect.objectContaining({ alias: 'FromClientMetadata' }));
+    });
+
+    it('should fall back to the default alias when custom:racerAlias fails alias validation', async () => {
+      const eventWithInvalidCustomAttribute: lambda.PreSignUpTriggerEvent = {
+        ...event,
+        request: {
+          ...event.request,
+          clientMetadata: undefined,
+          userAttributes: { 'custom:racerAlias': 'ab' },
+        },
+      };
+
+      await expect(PreSignUp(eventWithInvalidCustomAttribute, context, callback)).rejects.toThrow(
+        'Invalid racer alias format',
+      );
     });
 
     it('should reject invalid alias - too short', async () => {

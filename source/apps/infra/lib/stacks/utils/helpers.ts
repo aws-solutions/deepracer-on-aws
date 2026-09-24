@@ -43,3 +43,36 @@ export function generateUniqueConstructId(
 
   return withHash;
 }
+
+/**
+ * Context values needed to resolve a single container image's source registry and repo name.
+ */
+export interface ImageContextOverride {
+  /** The default registry used when this image has no override (e.g. PUBLIC_ECR_REGISTRY) */
+  defaultRegistry: string;
+  /** The registry to use when this image's own repo-name override is set, if any */
+  overrideRegistry: string | undefined;
+  /** The default repo name for this image (e.g. from SIMAPP_REPO_NAME) */
+  defaultRepoName: string;
+  /** This image's own repo-name override, if any (e.g. from OVERRIDE_SIMAPP_REPO_NAME) */
+  overrideRepoName: string | undefined;
+}
+
+/**
+ * Resolves the repo name and registry to use for a single container image.
+ *
+ * An image redirects to the override registry only when BOTH an override registry and that
+ * image's own repo-name override are set — images that don't set their own override stay
+ * pinned to the default registry, even when other images are redirected via the same shared
+ * override registry value.
+ */
+export function resolveImageSource({
+  defaultRegistry,
+  overrideRegistry,
+  defaultRepoName,
+  overrideRepoName,
+}: ImageContextOverride): { repoName: string; registry: string } {
+  const repoName = overrideRepoName ?? defaultRepoName;
+  const registry = overrideRegistry && overrideRepoName ? overrideRegistry : defaultRegistry;
+  return { repoName, registry };
+}

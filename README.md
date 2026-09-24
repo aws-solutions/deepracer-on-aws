@@ -140,6 +140,9 @@ _DeepRacer on AWS_ is structured as monorepo. See below for package layouts and 
       ┃           ┣ 📂operations            Smithy definitions for API operations
       ┃           ┣ 📂types                 Smithy definitions for API types
       ┃           ┗ 📜main.smithy           Smithy API definition
+      ┣ 📂model-optimizer                   Model Optimizer Lambda (Python/Docker) - OpenVINO + TFLite conversion
+      ┃  ┣ 📂lib/model_optimizer            Lambda source code
+      ┃  ┗ 📂tests                          pytest unit tests
       ┣ 📂typescript-client                 Auto-generated from model - API TypeScript client for website to consume
       ┣ 📂typescript-server-client          Auto-generated from model - API TypeScript client for API lambdas to consume
       ┗ 📂utils                             Utils package - App-wide utils
@@ -332,13 +335,35 @@ The solution uses CDK context values for container image configuration. These ar
 
 - `PUBLIC_ECR_REGISTRY`: "public.ecr.aws/aws-solutions"
 - `MODEL_VALIDATION_REPO_NAME`: "deepracer-on-aws-model-validation"
+- `MODEL_OPTIMIZER_REPO_NAME`: "deepracer-on-aws-model-optimizer"
 - `REWARD_VALIDATION_REPO_NAME`: "deepracer-on-aws-reward-function-validation"
 - `SIMAPP_REPO_NAME`: "deepracer-on-aws-simapp"
+
+**Redirecting a single image to a custom source:**
+
+By default, all four container images are pulled from the public AWS Solutions ECR gallery
+(`PUBLIC_ECR_REGISTRY`). If you need to source one image from a different registry — for
+example, an image you've built yourself and pushed to a private ECR repository — set both an
+`OVERRIDE_*_REPO_NAME` context value for that image and `OVERRIDE_PUBLIC_ECR_REGISTRY`. Only
+images with their own `OVERRIDE_*_REPO_NAME` set are redirected; every other image continues
+to use the default public registry unaffected.
+
+Available override keys: `OVERRIDE_SIMAPP_REPO_NAME`, `OVERRIDE_REWARD_VALIDATION_REPO_NAME`,
+`OVERRIDE_MODEL_VALIDATION_REPO_NAME`, `OVERRIDE_MODEL_OPTIMIZER_REPO_NAME`.
+
+For example, to source only the model optimizer image from a private ECR repository while
+leaving SimApp, reward validation, and model validation on the public gallery:
+
+```
+pnpm nx deploy infra \
+  --context OVERRIDE_PUBLIC_ECR_REGISTRY=<account-id>.dkr.ecr.<region>.amazonaws.com \
+  --context OVERRIDE_MODEL_OPTIMIZER_REPO_NAME=<your-repo-name>
+```
 
 **Override context values during deployment:**
 
 ```
-pnpm nx deploy infra --context PUBLIC_ECR_REGISTRY=my-registry.com --context PUBLIC_ECR_REGISTRY=<PRIVATE_ECR_REPO>
+pnpm nx deploy infra --context PUBLIC_ECR_REGISTRY=my-registry.com
 ```
 
 #### Bootstrap CDK (if not already done)

@@ -32,6 +32,9 @@ import { metricsLogger } from '@deepracer-indy/utils';
 import { mockClient } from 'aws-sdk-client-mock';
 
 import { sqsClient } from '../../../utils/clients/sqsClient.js';
+import { CapacityMessage } from '../../../workflow/constants/capacityMessages.js';
+import { CapacityStatus, CapacityUnavailableReason } from '../../../workflow/types/capacityCheckResult.js';
+import { sageMakerHelper } from '../../../workflow/utils/SageMakerHelper.js';
 import { TEST_OPERATION_CONTEXT } from '../../constants/testConstants.js';
 import { rewardFunctionValidator } from '../../utils/RewardFunctionValidator.js';
 import { validator } from '../../utils/Validator.js';
@@ -55,6 +58,15 @@ describe('CreateModel', () => {
 
   beforeEach(() => {
     mockSqsClient.reset();
+    mockSqsClient.on(SendMessageCommand).resolves({});
+    // Capacity is available by default; the waiting path is covered by its own tests below.
+    vi.spyOn(sageMakerHelper, 'checkTrainingCapacity').mockResolvedValue({
+      status: CapacityStatus.AVAILABLE,
+      effectiveInstanceType: 'ml.c7i.4xlarge',
+      requiredInstanceCount: 1,
+    });
+    vi.spyOn(modelDao, 'transitionStatus').mockResolvedValue();
+    vi.spyOn(trainingDao, 'transitionStatus').mockResolvedValue();
   });
 
   it('should create new model', async () => {
@@ -86,14 +98,14 @@ describe('CreateModel', () => {
       description: testModelDefinition.description,
       metadata: testModelDefinition.metadata,
       name: testModelDefinition.name,
-      status: ModelStatus.QUEUED,
+      status: ModelStatus.WAITING_FOR_CAPACITY,
     });
     expect(trainingDao.create).toHaveBeenCalledWith({
       modelId: expect.any(String),
       profileId: TEST_OPERATION_CONTEXT.profileId,
       objectAvoidanceConfig: testModelDefinition.trainingConfig.objectAvoidanceConfig,
       raceType: testModelDefinition.trainingConfig.raceType,
-      status: JobStatus.QUEUED,
+      status: JobStatus.WAITING_FOR_CAPACITY,
       terminationConditions: { maxTimeInMinutes: testModelDefinition.trainingConfig.maxTimeInMinutes },
       trackConfig: testModelDefinition.trainingConfig.trackConfig,
     });
@@ -151,14 +163,14 @@ describe('CreateModel', () => {
       description: testModelDefinition.description,
       metadata: testModelDefinition.metadata,
       name: testModelDefinition.name,
-      status: ModelStatus.QUEUED,
+      status: ModelStatus.WAITING_FOR_CAPACITY,
     });
     expect(trainingDao.create).toHaveBeenCalledWith({
       modelId: expect.any(String),
       profileId: TEST_OPERATION_CONTEXT.profileId,
       objectAvoidanceConfig: testModelDefinition.trainingConfig.objectAvoidanceConfig,
       raceType: testModelDefinition.trainingConfig.raceType,
-      status: JobStatus.QUEUED,
+      status: JobStatus.WAITING_FOR_CAPACITY,
       terminationConditions: { maxTimeInMinutes: testModelDefinition.trainingConfig.maxTimeInMinutes },
       trackConfig: testModelDefinition.trainingConfig.trackConfig,
     });
@@ -175,6 +187,102 @@ describe('CreateModel', () => {
         computeMinutesQueued: TEST_TRAINING_ITEM.terminationConditions.maxTimeInMinutes,
         modelCount: 1,
       },
+    );
+  });
+
+  it('should leave the model waiting and send no workflow message when capacity is unavailable', async () => {
+    vi.spyOn(accountResourceUsageDao, 'update').mockResolvedValue(TEST_ACCOUNT_RESOURCE_USAGE_NORMAL);
+    vi.spyOn(profileDao, 'update').mockResolvedValue(TEST_PROFILE_ITEM);
+    vi.spyOn(modelDao, 'create').mockResolvedValue(TEST_MODEL_ITEM);
+    vi.spyOn(trainingDao, 'create').mockResolvedValue(TEST_TRAINING_ITEM);
+    vi.spyOn(rewardFunctionValidator, 'validateRewardFunction').mockResolvedValueOnce({ errors: [] });
+    vi.spyOn(accountResourceUsageDao, 'getOrCreate').mockResolvedValueOnce(TEST_ACCOUNT_RESOURCE_USAGE_NORMAL);
+    vi.spyOn(profileDao, 'load').mockResolvedValueOnce(TEST_PROFILE_ITEM);
+    vi.spyOn(sageMakerHelper, 'checkTrainingCapacity').mockResolvedValue({
+      status: CapacityStatus.UNAVAILABLE,
+      effectiveInstanceType: 'ml.c7i.4xlarge',
+      requiredInstanceCount: 1,
+      reason: CapacityUnavailableReason.TOTAL_INSTANCE_QUOTA,
+    });
+
+    // The model was still accepted and stored, so the caller receives the model ID.
+    await expect(
+      CreateModelOperation({ modelDefinition: testModelDefinition }, TEST_OPERATION_CONTEXT),
+    ).resolves.toEqual({ modelId: TEST_MODEL_ITEM.modelId });
+
+    expect(mockSqsClient).not.toHaveReceivedCommand(SendMessageCommand);
+    expect(modelDao.transitionStatus).toHaveBeenCalledWith(
+      { modelId: expect.any(String), profileId: TEST_OPERATION_CONTEXT.profileId },
+      {
+        from: ModelStatus.WAITING_FOR_CAPACITY,
+        to: ModelStatus.WAITING_FOR_CAPACITY,
+        statusMessage: CapacityMessage.UNAVAILABLE,
+      },
+    );
+  });
+
+  it('should leave the model waiting when capacity cannot be verified', async () => {
+    vi.spyOn(accountResourceUsageDao, 'update').mockResolvedValue(TEST_ACCOUNT_RESOURCE_USAGE_NORMAL);
+    vi.spyOn(profileDao, 'update').mockResolvedValue(TEST_PROFILE_ITEM);
+    vi.spyOn(modelDao, 'create').mockResolvedValue(TEST_MODEL_ITEM);
+    vi.spyOn(trainingDao, 'create').mockResolvedValue(TEST_TRAINING_ITEM);
+    vi.spyOn(rewardFunctionValidator, 'validateRewardFunction').mockResolvedValueOnce({ errors: [] });
+    vi.spyOn(accountResourceUsageDao, 'getOrCreate').mockResolvedValueOnce(TEST_ACCOUNT_RESOURCE_USAGE_NORMAL);
+    vi.spyOn(profileDao, 'load').mockResolvedValueOnce(TEST_PROFILE_ITEM);
+    vi.spyOn(sageMakerHelper, 'checkTrainingCapacity').mockResolvedValue({
+      status: CapacityStatus.UNKNOWN,
+      error: new Error('AccessDenied'),
+    });
+
+    await expect(
+      CreateModelOperation({ modelDefinition: testModelDefinition }, TEST_OPERATION_CONTEXT),
+    ).resolves.toEqual({ modelId: TEST_MODEL_ITEM.modelId });
+
+    // Fail closed: an unverifiable quota is not the same as confirmed capacity.
+    expect(mockSqsClient).not.toHaveReceivedCommand(SendMessageCommand);
+    expect(modelDao.transitionStatus).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ statusMessage: CapacityMessage.UNKNOWN }),
+    );
+  });
+
+  it('should not send a duplicate message when another caller already queued the job', async () => {
+    vi.spyOn(accountResourceUsageDao, 'update').mockResolvedValue(TEST_ACCOUNT_RESOURCE_USAGE_NORMAL);
+    vi.spyOn(profileDao, 'update').mockResolvedValue(TEST_PROFILE_ITEM);
+    vi.spyOn(modelDao, 'create').mockResolvedValue(TEST_MODEL_ITEM);
+    vi.spyOn(trainingDao, 'create').mockResolvedValue(TEST_TRAINING_ITEM);
+    vi.spyOn(rewardFunctionValidator, 'validateRewardFunction').mockResolvedValueOnce({ errors: [] });
+    vi.spyOn(accountResourceUsageDao, 'getOrCreate').mockResolvedValueOnce(TEST_ACCOUNT_RESOURCE_USAGE_NORMAL);
+    vi.spyOn(profileDao, 'load').mockResolvedValueOnce(TEST_PROFILE_ITEM);
+    // Losing the conditional WAITING_FOR_CAPACITY -> QUEUED transition means another caller owns the send.
+    vi.spyOn(modelDao, 'transitionStatus').mockRejectedValue(
+      Object.assign(new Error('wrapped'), { cause: { name: 'ConditionalCheckFailedException' } }),
+    );
+
+    await expect(
+      CreateModelOperation({ modelDefinition: testModelDefinition }, TEST_OPERATION_CONTEXT),
+    ).resolves.toEqual({ modelId: TEST_MODEL_ITEM.modelId });
+
+    expect(mockSqsClient).not.toHaveReceivedCommand(SendMessageCommand);
+  });
+
+  it('should roll back to waiting and fail when the workflow message cannot be sent', async () => {
+    vi.spyOn(accountResourceUsageDao, 'update').mockResolvedValue(TEST_ACCOUNT_RESOURCE_USAGE_NORMAL);
+    vi.spyOn(profileDao, 'update').mockResolvedValue(TEST_PROFILE_ITEM);
+    vi.spyOn(modelDao, 'create').mockResolvedValue(TEST_MODEL_ITEM);
+    vi.spyOn(trainingDao, 'create').mockResolvedValue(TEST_TRAINING_ITEM);
+    vi.spyOn(rewardFunctionValidator, 'validateRewardFunction').mockResolvedValueOnce({ errors: [] });
+    vi.spyOn(accountResourceUsageDao, 'getOrCreate').mockResolvedValueOnce(TEST_ACCOUNT_RESOURCE_USAGE_NORMAL);
+    vi.spyOn(profileDao, 'load').mockResolvedValueOnce(TEST_PROFILE_ITEM);
+    mockSqsClient.on(SendMessageCommand).rejects(new Error('SQS unavailable'));
+
+    await expect(
+      CreateModelOperation({ modelDefinition: testModelDefinition }, TEST_OPERATION_CONTEXT),
+    ).rejects.toThrow(InternalFailureError);
+
+    expect(modelDao.transitionStatus).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ from: ModelStatus.QUEUED, to: ModelStatus.WAITING_FOR_CAPACITY }),
     );
   });
 

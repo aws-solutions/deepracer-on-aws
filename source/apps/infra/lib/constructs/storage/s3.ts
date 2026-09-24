@@ -16,6 +16,7 @@ export class S3Bucket extends Construct {
   readonly virtualModelBucket: Bucket;
   readonly uploadBucket: Bucket;
   readonly accessLogsBucket: Bucket;
+  readonly deviceLogsBucket: Bucket;
 
   constructor(scope: Construct, id: string) {
     super(scope, id);
@@ -117,6 +118,28 @@ export class S3Bucket extends Construct {
     });
 
     this.uploadBucket.addToResourcePolicy(this.createDenyNonHttpsPolicy(this.uploadBucket));
+
+    this.deviceLogsBucket = new Bucket(this, 'DeviceLogsBucket', {
+      serverAccessLogsBucket: this.accessLogsBucket,
+      serverAccessLogsPrefix: 'device-logs-bucket-logs/',
+      blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
+      encryption: BucketEncryption.S3_MANAGED,
+      enforceSSL: true,
+      versioned: true,
+      autoDeleteObjects: true, // TODO: link to config value
+      removalPolicy: RemovalPolicy.DESTROY, // TODO: link to config value
+      lifecycleRules: [
+        {
+          enabled: true,
+          id: 'ExpireDeviceLogs',
+          expiration: Duration.days(90),
+          noncurrentVersionExpiration: Duration.days(30),
+          abortIncompleteMultipartUploadAfter: Duration.days(1),
+        },
+      ],
+    });
+
+    this.deviceLogsBucket.addToResourcePolicy(this.createDenyNonHttpsPolicy(this.deviceLogsBucket));
 
     addCfnGuardSuppressionForAutoCreatedLambdas(this, 'Custom::S3AutoDeleteObjectsCustomResourceProvider');
   }

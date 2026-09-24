@@ -45,6 +45,11 @@ export const SubmissionsEntity = new Entity(
           jobNameHelper.getJobName(JobType.SUBMISSION, submissionId),
       },
       [DynamoDBItemAttribute.RESETTING_BEHAVIOR_CONFIG]: RESETTING_BEHAVIOR_CONFIG_ATTRIBUTE,
+      [DynamoDBItemAttribute.RACED_BY_PROXY]: {
+        type: 'boolean',
+        required: false,
+        default: false,
+      },
     },
     indexes: {
       byProfileId: {

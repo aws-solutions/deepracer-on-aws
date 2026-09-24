@@ -1,37 +1,27 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import fs from 'node:fs';
 import path from 'node:path';
 
-import { WafwebaclToApiGateway } from '@aws-solutions-constructs/aws-wafwebacl-apigateway';
 import type { DeepRacerIndyServiceOperations } from '@deepracer-indy/typescript-server-client';
 import { Duration, RemovalPolicy, Stack } from 'aws-cdk-lib';
-import {
-  AccessLogFormat,
-  ApiDefinition,
-  LogGroupLogDestination,
-  MethodLoggingLevel,
-  ResponseType,
-  SpecRestApi,
-} from 'aws-cdk-lib/aws-apigateway';
-import { Alarm, Metric, TreatMissingData } from 'aws-cdk-lib/aws-cloudwatch';
+import { Alarm, MathExpression, Metric, TreatMissingData } from 'aws-cdk-lib/aws-cloudwatch';
 import { IUserPool, UserPool } from 'aws-cdk-lib/aws-cognito';
 import { TableV2 } from 'aws-cdk-lib/aws-dynamodb';
 import { IVpc, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
-import { PolicyStatement, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Architecture, DockerImageCode, DockerImageFunction } from 'aws-cdk-lib/aws-lambda';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
-import { FilterPattern, LogGroup, MetricFilter } from 'aws-cdk-lib/aws-logs';
+import { FilterPattern, MetricFilter } from 'aws-cdk-lib/aws-logs';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { Queue, QueueEncryption } from 'aws-cdk-lib/aws-sqs';
-import { CfnWebACL } from 'aws-cdk-lib/aws-wafv2';
 import { Construct } from 'constructs';
 
+import { OperationsOwnedBy, operationsOwnedBy } from '../../constants/operationOwnership.js';
 import { EcrStack } from '../../stacks/ecrStack.js';
+import { BULK_INVITE_METRICS_NAMESPACE } from '../bulk-invite/bulkInviteWorkflow.js';
 import { addCfnGuardSuppression } from '../common/cfnGuardHelper.js';
-import { KmsHelper } from '../common/kmsHelper.js';
-import { DefaultLogRemovalPolicy, DefaultLogRetentionDays, LogGroupCategory } from '../common/logGroupsHelper.js';
+import { LogGroupCategory } from '../common/logGroupsHelper.js';
 import { NodeLambdaFunction } from '../common/nodeLambdaFunction.js';
 import { grantAppConfigAccess } from '../common/permissionsHelper.js';
 import { ImportWorkflow } from '../import-workflow/importWorkflow.js';
@@ -46,23 +36,64 @@ export interface ApiProps {
   userExecutionVpc: IVpc;
   userExecutionSecurityGroup: SecurityGroup;
   virtualModelBucket: Bucket;
+  deviceLogsBucket: Bucket;
   globalSettings: GlobalSettings;
   namespace: string;
 }
 
+/**
+ * Operations that live in the Api construct. Derived from OPERATION_OWNER — do not
+ * maintain a second list here. Operations owned by an epic nested stack are absent
+ * by construction, so including one by accident is a compile error.
+ *
+ * @see lib/constants/operationOwnership.ts
+ */
+type CoreOperations = OperationsOwnedBy<'core'>;
+
 export class Api extends Construct {
-  public readonly api: SpecRestApi;
   public readonly workflowJobQueue: Queue;
+  public readonly workflowJobDeadLetterQueue: Queue;
+  public readonly workflowJobDeadLetterQueueAlarm: Alarm;
   public readonly assetPackagingDLQAlarm: Alarm;
   public readonly importModelJobQueue: Queue;
   public readonly importModelWorkflow: ImportWorkflow;
   public readonly rewardFunctionValidationLambda: DockerImageFunction;
-  public readonly apiFunctions: { [Operation in DeepRacerIndyServiceOperations]: NodeLambdaFunction };
+  /**
+   * Core API Lambda functions owned by ApiStack. Epic operations are absent —
+   * they live in their own NestedStack and are accessed via epicHandlerOverrides.
+   */
+  public readonly apiFunctions: { [Operation in CoreOperations]: NodeLambdaFunction };
+  /**
+   * Smithy operation → Lambda ARN for every core-owned operation.
+   * Root passes this to GatewayStack, which builds the OpenAPI integrations and the
+   * invoke permissions. Plain strings: no construct references cross the boundary.
+   */
+  public readonly handlerArns: Readonly<Record<CoreOperations, string>>;
 
   constructor(scope: Construct, id: string, props: ApiProps) {
     super(scope, id);
 
     const { namespace } = props;
+
+    // DLQ for the workflow queue: a repeatedly-failing message (single MessageGroupId =
+    // head-of-line blocking) would otherwise block the queue for its whole retention.
+    this.workflowJobDeadLetterQueue = new Queue(this, 'WorkflowJobDeadLetterQueue', {
+      encryption: QueueEncryption.KMS_MANAGED,
+      enforceSSL: true,
+      fifo: true,
+      removalPolicy: RemovalPolicy.DESTROY,
+      retentionPeriod: Duration.days(14),
+    });
+
+    // Alarm on any DLQ message (a never-dispatched job); mirrors assetPackagingDLQAlarm.
+    this.workflowJobDeadLetterQueueAlarm = new Alarm(this, 'WorkflowJobDLQAlarm', {
+      metric: this.workflowJobDeadLetterQueue.metricApproximateNumberOfMessagesVisible(),
+      threshold: 1,
+      evaluationPeriods: 1,
+      alarmDescription:
+        'A training job dispatch message has been moved to the workflow job DLQ after exhausting retries',
+      treatMissingData: TreatMissingData.NOT_BREACHING,
+    });
 
     this.workflowJobQueue = new Queue(this, 'WorkflowJobQueue', {
       encryption: QueueEncryption.KMS_MANAGED,
@@ -70,18 +101,29 @@ export class Api extends Construct {
       fifo: true,
       removalPolicy: RemovalPolicy.DESTROY, // TODO: link to config value
       retentionPeriod: Duration.days(14),
-      visibilityTimeout: Duration.minutes(1),
+      // >= 6x the JobDispatcher timeout (2 min); otherwise a message redelivers mid-processing
+      // and the job is dispatched twice.
+      visibilityTimeout: Duration.minutes(12),
+      deadLetterQueue: {
+        queue: this.workflowJobDeadLetterQueue,
+        // 3 x 12-min visibility = a poison message blocks at most ~36 min before moving aside.
+        maxReceiveCount: 3,
+      },
     });
 
     // Entry points for api lambda handlers in the lambda lib
     const apiHandlerEntryPoints = {
       ClearLiveLeaderboard: 'api/handlers/clearLiveLeaderboard',
+      BulkInviteUser: 'api/handlers/bulkInviteUser',
       CreateEvaluation: 'api/handlers/createEvaluation',
       CreateLeaderboard: 'api/handlers/createLeaderboard',
       CreateModel: 'api/handlers/createModel',
       CreateProfile: 'api/handlers/createProfile',
       CreateSubmission: 'api/handlers/createSubmission',
       DeclareWinner: 'api/handlers/declareWinner',
+      GetBulkInviteUserJobStatus: 'api/handlers/getBulkInviteUserJobStatus',
+      ListBulkInviteUserJobs: 'api/handlers/listBulkInviteUserJobs',
+      ResendInvite: 'api/handlers/resendInvite',
       DeleteLeaderboard: 'api/handlers/deleteLeaderboard',
       DeleteModel: 'api/handlers/deleteModel',
       DeleteProfile: 'api/handlers/deleteProfile',
@@ -111,24 +153,41 @@ export class Api extends Construct {
       AttachLiveRacePolicy: 'live-race/attachPolicy',
       RemoveLiveQueueItem: 'api/handlers/removeLiveQueueItem',
       ReorderLiveQueue: 'api/handlers/reorderLiveQueue',
+      GetRaceStats: 'api/handlers/getStats',
       ResetLiveQueueModel: 'api/handlers/resetLiveQueueModel',
+      RetryTraining: 'api/handlers/retryTraining',
       StopModel: 'api/handlers/stopModel',
       TestRewardFunction: 'api/handlers/testRewardFunction',
       UpdateGlobalSetting: 'api/handlers/updateGlobalSetting',
       UpdateGroupMembership: 'api/handlers/updateGroupMembership',
       UpdateProfile: 'api/handlers/updateProfile',
-    } as const satisfies { [Operation in DeepRacerIndyServiceOperations]: string };
+    } as const satisfies Partial<{ [Operation in DeepRacerIndyServiceOperations]: string }>;
+    // Cast to allow indexing by any operation (missing keys return undefined at runtime).
+    const coreEntryPoints = apiHandlerEntryPoints as Partial<Record<DeepRacerIndyServiceOperations, string>>;
 
-    const functions = (Object.keys(apiHandlerEntryPoints) as DeepRacerIndyServiceOperations[]).reduce(
+    // Operations owned by epic nested stacks are absent from apiHandlerEntryPoints and
+    // from operationsOwnedBy('core'). Their Lambda ARNs arrive via props.epicHandlerOverrides.
+    // Any core operation without an explicit entry falls back to the notImplemented handler.
+    const notImplementedEntry = 'api/handlers/notImplemented';
+
+    // Core operation list comes from OPERATION_OWNER — the single source of truth.
+    // Epic operations are excluded by construction: creating a Lambda here for an
+    // operation an epic stack also owns would produce a duplicate physical function
+    // name and fail the deployment.
+    const allEntryPoints = Object.fromEntries(
+      operationsOwnedBy('core').map((op) => [op, coreEntryPoints[op] ?? notImplementedEntry]),
+    ) as Record<CoreOperations, string>;
+
+    const functions = (Object.keys(allEntryPoints) as CoreOperations[]).reduce(
       (acc, operation) => ({
         ...acc,
         [operation]: new NodeLambdaFunction(this, `${operation}Function`, {
-          entry: path.join(__dirname, `../../../../../libs/lambda/src/${apiHandlerEntryPoints[operation]}.ts`),
+          entry: path.join(__dirname, `../../../../../libs/lambda/src/${allEntryPoints[operation]}.ts`),
           functionName: `DeepRacerIndyApi-${operation}Function`,
           logGroupCategory: LogGroupCategory.API,
           namespace,
           timeout:
-            operation === 'CreateModel' || operation === 'TestRewardFunction'
+            operation === 'CreateModel' || operation === 'TestRewardFunction' || operation === 'RetryTraining'
               ? Duration.seconds(60)
               : Duration.seconds(30),
           environment: {
@@ -145,7 +204,20 @@ export class Api extends Construct {
           ...(operation === 'GetAssetUrl' && { memorySize: 3008 }),
         }),
       }),
-      {} as { [Operation in DeepRacerIndyServiceOperations]: NodejsFunction },
+      {} as { [Operation in CoreOperations]: NodejsFunction },
+    );
+
+    functions.ListProfiles.addToRolePolicy(
+      new PolicyStatement({
+        actions: ['cognito-idp:AdminListGroupsForUser'],
+        resources: [
+          Stack.of(this).formatArn({
+            service: 'cognito-idp',
+            resource: 'userpool',
+            resourceName: props.userPool.userPoolId,
+          }),
+        ],
+      }),
     );
 
     functions.UpdateProfile.addToRolePolicy(
@@ -187,6 +259,20 @@ export class Api extends Construct {
     functions.ListAdminProfiles.addToRolePolicy(adminCognitoPolicy);
     functions.ListModelsForProfile.addToRolePolicy(adminCognitoPolicy);
     functions.GetAdminAssetUrl.addToRolePolicy(adminCognitoPolicy);
+    functions.DeleteProfileModels.addToRolePolicy(adminCognitoPolicy);
+    // EditLeaderboard and DeleteLeaderboard call isUserAdmin (AdminListGroupsForUser)
+    // to gate admin-only operations on active community races.
+    functions.EditLeaderboard.addToRolePolicy(adminCognitoPolicy);
+    functions.DeleteLeaderboard.addToRolePolicy(adminCognitoPolicy);
+    // GetRaceStats calls isUserAdmin to gate the admin-only Race Statistics page.
+    functions.GetRaceStats.addToRolePolicy(adminCognitoPolicy);
+    // AttachLiveRacePolicy calls isUserAdminOrFacilitator (AdminListGroupsForUser) to decide
+    // whether to attach the publish-capable or subscribe-only IoT policy. Without this grant the
+    // call throws and the handler fails closed to the subscribe-only policy for every caller,
+    // silently denying Admin/Facilitator the countdown-publish topic (MQTT PUBACK 135).
+    functions.AttachLiveRacePolicy.addToRolePolicy(adminCognitoPolicy);
+    // UpdateGlobalSetting calls isUserAdmin (AdminListGroupsForUser)
+    functions.UpdateGlobalSetting.addToRolePolicy(adminCognitoPolicy);
 
     const appConfigConsumers = [
       functions.CreateEvaluation,
@@ -197,9 +283,46 @@ export class Api extends Construct {
     ];
     appConfigConsumers.forEach((fn) => grantAppConfigAccess(this, fn, props.globalSettings));
 
+    // CreateModel and RetryTraining both gate training dispatch on the two SageMaker training
+    // quotas. Usage is summed across every active training job in the account — including jobs this
+    // solution did not create — so DescribeTrainingJob is scoped to this account and Region but
+    // deliberately not to the deepracerindy- prefix: foreign describes must succeed or the
+    // account-wide quota (L-00C91CB5) is under-reported. ListTrainingJobs defines no IAM resource
+    // type, so it can only be granted on '*'.
+    // SAGEMAKER_INSTANCE_TYPE must match the value JobInitializer passes to CreateTrainingJob, or the
+    // check would compare usage against the wrong instance-type quota.
+    const region = Stack.of(this).region;
+    const account = Stack.of(this).account;
+    const trainingCapacityConsumers = [functions.CreateModel, functions.RetryTraining];
+    trainingCapacityConsumers.forEach((fn) => {
+      fn.addEnvironment('SAGEMAKER_INSTANCE_TYPE', scope.node.tryGetContext('SAGEMAKER_INSTANCE_TYPE') ?? '');
+      fn.addToRolePolicy(
+        new PolicyStatement({
+          actions: ['sagemaker:ListTrainingJobs'],
+          resources: ['*'],
+        }),
+      );
+      fn.addToRolePolicy(
+        new PolicyStatement({
+          actions: ['sagemaker:DescribeTrainingJob'],
+          resources: [`arn:aws:sagemaker:${region}:${account}:training-job/*`],
+        }),
+      );
+      fn.addToRolePolicy(
+        new PolicyStatement({
+          // Granted on '*' deliberately — see the matching comment on the JobInitializer policy in
+          // workflow.ts. Scoping to a `quota` ARN is documented but unverified, and a mismatch fails
+          // silently as a permanent WAITING_FOR_CAPACITY.
+          actions: ['servicequotas:GetServiceQuota'],
+          resources: ['*'],
+        }),
+      );
+    });
+
     const assetPackagingDLQ = new Queue(this, 'AssetPackagingDLQ', {
       retentionPeriod: Duration.days(1),
       encryption: QueueEncryption.KMS_MANAGED,
+      enforceSSL: true,
       removalPolicy: RemovalPolicy.DESTROY,
     });
 
@@ -233,9 +356,12 @@ export class Api extends Construct {
     props.virtualModelBucket.grantPut(assetPackagingLambda);
     props.dynamoDBTable.grantWriteData(assetPackagingLambda);
 
-    // Create Reward Function Validation Lambda using private ECR repository
+    // The ECR mapping ID is the resolved repository name, including an optional override.
+    const rewardValidationRepositoryId =
+      this.node.tryGetContext('OVERRIDE_REWARD_VALIDATION_REPO_NAME') ??
+      this.node.getContext('REWARD_VALIDATION_REPO_NAME');
     const rewardValidationMapping = props.ecrStack.imageRepositoryMappings.find(
-      (mapping) => mapping.repositoryId === this.node.getContext('REWARD_VALIDATION_REPO_NAME'),
+      (mapping) => mapping.repositoryId === rewardValidationRepositoryId,
     );
 
     if (!rewardValidationMapping) {
@@ -271,6 +397,9 @@ export class Api extends Construct {
     this.importModelJobQueue = this.importModelWorkflow.importModelJobQueue;
 
     this.apiFunctions = functions;
+    this.handlerArns = Object.fromEntries(
+      Object.entries(functions).map(([operation, fn]) => [operation, fn.functionArn]),
+    ) as Record<CoreOperations, string>;
 
     functions.ImportModel.addEnvironment('IMPORT_MODEL_JOB_QUEUE_URL', this.importModelJobQueue.queueUrl);
 
@@ -285,182 +414,10 @@ export class Api extends Construct {
       fn.addEnvironment('REWARD_FUNCTION_VALIDATION_LAMBDA_NAME', this.rewardFunctionValidationLambda.functionName);
     });
 
-    // Create ApiGateway based on OpenApi spec generated from model
-    this.api = new SpecRestApi(this, 'Api', {
-      apiDefinition: ApiDefinition.fromInline(this.getOpenApiDef(functions, props.userPool)),
-      deploy: true,
-      restApiName: `${namespace}-DeepRacerIndyApi`,
-      description: 'DeepRacerIndy API',
-      deployOptions: {
-        accessLogDestination: new LogGroupLogDestination(
-          new LogGroup(this, 'AccessLogs', {
-            encryptionKey: KmsHelper.get(this, props.namespace),
-            removalPolicy: DefaultLogRemovalPolicy,
-            retention: DefaultLogRetentionDays,
-          }),
-        ),
-        accessLogFormat: AccessLogFormat.jsonWithStandardFields(),
-        loggingLevel: MethodLoggingLevel.INFO,
-        dataTraceEnabled: false,
-        metricsEnabled: true,
-        tracingEnabled: true,
-      },
-    });
-
-    this.api.addGatewayResponse('BadRequestBodyResponse', {
-      type: ResponseType.BAD_REQUEST_BODY,
-      responseHeaders: {
-        'Access-Control-Allow-Origin': "'*'",
-        'Access-Control-Allow-Headers': "'*'",
-      },
-      statusCode: '400',
-      templates: {
-        'application/json': '{ "errorMessage": "$context.error.message: $context.error.validationErrorString" }',
-      },
-    });
-
-    this.api.addGatewayResponse('BadRequestParametersResponse', {
-      type: ResponseType.BAD_REQUEST_PARAMETERS,
-      responseHeaders: {
-        'Access-Control-Allow-Origin': "'*'",
-        'Access-Control-Allow-Headers': "'*'",
-      },
-      statusCode: '400',
-      templates: {
-        'application/json': '{ "errorMessage": "$context.error.message: $context.error.validationErrorString" }',
-      },
-    });
-
-    this.api.applyRemovalPolicy(RemovalPolicy.DESTROY); // TODO: link to config value
-
-    // caching in CloudFront
-    addCfnGuardSuppression(this.api.deploymentStage, ['API_GW_CACHE_ENABLED_AND_ENCRYPTED']);
-
-    new WafwebaclToApiGateway(this, 'WafwebaclToApiGateway', {
-      existingApiGatewayInterface: this.api,
-      webaclProps: {
-        rules: [
-          // Re-include the 7 default managed rule groups that WafwebaclToApiGateway provides
-          // when no webaclProps are specified. Providing webaclProps.rules replaces them entirely.
-          ...[
-            'AWSManagedRulesBotControlRuleSet',
-            'AWSManagedRulesKnownBadInputsRuleSet',
-            'AWSManagedRulesCommonRuleSet',
-            'AWSManagedRulesAnonymousIpList',
-            'AWSManagedRulesAmazonIpReputationList',
-            'AWSManagedRulesSQLiRuleSet',
-            'AWSManagedRulesWordPressRuleSet',
-          ].map((name, priority): CfnWebACL.RuleProperty => ({
-            name,
-            priority,
-            overrideAction: { none: {} },
-            statement: {
-              managedRuleGroupStatement: {
-                vendorName: 'AWS',
-                name,
-                // SizeRestrictions_BODY's 8KB body limit rejects legitimate reward function
-                // payloads. Change action to count; a dedicated rule below re-blocks it
-                // everywhere except the endpoints that need larger bodies.
-                ...(name === 'AWSManagedRulesCommonRuleSet'
-                  ? {
-                      ruleActionOverrides: [
-                        {
-                          name: 'SizeRestrictions_BODY',
-                          actionToUse: { count: {} },
-                        } satisfies CfnWebACL.RuleActionOverrideProperty,
-                      ],
-                    }
-                  : {}),
-              },
-            },
-            visibilityConfig: {
-              sampledRequestsEnabled: true,
-              cloudWatchMetricsEnabled: true,
-              metricName: name,
-            },
-          })),
-          // AdminProtectionRuleSet would block our own /admin/* routes — count only
-          {
-            name: 'AWSManagedRulesAdminProtectionRuleSet',
-            priority: 7,
-            overrideAction: { count: {} },
-            statement: {
-              managedRuleGroupStatement: { vendorName: 'AWS', name: 'AWSManagedRulesAdminProtectionRuleSet' },
-            },
-            visibilityConfig: {
-              sampledRequestsEnabled: true,
-              cloudWatchMetricsEnabled: true,
-              metricName: 'AWSManagedRulesAdminProtectionRuleSet',
-            },
-          } satisfies CfnWebACL.RuleProperty,
-          // Re-block SizeRestrictions_BODY except on paths that legitimately need larger bodies.
-          // Matches with ENDS_WITH (not EXACTLY) since WAF sees the stage prefix (e.g. /prod/models),
-          // which also keeps /models/{modelId} sub-paths fully enforced.
-          {
-            name: 'ReenforceBodySizeExceptRewardFunctionEndpoints',
-            priority: 8,
-            action: { block: {} },
-            statement: {
-              andStatement: {
-                statements: [
-                  {
-                    labelMatchStatement: {
-                      scope: 'LABEL',
-                      key: 'awswaf:managed:aws:core-rule-set:SizeRestrictions_Body',
-                    },
-                  },
-                  {
-                    notStatement: {
-                      statement: {
-                        orStatement: {
-                          statements: ['/models', '/rewardFunction'].map((exemptPath): CfnWebACL.StatementProperty => ({
-                            byteMatchStatement: {
-                              searchString: exemptPath,
-                              fieldToMatch: { uriPath: {} },
-                              positionalConstraint: 'ENDS_WITH',
-                              textTransformations: [{ priority: 0, type: 'NONE' }],
-                            },
-                          })),
-                        },
-                      },
-                    },
-                  },
-                ],
-              },
-            },
-            visibilityConfig: {
-              sampledRequestsEnabled: true,
-              cloudWatchMetricsEnabled: true,
-              metricName: 'ReenforceBodySizeExceptRewardFunctionEndpoints',
-            },
-          } satisfies CfnWebACL.RuleProperty,
-          {
-            name: 'AdminRateLimit',
-            priority: 10,
-            action: { block: {} },
-            statement: {
-              rateBasedStatement: {
-                limit: 100,
-                aggregateKeyType: 'IP',
-                scopeDownStatement: {
-                  byteMatchStatement: {
-                    searchString: '/admin/',
-                    fieldToMatch: { uriPath: {} },
-                    textTransformations: [{ priority: 0, type: 'NONE' }],
-                    positionalConstraint: 'CONTAINS',
-                  },
-                },
-              },
-            },
-            visibilityConfig: {
-              sampledRequestsEnabled: true,
-              cloudWatchMetricsEnabled: true,
-              metricName: 'AdminRateLimit',
-            },
-          } satisfies CfnWebACL.RuleProperty,
-        ],
-      },
-    });
+    // NOTE: the SpecRestApi, its stage, access logs, gateway responses, WAF, and every
+    // AWS::Lambda::Permission for API Gateway invoke now live in GatewayStack.
+    // This construct exposes `handlerArns`; root passes it to GatewayStack, which is
+    // constructed last.
 
     const adminMetricNamespace = 'DeepRacerIndyAdmin';
 
@@ -539,11 +496,9 @@ export class Api extends Construct {
     });
 
     for (const apiLambdaHandler of Object.values(functions)) {
-      // Grant APIGateway permission to invoke each lambda handler
-      apiLambdaHandler.addPermission('PermitAPIGInvocation', {
-        principal: new ServicePrincipal('apigateway.amazonaws.com'),
-        sourceArn: this.api.arnForExecuteApi('*'),
-      });
+      // API Gateway invoke permission is NOT granted here — GatewayStack owns every
+      // Lambda::Permission for the API so that no stack needs both the API ID and the
+      // function ARNs (which would close a CloudFormation cycle).
 
       // Grant each lambda handler permissions to the DeepRacerIndy data layer
       props.dynamoDBTable.grantReadWriteData(apiLambdaHandler);
@@ -568,7 +523,12 @@ export class Api extends Construct {
       // Grant CreateProfile function permission to add users to groups
       functions.CreateProfile.addToRolePolicy(
         new PolicyStatement({
-          actions: ['cognito-idp:AdminCreateUser', 'cognito-idp:AdminAddUserToGroup', 'cognito-idp:AdminDeleteUser'],
+          actions: [
+            'cognito-idp:AdminCreateUser',
+            'cognito-idp:AdminAddUserToGroup',
+            'cognito-idp:AdminDeleteUser',
+            'cognito-idp:AdminListGroupsForUser',
+          ],
           resources: [props.userPool.userPoolArn],
         }),
       );
@@ -591,6 +551,94 @@ export class Api extends Construct {
     props.virtualModelBucket.grantRead(functions.DeleteModel);
     props.virtualModelBucket.grantDelete(functions.DeleteProfileModels);
     props.virtualModelBucket.grantRead(functions.DeleteProfileModels);
+
+    // ── Bulk invite (Epic 6) ───────────────────────────────────────────────
+    // The trigger, status, and resend handlers all gate on isUserAdmin (AdminListGroupsForUser).
+    for (const fn of [
+      functions.BulkInviteUser,
+      functions.GetBulkInviteUserJobStatus,
+      functions.ListBulkInviteUserJobs,
+      functions.ResendInvite,
+    ]) {
+      fn.addToRolePolicy(
+        new PolicyStatement({
+          actions: ['cognito-idp:AdminListGroupsForUser'],
+          resources: [props.userPool.userPoolArn],
+        }),
+      );
+    }
+    // Resend re-issues the Cognito invitation (AdminCreateUser with MessageAction RESEND) after
+    // reading the user's status (AdminGetUser). ListUsers is already granted to every core function.
+    functions.ResendInvite.addToRolePolicy(
+      new PolicyStatement({
+        actions: ['cognito-idp:AdminGetUser', 'cognito-idp:AdminCreateUser'],
+        resources: [props.userPool.userPoolArn],
+      }),
+    );
+
+    // Business metrics + health alarm. The trigger logs BULK_INVITE_START on every
+    // accepted request; the iteration Lambda emits BulkInviteUsersCreated. The StartExecution grant
+    // and the state machine ARN env are wired at the root stack (see deepRacerIndyStack), mirroring
+    // LaunchLiveRace, because the bulk-invite state machine is created there.
+    new MetricFilter(this, 'BulkInviteUsedMetricFilter', {
+      logGroup: functions.BulkInviteUser.logGroup,
+      filterPattern: FilterPattern.stringValue('$.action', '=', 'BULK_INVITE_START'),
+      metricName: 'BulkInviteUsed',
+      metricNamespace: BULK_INVITE_METRICS_NAMESPACE,
+      metricValue: '1',
+    });
+    new MetricFilter(this, 'BulkInviteSizeMetricFilter', {
+      logGroup: functions.BulkInviteUser.logGroup,
+      filterPattern: FilterPattern.stringValue('$.action', '=', 'BULK_INVITE_START'),
+      metricName: 'BulkInviteSize',
+      metricNamespace: BULK_INVITE_METRICS_NAMESPACE,
+      metricValue: '$.totalEntries',
+    });
+    // Feature-health: jobs were started but zero users were created AND zero were skipped over the
+    // window — a strong signal the onboarding path is broken. Requiring skipped<1 too prevents a
+    // spurious alarm on a legitimate all-skipped re-import (every entry already exists). FILL
+    // anchors the timeline so absent metrics are treated as 0 rather than missing.
+    new Alarm(this, 'BulkInviteFeatureHealthAlarm', {
+      metric: new MathExpression({
+        expression: '(FILL(used, 0) > 0) * (FILL(created, 0) < 1) * (FILL(skipped, 0) < 1)',
+        usingMetrics: {
+          used: new Metric({
+            namespace: BULK_INVITE_METRICS_NAMESPACE,
+            metricName: 'BulkInviteUsed',
+            statistic: 'Sum',
+            period: Duration.minutes(15),
+          }),
+          created: new Metric({
+            namespace: BULK_INVITE_METRICS_NAMESPACE,
+            metricName: 'BulkInviteUsersCreated',
+            statistic: 'Sum',
+            period: Duration.minutes(15),
+          }),
+          skipped: new Metric({
+            namespace: BULK_INVITE_METRICS_NAMESPACE,
+            metricName: 'BulkInviteUsersSkipped',
+            statistic: 'Sum',
+            period: Duration.minutes(15),
+          }),
+        },
+        period: Duration.minutes(15),
+        label: 'BulkInviteStartedButNothingProcessed',
+      }),
+      threshold: 1,
+      evaluationPeriods: 1,
+      treatMissingData: TreatMissingData.NOT_BREACHING,
+      alarmDescription: 'Bulk invite jobs started but zero users were created — the feature is likely broken',
+    });
+
+    // Trigger-side failures (StartExecution failure, submission-time errors) that never produce a
+    // job record and are therefore invisible to the job/execution alarms
+    new Alarm(this, 'BulkInviteTriggerErrorsAlarm', {
+      metric: functions.BulkInviteUser.metricErrors({ period: Duration.minutes(5) }),
+      threshold: 1,
+      evaluationPeriods: 1,
+      treatMissingData: TreatMissingData.NOT_BREACHING,
+      alarmDescription: 'Bulk invite trigger Lambda errored (e.g. StartExecution failure)',
+    });
 
     functions.StopModel.addToRolePolicy(
       new PolicyStatement({
@@ -615,72 +663,5 @@ export class Api extends Construct {
     // Grant the permissions to invoke the RewardFunctionValidationLambda
     this.rewardFunctionValidationLambda.grantInvoke(functions.TestRewardFunction);
     this.rewardFunctionValidationLambda.grantInvoke(functions.CreateModel);
-  }
-
-  // Validate and adjust api spec
-  private getOpenApiDef(
-    functions: { [Operation in DeepRacerIndyServiceOperations]?: NodejsFunction },
-    userPool: UserPool | IUserPool,
-  ) {
-    const openApiSpec = JSON.parse(
-      fs.readFileSync(
-        path.join(
-          __dirname,
-          '../../../../../libs/model/build/smithyprojections/model/source/openapi/DeepRacerIndy.openapi.json',
-        ),
-        'utf-8',
-      ),
-    );
-
-    // Add the IAM authorizer
-    openApiSpec.components.securitySchemes = {
-      'aws.iam': {
-        type: 'apiKey',
-        name: 'authorization',
-        in: 'header',
-        'x-amazon-apigateway-authtype': 'awsSigv4',
-      },
-    };
-
-    for (const openApiPath in openApiSpec.paths) {
-      for (const operation in openApiSpec.paths[openApiPath]) {
-        const op = openApiSpec.paths[openApiPath][operation];
-        const integration = op['x-amazon-apigateway-integration'];
-
-        // Configure method integration
-        if (!integration) {
-          throw new Error(
-            `No x-amazon-apigateway-integration for ${op.operationId}. Make sure API Gateway integration is configured.`,
-          );
-        }
-
-        // Set the authorizer and CORS headers based on method type
-        if (operation === 'options') {
-          const accessControlAllowHeaders =
-            integration.responses.default.responseParameters['method.response.header.Access-Control-Allow-Headers'];
-          const updatedHeader = `'x-amz-security-token,x-amz-date,x-amz-content-sha256,${accessControlAllowHeaders.slice(1, -1)}'`;
-          integration.responses.default.responseParameters['method.response.header.Access-Control-Allow-Headers'] =
-            updatedHeader;
-        } else {
-          op.security = [{ 'aws.iam': [] }];
-        }
-
-        // Don't touch mock integrations
-        if (integration?.type === 'mock') {
-          continue;
-        }
-
-        const functionArn = functions[op.operationId as DeepRacerIndyServiceOperations]?.functionArn;
-
-        if (typeof functionArn !== 'string') {
-          throw new Error('No function for ' + op.operationId);
-        }
-
-        // Set the operation integration uri to the corresponding lambda handler ARN
-        integration.uri = `arn:${Stack.of(this).partition}:apigateway:${Stack.of(this).region}:lambda:path/2015-03-31/functions/${functionArn}/invocations`;
-      }
-    }
-
-    return openApiSpec;
   }
 }

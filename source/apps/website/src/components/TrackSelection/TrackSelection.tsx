@@ -21,10 +21,11 @@ interface TrackSelectionProps<FormValues extends FieldValues> {
   control: Control<FormValues>;
   setValue: UseFormSetValue<FormValues>;
   trackConfigFieldName: Path<FormValues>;
+  disabled?: boolean;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const TrackSelection = ({ control, setValue, trackConfigFieldName }: TrackSelectionProps<any>) => {
+const TrackSelection = ({ control, setValue, trackConfigFieldName, disabled }: TrackSelectionProps<any>) => {
   const { t } = useTranslation('trackSelection');
   const [trackSort, setTrackSort] = useState<TrackSortValue>(TrackSortValue.DIFFICULTY_ASC);
 
@@ -111,14 +112,20 @@ const TrackSelection = ({ control, setValue, trackConfigFieldName }: TrackSelect
         selectedItems={collectionProps.selectedItems}
         cardDefinition={cardDefinitions}
         cardsPerRow={[{ cards: 1 }, { minWidth: 500, cards: 2 }, { minWidth: 800, cards: 3 }]}
-        entireCardClickable={true}
+        entireCardClickable={!disabled}
         items={items}
         selectionType="single"
+        isItemDisabled={disabled ? () => true : undefined}
+        onSelectionChange={(event) => {
+          if (disabled) return;
+          collectionProps.onSelectionChange?.(event);
+        }}
         trackBy="trackId"
         visibleSections={visibleContent}
         filter={
           <TextFilter
             {...filterProps}
+            disabled={disabled}
             filteringAriaLabel={t('filters.filteringAriaLabel')}
             filteringPlaceholder={t('filters.searchFilterPlaceholder')}
             countText={filterProps.filteringText && t('filters.matchCount', { count: filteredItemsCount ?? 0 })}
@@ -144,6 +151,7 @@ const TrackSelection = ({ control, setValue, trackConfigFieldName }: TrackSelect
                   label: t(`${trackSort}`),
                   value: trackSort,
                 }}
+                disabled={disabled}
                 options={[
                   { label: `${t('difficultyAsc')}`, value: TrackSortValue.DIFFICULTY_ASC },
                   { label: `${t('difficultyDesc')}`, value: TrackSortValue.DIFFICULTY_DESC },
@@ -163,6 +171,7 @@ const TrackSelection = ({ control, setValue, trackConfigFieldName }: TrackSelect
         control={control}
         label={t('trackDir')}
         description={t('trackDirDesc')}
+        readOnly={disabled}
         items={[
           {
             value: TrackDirection.CLOCKWISE,

@@ -1,24 +1,44 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { ModelStatus } from '@deepracer-indy/typescript-client';
+import createWrapper from '@cloudscape-design/components/test-utils/dom';
+import { ModelStatus, OptimizationStatus } from '@deepracer-indy/typescript-client';
 import { composeStories } from '@storybook/react';
 import { userEvent } from '@storybook/test';
 import * as React from 'react';
-import { vi } from 'vitest';
+import { assert, vi } from 'vitest';
 
 import { useAppDispatch } from '#hooks/useAppDispatch';
 import { LIST_MODELS_POLLING_INTERVAL_TIME } from '#pages/ModelDetails/constants';
 import Models from '#pages/Models/Models';
 import * as stories from '#pages/Models/Models.stories';
-import { useListModelsQuery, useDeleteModelMutation } from '#services/deepRacer/modelsApi';
+import { modelsApi, useListModelsQuery, useDeleteModelMutation } from '#services/deepRacer/modelsApi';
+import { useGetProfileQuery } from '#services/deepRacer/profileApi';
 import { displayErrorNotification, displaySuccessNotification } from '#store/notifications/notificationsSlice';
 import { render, screen, waitFor } from '#utils/testUtils';
 
 const { Default } = composeStories(stories);
 
 vi.mock('#hooks/useAppDispatch');
-vi.mock('#services/deepRacer/modelsApi');
+vi.mock('#services/deepRacer/modelsApi', async () => {
+  const actual = await vi.importActual<typeof import('#services/deepRacer/modelsApi')>('#services/deepRacer/modelsApi');
+  return {
+    ...actual,
+    useListModelsQuery: vi.fn(),
+    useDeleteModelMutation: vi.fn(),
+    usePackageModelMutation: vi.fn(),
+    modelsApi: {
+      ...actual.modelsApi,
+      endpoints: {
+        ...actual.modelsApi.endpoints,
+        listModels: {
+          ...actual.modelsApi.endpoints.listModels,
+          useQueryState: vi.fn(),
+        },
+      },
+    },
+  };
+});
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: vi.fn((key, options) => {
@@ -41,6 +61,10 @@ vi.mock('react-i18next', () => ({
   }),
 }));
 
+vi.mock('#services/deepRacer/profileApi', () => ({
+  useGetProfileQuery: vi.fn(() => ({ data: { profileId: 'profile-001' } })),
+}));
+
 describe('<Models />', () => {
   const mockDispatch = vi.fn();
 
@@ -53,6 +77,7 @@ describe('<Models />', () => {
       refetch: vi.fn(),
     });
     vi.mocked(useDeleteModelMutation).mockReturnValue([vi.fn(), { isLoading: false, reset: vi.fn() }]);
+    vi.mocked(modelsApi.endpoints.listModels.useQueryState).mockReturnValue({ data: [] });
   });
 
   it('renders without crashing', () => {
@@ -141,6 +166,8 @@ describe('<Models />', () => {
       },
     };
 
+    vi.mocked(modelsApi.endpoints.listModels.useQueryState).mockReturnValue({ data: [mockModel] });
+
     vi.mocked(useListModelsQuery).mockReturnValue({
       data: [mockModel],
       isLoading: false,
@@ -162,27 +189,9 @@ describe('<Models />', () => {
   });
 
   it('sets polling interval to 0 when no importing models are present', () => {
-    const mockModel = {
-      modelId: '1',
-      status: ModelStatus.READY,
-      name: 'Test',
-      createdAt: new Date(),
-      metadata: {
-        agentAlgorithm: 'PPO',
-        sensors: { camera: 'FRONT_FACING_CAMERA' },
-      },
-    };
-
-    const mockQuery = vi.fn().mockReturnValue({
-      data: [mockModel],
-      isLoading: false,
-      refetch: vi.fn(),
-    });
-    vi.mocked(useListModelsQuery).mockImplementation(mockQuery);
-
     render(<Models />);
 
-    expect(mockQuery).toHaveBeenCalledWith(
+    expect(useListModelsQuery).toHaveBeenLastCalledWith(
       undefined,
       expect.objectContaining({
         pollingInterval: 0,
@@ -416,5 +425,175 @@ describe('<Models />', () => {
       });
       expect(deleteOption).not.toHaveAttribute('aria-disabled', 'true');
     });
+  });
+});
+
+describe('ButtonDropdown actions', () => {
+  const mockDispatch = vi.fn();
+  const mockDeleteModel = vi.fn(() => Promise.resolve());
+  const mockRefetch = vi.fn();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(useAppDispatch).mockReturnValue(mockDispatch);
+    vi.mocked(useDeleteModelMutation).mockReturnValue([mockDeleteModel, { isLoading: false, reset: vi.fn() }] as never);
+    vi.mocked(useListModelsQuery).mockReturnValue({
+      data: [
+        {
+          modelId: 'model-1',
+          name: 'TestModel',
+          status: ModelStatus.READY,
+          createdAt: new Date(),
+          metadata: { agentAlgorithm: 'PPO', sensors: { camera: 'FRONT_FACING_CAMERA' } },
+        },
+      ],
+      isLoading: false,
+      refetch: mockRefetch,
+    } as never);
+    vi.mocked(modelsApi.endpoints.listModels.useQueryState).mockReturnValue({
+      data: [
+        {
+          modelId: 'model-1',
+          name: 'TestModel',
+          status: ModelStatus.READY,
+          optimizationStatus: OptimizationStatus.OPTIMIZED,
+          createdAt: new Date(),
+          metadata: { agentAlgorithm: 'PPO', sensors: { camera: 'FRONT_FACING_CAMERA' } },
+        },
+      ],
+    } as never);
+  });
+
+  it('renders import and actions button dropdowns', () => {
+    render(<Models />);
+    expect(screen.getByTestId('importModelButton')).toBeInTheDocument();
+    expect(screen.getByText('Actions')).toBeInTheDocument();
+  });
+
+  it('calls refetch when refresh button is clicked', async () => {
+    render(<Models />);
+    const refreshButton = screen.getAllByRole('button').find((b) => b.querySelector('svg'));
+    assert(refreshButton);
+    await userEvent.click(refreshButton);
+    expect(mockRefetch).toHaveBeenCalled();
+  });
+
+  it('enables actions after selecting a model row', async () => {
+    const { container } = render(<Models />);
+    const wrapper = createWrapper(container);
+
+    const table = wrapper.findTable();
+    table?.findRowSelectionArea(1)?.click();
+
+    await waitFor(() => {
+      const actionsButton = screen.getByText('Actions');
+      expect(actionsButton.closest('button')).not.toBeDisabled();
+    });
+  });
+
+  it('navigates to import virtual model page', () => {
+    const { container } = render(<Models />);
+    const wrapper = createWrapper(container);
+
+    const importDropdown = wrapper.findButtonDropdown('[data-testid="importModelButton"]');
+    assert(importDropdown);
+    importDropdown.openDropdown();
+    const item = importDropdown.findItemById('IMPORT_VIRTUAL');
+    assert(item);
+    item.click();
+    expect(importDropdown).toBeDefined();
+  });
+
+  it('navigates to import physical model page', () => {
+    const { container } = render(<Models />);
+    const wrapper = createWrapper(container);
+
+    const importDropdown = wrapper.findButtonDropdown('[data-testid="importModelButton"]');
+    assert(importDropdown);
+    importDropdown.openDropdown();
+    const item = importDropdown.findItemById('IMPORT_PHYSICAL');
+    assert(item);
+    item.click();
+    expect(importDropdown).toBeDefined();
+  });
+});
+
+describe('Import physical model quota gating', () => {
+  const mockDispatch = vi.fn();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(useAppDispatch).mockReturnValue(mockDispatch);
+    vi.mocked(useDeleteModelMutation).mockReturnValue([vi.fn(), { isLoading: false, reset: vi.fn() }] as never);
+    vi.mocked(useListModelsQuery).mockReturnValue({ data: [], isLoading: false, refetch: vi.fn() } as never);
+    vi.mocked(modelsApi.endpoints.listModels.useQueryState).mockReturnValue({ data: [] });
+  });
+
+  it('disables the physical import item when model quota is exceeded', () => {
+    vi.mocked(useGetProfileQuery).mockReturnValue({
+      data: { profileId: 'p1', modelCount: 10, maxModelCount: 10 },
+    } as never);
+
+    const { container } = render(<Models />);
+    const wrapper = createWrapper(container);
+
+    const importDropdown = wrapper.findButtonDropdown('[data-testid="importModelButton"]');
+    assert(importDropdown);
+    importDropdown.openDropdown();
+
+    const physicalItem = importDropdown.findItemById('IMPORT_PHYSICAL');
+    assert(physicalItem);
+    expect(physicalItem.getElement().classList.toString()).toContain('disabled');
+  });
+
+  it('keeps the virtual import item enabled when model quota is exceeded', () => {
+    vi.mocked(useGetProfileQuery).mockReturnValue({
+      data: { profileId: 'p1', modelCount: 10, maxModelCount: 10 },
+    } as never);
+
+    const { container } = render(<Models />);
+    const wrapper = createWrapper(container);
+
+    const importDropdown = wrapper.findButtonDropdown('[data-testid="importModelButton"]');
+    assert(importDropdown);
+    importDropdown.openDropdown();
+
+    const virtualItem = importDropdown.findItemById('IMPORT_VIRTUAL');
+    assert(virtualItem);
+    expect(virtualItem.getElement().classList.toString()).not.toContain('disabled');
+  });
+
+  it('enables the physical import item when model quota is not exceeded', () => {
+    vi.mocked(useGetProfileQuery).mockReturnValue({
+      data: { profileId: 'p1', modelCount: 3, maxModelCount: 10 },
+    } as never);
+
+    const { container } = render(<Models />);
+    const wrapper = createWrapper(container);
+
+    const importDropdown = wrapper.findButtonDropdown('[data-testid="importModelButton"]');
+    assert(importDropdown);
+    importDropdown.openDropdown();
+
+    const physicalItem = importDropdown.findItemById('IMPORT_PHYSICAL');
+    assert(physicalItem);
+    expect(physicalItem.getElement().classList.toString()).not.toContain('disabled');
+  });
+
+  it('enables the physical import item when maxModelCount is unlimited (-1)', () => {
+    vi.mocked(useGetProfileQuery).mockReturnValue({
+      data: { profileId: 'p1', modelCount: 100, maxModelCount: -1 },
+    } as never);
+
+    const { container } = render(<Models />);
+    const wrapper = createWrapper(container);
+
+    const importDropdown = wrapper.findButtonDropdown('[data-testid="importModelButton"]');
+    assert(importDropdown);
+    importDropdown.openDropdown();
+
+    const physicalItem = importDropdown.findItemById('IMPORT_PHYSICAL');
+    assert(physicalItem);
+    expect(physicalItem.getElement().classList.toString()).not.toContain('disabled');
   });
 });

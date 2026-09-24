@@ -3,6 +3,7 @@
   "context": {
     "PUBLIC_ECR_REGISTRY": "public.ecr.aws/aws-solutions",
     "MODEL_VALIDATION_REPO_NAME": "deepracer-on-aws-model-validation",
+    "MODEL_OPTIMIZER_REPO_NAME": "deepracer-on-aws-model-optimizer",
     "REWARD_VALIDATION_REPO_NAME": "deepracer-on-aws-reward-function-validation",
     "SIMAPP_REPO_NAME": "deepracer-on-aws-simapp"
   },

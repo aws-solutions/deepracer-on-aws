@@ -50,6 +50,12 @@ describe('GetEvaluation operation', () => {
           ? mockEvaluationItem.assetS3Locations.primaryVideoS3Location
           : undefined,
     });
+    expect(s3Helper.getPresignedUrl).toHaveBeenCalledWith(
+      mockEvaluationItem.assetS3Locations.primaryVideoS3Location,
+      undefined,
+      undefined,
+      'video/mp4',
+    );
   });
 
   it('should exclude videoUrl when evaluation status is not COMPLETED', async () => {

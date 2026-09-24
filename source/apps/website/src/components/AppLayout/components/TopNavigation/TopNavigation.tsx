@@ -1,7 +1,8 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import CloudscapeTopNavigation from '@cloudscape-design/components/top-navigation';
+import CloudscapeTopNavigation, { TopNavigationProps } from '@cloudscape-design/components/top-navigation';
+import { EventStatus } from '@deepracer-indy/typescript-client';
 import { signOut } from 'aws-amplify/auth';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -9,10 +10,13 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 import { PageId, pages } from '../../../../constants/pages.js';
 import { useAppDispatch } from '../../../../hooks/useAppDispatch.js';
+import { useTimekeepingContext } from '../../../../hooks/useTimekeepingContext.js';
+import { SelectEventAndTrackModal } from '../../../../pages/Timekeeping/components/SelectEventAndTrackModal.js';
 import { deepRacerApi } from '../../../../services/deepRacer/deepRacerApi.js';
+import { useListEventsQuery, useListEventTracksQuery } from '../../../../services/deepRacer/eventsApi.js';
 import { useGetProfileQuery } from '../../../../services/deepRacer/profileApi.js';
 import { getUserEmail } from '../../../../utils/authUtils.js';
-import { getPath } from '../../../../utils/pageUtils.js';
+import { getPageDetailsByPathname, getPath } from '../../../../utils/pageUtils.js';
 
 import './styles.css';
 
@@ -20,9 +24,21 @@ const TopNavigation = () => {
   const { t } = useTranslation('common');
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { state } = useLocation();
+  const { pathname, state } = useLocation();
   const [userEmail, setUserEmail] = useState<string | undefined>(undefined);
+  const [isEventAndTrackModalVisible, setIsEventAndTrackModalVisible] = useState(false);
   const { currentData } = useGetProfileQuery();
+
+  const { selectedEventId, selectedLeaderboardId, setEventAndTrack } = useTimekeepingContext();
+  const isTimekeepingPage = getPageDetailsByPathname(pathname)?.pageId === PageId.TIMEKEEPING;
+  const { data: events = [] } = useListEventsQuery({ status: EventStatus.IN_PROGRESS }, { skip: !isTimekeepingPage });
+  const { data: tracks = [] } = useListEventTracksQuery(
+    { eventId: selectedEventId ?? '' },
+    { skip: !isTimekeepingPage || !selectedEventId },
+  );
+
+  const selectedEvent = events.find((event) => event.eventId === selectedEventId);
+  const selectedTrack = tracks.find((track) => track.leaderboardId === selectedLeaderboardId);
 
   const fetchUserEmail = async () => {
     const email = await getUserEmail();
@@ -55,32 +71,60 @@ const TopNavigation = () => {
     }
   };
 
+  // Keep the Timekeeping context in the app chrome, matching DREM's separate Event and Track
+  // labels while keeping the lap-capture surface free of setup controls.
+  const timekeepingUtilities: TopNavigationProps.Utility[] = isTimekeepingPage
+    ? [
+        {
+          type: 'button',
+          text: selectedEvent?.name ?? t('topNavigation.selectEvent'),
+          onClick: () => setIsEventAndTrackModalVisible(true),
+        },
+        {
+          type: 'button',
+          text: selectedTrack?.name ?? t('topNavigation.selectTrack'),
+          onClick: () => setIsEventAndTrackModalVisible(true),
+        },
+      ]
+    : [];
+
+  const profileUtility: TopNavigationProps.Utility[] = currentData
+    ? [
+        {
+          type: 'menu-dropdown',
+          text: currentData.alias,
+          description: userEmail,
+          iconName: 'user-profile',
+          onItemClick: handleProfileDropdownButtonClick,
+          items: [
+            { id: 'profile', text: t('topNavigation.profile') },
+            { id: 'account', text: t('topNavigation.account') },
+            { id: 'signout', text: t('topNavigation.signOut') },
+          ],
+        },
+      ]
+    : [{ type: 'button', text: 'Sign in', onClick: () => navigate(getPath(PageId.SIGN_IN)) }];
+
   return (
-    <CloudscapeTopNavigation
-      identity={{ href: pages[PageId.HOME].path, title: t('serviceName') }}
-      id="top-navigation"
-      utilities={
-        currentData
-          ? [
-              {
-                type: 'menu-dropdown',
-                text: currentData.alias,
-                description: userEmail,
-                iconName: 'user-profile',
-                onItemClick: handleProfileDropdownButtonClick,
-                items: [
-                  {
-                    id: 'profile',
-                    text: t('topNavigation.profile'),
-                  },
-                  { id: 'account', text: t('topNavigation.account') },
-                  { id: 'signout', text: t('topNavigation.signOut') },
-                ],
-              },
-            ]
-          : [{ type: 'button', text: 'Sign in', onClick: () => navigate(getPath(PageId.SIGN_IN)) }]
-      }
-    />
+    <>
+      <CloudscapeTopNavigation
+        identity={{ href: pages[PageId.HOME].path, title: t('serviceName') }}
+        id="top-navigation"
+        utilities={[...timekeepingUtilities, ...profileUtility]}
+      />
+      {isTimekeepingPage && (
+        <SelectEventAndTrackModal
+          isVisible={isEventAndTrackModalVisible}
+          initialEventId={selectedEventId}
+          initialLeaderboardId={selectedLeaderboardId}
+          onDismiss={() => setIsEventAndTrackModalVisible(false)}
+          onConfirm={(eventId, leaderboardId, eventName, trackName) => {
+            setEventAndTrack(eventId, leaderboardId, eventName, trackName);
+            setIsEventAndTrackModalVisible(false);
+          }}
+        />
+      )}
+    </>
   );
 };
 

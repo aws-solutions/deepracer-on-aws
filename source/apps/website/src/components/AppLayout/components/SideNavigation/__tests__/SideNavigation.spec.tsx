@@ -11,7 +11,11 @@ import { vi } from 'vitest';
 
 import { PageId } from '../../../../../constants/pages.js';
 import { getPath } from '../../../../../utils/pageUtils.js';
-import { getAdminNavigationItems, getModelManagementNavigationItems } from '../itemsUtils.js';
+import {
+  getAdminNavigationItems,
+  getModelManagementNavigationItems,
+  getRaceManagementNavigationItems,
+} from '../itemsUtils.js';
 import SideNavigation from '../SideNavigation';
 
 // Mock dependencies
@@ -47,13 +51,13 @@ describe('SideNavigation', () => {
     });
   });
 
-  it('should render base navigation items for non-admin users', async () => {
-    // Mock non-admin auth response
+  it('should render base navigation items for a racer', async () => {
+    // Mock racer auth response — Racers can view Races and Models
     (fetchAuthSession as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
       tokens: {
         accessToken: {
           payload: {
-            'cognito:groups': ['other-group'],
+            'cognito:groups': ['dr-racers'],
           },
         },
       },
@@ -65,9 +69,8 @@ describe('SideNavigation', () => {
       </BrowserRouter>,
     );
 
-    // Wait for race hub section
     await waitFor(() => {
-      expect(screen.getByText('sections.raceHub')).toBeInTheDocument();
+      expect(screen.getByText('sections.raceManagement')).toBeInTheDocument();
     });
 
     // Verify learning and models section is present
@@ -80,7 +83,38 @@ describe('SideNavigation', () => {
 
     // Verify admin section is not present
     expect(screen.queryByText('sections.admin')).not.toBeInTheDocument();
-    expect(screen.queryByText(`breadcrumbs.${PageId.ADMIN_MODEL_DOWNLOAD}`)).not.toBeInTheDocument();
+    expect(screen.queryByText(`breadcrumbs.${PageId.ADMIN_MODELS}`)).not.toBeInTheDocument();
+  });
+
+  it('should not render Races or the Models section for a Commentator', async () => {
+    // Commentators have no defined use for the general race list or model training/management.
+    (fetchAuthSession as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+      tokens: {
+        accessToken: {
+          payload: {
+            'cognito:groups': ['dr-commentators'],
+          },
+        },
+      },
+    });
+
+    render(
+      <BrowserRouter>
+        <SideNavigation />
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('sections.raceManagement')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText(`breadcrumbs.${PageId.RACES}`)).not.toBeInTheDocument();
+    expect(screen.queryByText('sections.learningAndModels')).not.toBeInTheDocument();
+    expect(screen.queryByText(`breadcrumbs.${PageId.GET_STARTED}`)).not.toBeInTheDocument();
+    expect(screen.queryByText(`breadcrumbs.${PageId.MODELS}`)).not.toBeInTheDocument();
+
+    // Commentator should still see their own role-appropriate link.
+    expect(screen.getByText(`breadcrumbs.${PageId.COMMENTATOR_VIEW}`)).toBeInTheDocument();
   });
 
   it('should render admin navigation items for admin users', async () => {
@@ -110,7 +144,7 @@ describe('SideNavigation', () => {
     expect(screen.getByText(`breadcrumbs.${PageId.MANAGE_INSTANCE}`)).toBeInTheDocument();
     // Verify model download is under Model Management section
     expect(screen.getByText('sections.modelManagement')).toBeInTheDocument();
-    expect(screen.getByText(`breadcrumbs.${PageId.ADMIN_MODEL_DOWNLOAD}`)).toBeInTheDocument();
+    expect(screen.getByText(`breadcrumbs.${PageId.ADMIN_MODELS}`)).toBeInTheDocument();
   });
 
   it('should render model management navigation items for race facilitator users', async () => {
@@ -135,7 +169,7 @@ describe('SideNavigation', () => {
       expect(screen.getByText('sections.modelManagement')).toBeInTheDocument();
     });
 
-    expect(screen.getByText(`breadcrumbs.${PageId.ADMIN_MODEL_DOWNLOAD}`)).toBeInTheDocument();
+    expect(screen.getByText(`breadcrumbs.${PageId.ADMIN_MODELS}`)).toBeInTheDocument();
     // Admin section and MANAGE_INSTANCE are admin-only; facilitators should not see them
     expect(screen.queryByText('sections.admin')).not.toBeInTheDocument();
     expect(screen.queryByText(`breadcrumbs.${PageId.MANAGE_INSTANCE}`)).not.toBeInTheDocument();
@@ -146,7 +180,7 @@ describe('SideNavigation', () => {
       tokens: {
         accessToken: {
           payload: {
-            'cognito:groups': [],
+            'cognito:groups': ['dr-racers'],
           },
         },
       },
@@ -242,5 +276,92 @@ describe('getModelManagementNavigationItems()', () => {
 
   it('returns empty array for empty groups', () => {
     expect(getModelManagementNavigationItems([], t)).toEqual([]);
+  });
+});
+
+describe('getRaceManagementNavigationItems()', () => {
+  it('returns no section for groups without any race-management access', () => {
+    const result = getRaceManagementNavigationItems([], t);
+    expect(result).toHaveLength(0);
+  });
+
+  it('includes Races for ADMIN, RACE_FACILITATORS, and RACERS', () => {
+    expect(JSON.stringify(getRaceManagementNavigationItems([UserGroups.ADMIN], t))).toContain(getPath(PageId.RACES));
+    expect(JSON.stringify(getRaceManagementNavigationItems([UserGroups.RACE_FACILITATORS], t))).toContain(
+      getPath(PageId.RACES),
+    );
+    expect(JSON.stringify(getRaceManagementNavigationItems([UserGroups.RACERS], t))).toContain(getPath(PageId.RACES));
+  });
+
+  it('excludes Races for COMMENTATORS and REGISTRATION_MANAGERS', () => {
+    expect(JSON.stringify(getRaceManagementNavigationItems([UserGroups.COMMENTATORS], t))).not.toContain(
+      getPath(PageId.RACES),
+    );
+    expect(JSON.stringify(getRaceManagementNavigationItems([UserGroups.REGISTRATION_MANAGERS], t))).not.toContain(
+      getPath(PageId.RACES),
+    );
+  });
+
+  it('includes Events and Timekeeping for ADMIN', () => {
+    const result = getRaceManagementNavigationItems([UserGroups.ADMIN], t);
+    expect(JSON.stringify(result)).toContain(getPath(PageId.EVENTS));
+    expect(JSON.stringify(result)).toContain(getPath(PageId.TIMEKEEPING));
+  });
+
+  it('includes Events and Timekeeping for RACE_FACILITATORS', () => {
+    const result = getRaceManagementNavigationItems([UserGroups.RACE_FACILITATORS], t);
+    expect(JSON.stringify(result)).toContain(getPath(PageId.EVENTS));
+    expect(JSON.stringify(result)).toContain(getPath(PageId.TIMEKEEPING));
+  });
+
+  it('includes Events and Timekeeping for RACERS', () => {
+    const result = getRaceManagementNavigationItems([UserGroups.RACERS], t);
+    expect(JSON.stringify(result)).toContain(getPath(PageId.EVENTS));
+    expect(JSON.stringify(result)).toContain(getPath(PageId.TIMEKEEPING));
+  });
+
+  it('excludes Events and Timekeeping for COMMENTATORS', () => {
+    const result = getRaceManagementNavigationItems([UserGroups.COMMENTATORS], t);
+    expect(JSON.stringify(result)).not.toContain(getPath(PageId.EVENTS));
+    expect(JSON.stringify(result)).not.toContain(getPath(PageId.TIMEKEEPING));
+  });
+
+  it('includes Commentator View for COMMENTATORS, RACE_FACILITATORS, and ADMIN', () => {
+    expect(JSON.stringify(getRaceManagementNavigationItems([UserGroups.COMMENTATORS], t))).toContain(
+      getPath(PageId.COMMENTATOR_VIEW),
+    );
+    expect(JSON.stringify(getRaceManagementNavigationItems([UserGroups.RACE_FACILITATORS], t))).toContain(
+      getPath(PageId.COMMENTATOR_VIEW),
+    );
+    expect(JSON.stringify(getRaceManagementNavigationItems([UserGroups.ADMIN], t))).toContain(
+      getPath(PageId.COMMENTATOR_VIEW),
+    );
+  });
+
+  it('excludes Commentator View for RACERS only', () => {
+    expect(JSON.stringify(getRaceManagementNavigationItems([UserGroups.RACERS], t))).not.toContain(
+      getPath(PageId.COMMENTATOR_VIEW),
+    );
+  });
+
+  it('includes Register User for REGISTRATION_MANAGERS, RACE_FACILITATORS, and ADMIN', () => {
+    expect(JSON.stringify(getRaceManagementNavigationItems([UserGroups.REGISTRATION_MANAGERS], t))).toContain(
+      getPath(PageId.REGISTER_RACER),
+    );
+    expect(JSON.stringify(getRaceManagementNavigationItems([UserGroups.RACE_FACILITATORS], t))).toContain(
+      getPath(PageId.REGISTER_RACER),
+    );
+    expect(JSON.stringify(getRaceManagementNavigationItems([UserGroups.ADMIN], t))).toContain(
+      getPath(PageId.REGISTER_RACER),
+    );
+  });
+
+  it('includes Race statistics for ADMIN only', () => {
+    expect(JSON.stringify(getRaceManagementNavigationItems([UserGroups.ADMIN], t))).toContain(
+      getPath(PageId.RACE_STATS),
+    );
+    expect(JSON.stringify(getRaceManagementNavigationItems([UserGroups.RACE_FACILITATORS], t))).not.toContain(
+      getPath(PageId.RACE_STATS),
+    );
   });
 });

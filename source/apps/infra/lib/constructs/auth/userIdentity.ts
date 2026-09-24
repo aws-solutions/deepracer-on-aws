@@ -33,13 +33,15 @@ import {
   CfnUserPoolGroup,
   CfnIdentityPool,
   CfnIdentityPoolRoleAttachment,
+  StringAttribute,
 } from 'aws-cdk-lib/aws-cognito';
 import { TableV2 } from 'aws-cdk-lib/aws-dynamodb';
 import { Rule } from 'aws-cdk-lib/aws-events';
-import { FederatedPrincipal, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { Effect, FederatedPrincipal, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { Provider } from 'aws-cdk-lib/custom-resources';
 import { Construct } from 'constructs';
 
+import { iotRaceTopicPrefix } from '../../constants/iotTopics.js';
 import { addCfnGuardSuppressionForAutoCreatedLambdas } from '../common/cfnGuardHelper.js';
 import { LogGroupCategory, LogGroupsHelper } from '../common/logGroupsHelper.js';
 import { functionNamePrefix, NodeLambdaFunction } from '../common/nodeLambdaFunction.js';
@@ -50,6 +52,8 @@ export interface UserRoles {
   adminRole: Role;
   raceFacilitatorRole: Role;
   racerRole: Role;
+  commentatorRole: Role;
+  registrationManagerRole: Role;
 }
 
 export interface UserIdentityProps {
@@ -171,6 +175,17 @@ export class UserIdentity extends Construct {
         minLength: 8,
       },
       selfSignUpEnabled: deepRacerIndyAppConfig.userPool.enableSignups,
+      customAttributes: {
+        // Persisted by PostConfirmation (self-registered) and registerUser handler
+        // (walk-up), so both paths produce identical profile records.
+        countryCode: new StringAttribute({ mutable: true }),
+        // Sanitized alias candidate derived from a bulk-invite CSV's displayName.
+        // AdminCreateUser has no ClientMetadata parameter — unlike the
+        // self-service SignUp flow, which passes racerAlias via clientMetadata — so this custom
+        // attribute is the only way to carry a display-name-derived alias through to the
+        // PreSignUp trigger for admin-created (bulk-invited) users.
+        racerAlias: new StringAttribute({ mutable: true, minLen: 3, maxLen: 20 }),
+      },
       userInvitation: {
         emailSubject: 'Welcome to DeepRacer on AWS',
         emailBody:
@@ -317,7 +332,7 @@ export class UserIdentity extends Construct {
     // Add permissions to post confirmation function to manage user groups
     postConfirmationFn.addToRolePolicy(
       new PolicyStatement({
-        actions: ['cognito-idp:AdminAddUserToGroup'],
+        actions: ['cognito-idp:AdminAddUserToGroup', 'cognito-idp:AdminUpdateUserAttributes'],
         resources: [
           `arn:${Stack.of(this).partition}:cognito-idp:${Stack.of(this).region}:${Stack.of(this).account}:userpool/${Stack.of(this).region}_*`,
         ],
@@ -337,13 +352,21 @@ export class UserIdentity extends Construct {
     // Configure the identity pool
     this.identityPool = new CfnIdentityPool(this, 'IdentityPool', {
       identityPoolName: `${namespace}-${BASE_IDENTITY_POOL_NAME}`,
-      allowUnauthenticatedIdentities: false,
+      allowUnauthenticatedIdentities: true,
       cognitoIdentityProviders: [
         {
           clientId: this.userPoolClient.userPoolClientId,
           providerName: this.userPool.userPoolProviderName,
         },
       ],
+    });
+
+    // cfn-guard suppression for AWS Solutions COGNITO_ALLOW_UNAUTHENTICATED_IDENTITIES_RULE:
+    // unauthenticated identities are enabled intentionally to let public spectators subscribe to
+    // live race topics without an account. The compensating control is the scoped
+    // UnauthenticatedSpectatorRole below — race-tree read only, deny publish, no execute-api.
+    this.identityPool.addMetadata('guard', {
+      SuppressedRules: ['COGNITO_ALLOW_UNAUTHENTICATED_IDENTITIES_RULE'],
     });
 
     // Setup user roles and role mappings
@@ -374,15 +397,84 @@ export class UserIdentity extends Construct {
       assumedBy: federatedPrincipal,
     });
 
+    this.userRoles.commentatorRole = new Role(this, 'CommentatorRole', {
+      assumedBy: federatedPrincipal,
+    });
+
+    this.userRoles.registrationManagerRole = new Role(this, 'RegistrationManagerRole', {
+      assumedBy: federatedPrincipal,
+    });
+
+    // Unauthenticated spectator identity: scoped to IoT subscribe/receive on the race tree only
+    // — no publish, no execute-api. Permissions come entirely from this role.
+    const unauthenticatedPrincipal = new FederatedPrincipal(
+      'cognito-identity.amazonaws.com',
+      {
+        StringEquals: {
+          'cognito-identity.amazonaws.com:aud': this.identityPool.ref,
+        },
+        'ForAnyValue:StringLike': {
+          'cognito-identity.amazonaws.com:amr': 'unauthenticated',
+        },
+      },
+      'sts:AssumeRoleWithWebIdentity',
+    );
+    const unauthenticatedRole = new Role(this, 'UnauthenticatedSpectatorRole', {
+      assumedBy: unauthenticatedPrincipal,
+    });
+    const { region, account, partition } = Stack.of(this);
+    const raceTopicPrefix = iotRaceTopicPrefix(namespace);
+    const iotArnBase = `arn:${partition}:iot:${region}:${account}`;
+    // Connect only under a spectator-scoped client id. The ${...:sub} IoT policy variable is escaped
+    // so it is emitted literally. The trailing wildcard permits a per-connection suffix (multiple
+    // browser tabs for the same identity) — safe because :sub is server-injected from the verified
+    // identity token, not client-controlled, so one identity can never construct another's prefix.
+    // CONTRACT: the unauthenticated public-leaderboard client MUST connect with clientId
+    // `spectator-${identityId}-<anything>` or it will be denied.
+    unauthenticatedRole.addToPolicy(
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        actions: ['iot:Connect'],
+        resources: [`${iotArnBase}:client/spectator-\${cognito-identity.amazonaws.com:sub}-*`],
+      }),
+    );
+    unauthenticatedRole.addToPolicy(
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        actions: ['iot:Subscribe'],
+        resources: [`${iotArnBase}:topicfilter/${raceTopicPrefix}/*`],
+      }),
+    );
+    unauthenticatedRole.addToPolicy(
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        actions: ['iot:Receive'],
+        resources: [`${iotArnBase}:topic/${raceTopicPrefix}/*`],
+      }),
+    );
+    unauthenticatedRole.addToPolicy(
+      new PolicyStatement({
+        effect: Effect.DENY,
+        actions: ['iot:Publish'],
+        resources: ['*'],
+      }),
+    );
+
     new CfnIdentityPoolRoleAttachment(this, 'IdentityPoolRoleAttachment', {
       identityPoolId: this.identityPool.ref,
-      roles: {},
+      roles: {
+        unauthenticated: unauthenticatedRole.roleArn,
+      },
       roleMappings: {
         ['cognito-user-pool']: {
           type: 'Rules',
           ambiguousRoleResolution: 'Deny',
           identityProvider: `${this.userPool.userPoolProviderName}:${this.userPoolClient.userPoolClientId}`,
           rulesConfiguration: {
+            // Cognito Identity Pool Rules-type mappings evaluate first-match-wins. Rules are
+            // ordered highest-privilege first so a user in multiple groups resolves to their
+            // most-privileged role. The order test in userIdentity.spec.ts guards this against
+            // accidental reordering — do not shuffle without updating the test.
             rules: [
               {
                 claim: 'cognito:groups',
@@ -401,6 +493,18 @@ export class UserIdentity extends Construct {
                 matchType: 'Contains',
                 value: 'dr-racers',
                 roleArn: this.userRoles.racerRole.roleArn,
+              },
+              {
+                claim: 'cognito:groups',
+                matchType: 'Contains',
+                value: 'dr-commentators',
+                roleArn: this.userRoles.commentatorRole.roleArn,
+              },
+              {
+                claim: 'cognito:groups',
+                matchType: 'Contains',
+                value: 'dr-registration-managers',
+                roleArn: this.userRoles.registrationManagerRole.roleArn,
               },
             ],
           },
@@ -461,6 +565,18 @@ export class UserIdentity extends Construct {
       description: 'DeepRacer on AWS - Racer user group',
     });
 
+    new CfnUserPoolGroup(this, 'CommentatorUserPoolGroup', {
+      userPoolId: this.userPool.userPoolId,
+      groupName: 'dr-commentators',
+      description: 'DeepRacer on AWS - Commentator user group',
+    });
+
+    new CfnUserPoolGroup(this, 'RegistrationManagerUserPoolGroup', {
+      userPoolId: this.userPool.userPoolId,
+      groupName: 'dr-registration-managers',
+      description: 'DeepRacer on AWS - Registration manager user group',
+    });
+
     // Create a function that updates the role property on the profile in response to a user group change
     this.profileRoleChangeHandler = new NodeLambdaFunction(this, 'ProfileRoleChangeHandler', {
       entry: path.join(__dirname, '../../../../../libs/lambda/src/cognito/handlers/profileRoleChangeHandler.ts'),
@@ -475,7 +591,8 @@ export class UserIdentity extends Construct {
         detailType: ['AWS API Call via CloudTrail'],
         detail: {
           eventSource: ['cognito-idp.amazonaws.com'],
-          eventName: ['AdminAddUserToGroup', 'AdminRemoveUserFromGroup'],
+          // Adds only: a remove event would stamp roleName with the group the user just left.
+          eventName: ['AdminAddUserToGroup'],
           requestParameters: {
             userPoolId: [this.userPool.userPoolId],
           },

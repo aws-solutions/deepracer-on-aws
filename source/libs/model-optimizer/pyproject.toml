@@ -1,0 +1,63 @@
+[project]
+name = "model-optimizer"
+version = "0.1.0"
+requires-python = ">=3.12"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+src = ["lib", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "S",      # flake8-bandit (security)
+    "UP",     # pyupgrade
+    "SIM",    # flake8-simplify
+    "TCH",    # flake8-type-checking
+]
+ignore = [
+    "S603",   # subprocess call with shell=False (we need subprocess for openvino/tflite)
+    "S607",   # start process with partial path (openvino CLI tools)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S108"]  # assert and /tmp paths allowed in tests
+
+[tool.mypy]
+python_version = "3.12"
+mypy_path = "lib"
+# Catches real bugs (wrong types, missing returns) without requiring full annotations.
+# Proper package imports mean all internal modules resolve correctly.
+check_untyped_defs = true
+warn_return_any = false
+warn_unused_configs = true
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = [
+    "aws_lambda_powertools.*",
+    "openvino.*",
+    "tensorflow.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["lib"]
+addopts = "--tb=short -q"
+
+[tool.coverage.run]
+source = ["lib/model_optimizer"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+]

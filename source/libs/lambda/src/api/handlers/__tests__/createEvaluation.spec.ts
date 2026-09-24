@@ -21,6 +21,7 @@ import {
   BadRequestError,
   EvaluationConfig,
   JobStatus,
+  ModelSource,
   ModelStatus,
   RaceType,
   TrackConfig,
@@ -302,6 +303,25 @@ describe('CreateEvaluation operation', () => {
       ),
     ).rejects.toStrictEqual(new BadRequestError({ message: 'Model is not ready for evaluation.' }));
     expect(profileDaoUpdate).not.toHaveBeenCalled();
+  });
+
+  it('should throw error if model is a physical import', async () => {
+    vi.spyOn(modelDao, 'load').mockResolvedValue({
+      ...TEST_MODEL_ITEM,
+      status: ModelStatus.READY,
+      modelSource: ModelSource.IMPORTED_PHYSICAL,
+    });
+    vi.spyOn(accountResourceUsageDao, 'getOrCreate').mockResolvedValue(TEST_ACCOUNT_RESOURCE_USAGE_EMPTY);
+    vi.spyOn(accountResourceUsageDao, 'create').mockResolvedValue(TEST_ACCOUNT_RESOURCE_USAGE_EMPTY);
+    vi.spyOn(accountResourceUsageDao, 'update').mockResolvedValue(TEST_ACCOUNT_RESOURCE_USAGE_EMPTY);
+    vi.spyOn(profileDao, 'load').mockResolvedValueOnce(TEST_PROFILE_ITEM_WITH_LIMITS);
+
+    await expect(
+      CreateEvaluationOperation(
+        { evaluationConfig: TEST_EVALUATION_CONFIG, modelId: TEST_EVALUATION_ITEM.modelId },
+        TEST_OPERATION_CONTEXT,
+      ),
+    ).rejects.toStrictEqual(new BadRequestError({ message: 'Physical models cannot be evaluated in the simulator.' }));
   });
 
   it('should throw error if model item does not exist', async () => {

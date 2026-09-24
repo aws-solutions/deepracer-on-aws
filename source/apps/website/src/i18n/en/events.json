@@ -1,0 +1,393 @@
+{
+  "breadcrumbs": {
+    "events": "Events",
+    "createEvent": "Create event",
+    "editEvent": "Edit event",
+    "eventDetail": "Event details"
+  },
+  "list": {
+    "header": "Events",
+    "loadingText": "Loading events",
+    "refreshButtonLabel": "Refresh events",
+    "createEventButton": "Create event",
+    "editEventButton": "Edit event",
+    "deleteEventButton": "Delete event",
+    "viewDetailsButton": "View details",
+    "emptyTitle": "No events",
+    "emptySubtitle": "No events to display.",
+    "noMatchTitle": "No matches",
+    "noMatchSubtitle": "We can't find a match.",
+    "deleteConfirmTitle": "Delete event",
+    "deleteConfirmMessage": "Are you sure you want to delete event \"{{name}}\"? All associated tracks, runs, laps, and rankings will also be permanently deleted. This action cannot be undone.",
+    "deletingMessage": "Deleting event \"{{name}}\"...",
+    "deleteSuccessMessage": "Event \"{{name}}\" has been deleted.",
+    "deleteErrorMessage": "Failed to delete event \"{{name}}\". Please try again.",
+    "pagination": {
+      "nextPageLabel": "Next page",
+      "previousPageLabel": "Previous page",
+      "pageLabel": "Page {{pageNumber}} of all pages"
+    },
+    "filters": {
+      "filteringAriaLabel": "Filter events",
+      "searchFilterPlaceholder": "Find event",
+      "statusFilterLabel": "Status",
+      "allStatuses": "All statuses",
+      "matchCount_one": "{{count}} match",
+      "matchCount_other": "{{count}} matches"
+    },
+    "columnHeaders": {
+      "name": "Name",
+      "eventType": "Type",
+      "eventDate": "Date",
+      "raceTime": "Maximum Time (minutes)",
+      "maximumResets": "Maximum Resets",
+      "maximumLaps": "Maximum Laps",
+      "maximumRunsPerRacer": "Maximum Runs Per Racer",
+      "createdBy": "Created By",
+      "createdAt": "Created At",
+      "eventId": "Event ID",
+      "countryCode": "Country",
+      "raceFormat": "Race format",
+      "eventStatus": "Status",
+      "sponsor": "Sponsor"
+    },
+    "preferences": {
+      "title": "Preferences",
+      "confirmLabel": "Confirm",
+      "cancelLabel": "Cancel",
+      "pageSizeTitle": "Select page size",
+      "pageSizeOptions": "{{count}} events",
+      "visibleContentTitle": "Select visible content",
+      "contentDisplayTitle": "Column preferences",
+      "contentDisplayDescription": "Customize the columns visibility and order."
+    }
+  },
+  "status": {
+    "DRAFT": "Draft",
+    "OPEN": "Open",
+    "IN_PROGRESS": "In progress",
+    "COMPLETED": "Completed",
+    "ARCHIVED": "Archived",
+    "DELETING": "Deleting"
+  },
+  "eventType": {
+    "PRIVATE_WORKSHOP": "Private workshop",
+    "OFFICIAL_WORKSHOP": "Official workshop",
+    "PRIVATE_TRACK_RACE": "Private track race",
+    "OFFICIAL_TRACK_RACE": "Official track race",
+    "AWS_SUMMIT": "AWS Summit",
+    "TEST_EVENT": "Test event",
+    "OTHER": "Other"
+  },
+  "raceFormat": {
+    "BEST_LAP": "Best lap",
+    "AVERAGE_LAPS": "Average laps"
+  },
+  "combinedScoringStrategy": {
+    "BEST_RESULT_PER_RACER": "Best result per racer",
+    "BEST_SINGLE_RESULT": "Best single result",
+    "SUM_ACROSS_TRACKS": "Sum across tracks",
+    "AVERAGE_ACROSS_TRACKS": "Average across tracks"
+  },
+  "form": {
+    "createTitle": "Create event",
+    "editTitle": "Edit event",
+    "createButton": "Create",
+    "saveButton": "Save",
+    "cancelButton": "Cancel",
+    "createSuccessNotification": "Event created successfully.",
+    "createTracksPartialErrorNotification_one": "The event was created, but {{count}} track failed to be added. You can add it from the event's Tracks section.",
+    "createTracksPartialErrorNotification_other": "The event was created, but {{count}} tracks failed to be added. You can add them from the event's Tracks section.",
+    "editSuccessNotification": "Event updated successfully.",
+    "createErrorNotification": "Failed to create event. Please try again.",
+    "editErrorNotification": "Failed to update event. Please try again.",
+    "sections": {
+      "eventDetails": "Event details",
+      "raceConfiguration": "Race configuration"
+    },
+    "fields": {
+      "name": {
+        "label": "Event name",
+        "placeholder": "Enter event name",
+        "description": "A unique name to identify this event."
+      },
+      "eventType": {
+        "label": "Event type",
+        "placeholder": "Select event type"
+      },
+      "eventDate": {
+        "label": "Event date",
+        "placeholder": "YYYY/MM/DD",
+        "description": "The date the event takes place (YYYY/MM/DD)."
+      },
+      "countryCode": {
+        "label": "Country",
+        "placeholder": "Select country",
+        "description": "The country where this event takes place."
+      },
+      "sponsor": {
+        "label": "Sponsor",
+        "placeholder": "Enter sponsor name (optional)",
+        "description": "Sponsor text displayed on leaderboards."
+      },
+      "raceFormat": {
+        "label": "Race format",
+        "placeholder": "Select race format",
+        "description": "Determines how each run's score is calculated."
+      },
+      "combinedScoringStrategy": {
+        "label": "Combined scoring strategy",
+        "placeholder": "Select strategy (optional)",
+        "description": "Required for multi-track events. Determines how track results are combined."
+      },
+      "maxLaps": {
+        "label": "Maximum laps",
+        "description": "Maximum laps per run (advisory)."
+      },
+      "maxTimeInMinutes": {
+        "label": "Maximum time (minutes)",
+        "description": "Maximum run duration in minutes before the run auto-finishes."
+      },
+      "maxRunsPerRacer": {
+        "label": "Maximum runs per racer",
+        "description": "The maximum number of runs a racer is allowed to have during an event.",
+        "unlimitedOption": "Unlimited"
+      },
+      "maxResets": {
+        "label": "Maximum resets",
+        "description": "The maximum number of resets a racer is allowed per run.",
+        "unlimitedOption": "Unlimited"
+      },
+      "averageLapsWindow": {
+        "label": "Average lap window",
+        "description": "Number of most-recent laps to average when the race format is Average laps."
+      },
+      "trackType": {
+        "label": "Track layout",
+        "placeholder": "Select track layout",
+        "description": "Applied to every track added to this event."
+      }
+    },
+    "validation": {
+      "nameRequired": "Event name is required.",
+      "eventTypeRequired": "Event type is required.",
+      "eventDateRequired": "Event date is required.",
+      "eventDateFormat": "Event date must be in YYYY-MM-DD format.",
+      "eventDatePast": "Event date must be today or in the future.",
+      "countryRequired": "Country is required.",
+      "countryLength": "Select a valid country.",
+      "raceFormatRequired": "Race format is required.",
+      "maxLapsRequired": "Maximum laps is required.",
+      "maxLapsMin": "Maximum laps must be at least 1.",
+      "maxTimeInMinutesRequired": "Maximum time is required.",
+      "maxResetsRequired": "Maximum resets is required.",
+      "trackTypeRequired": "Track layout is required.",
+      "combinedScoringStrategyRequired": "Combined scoring strategy is required when the event has multiple tracks."
+    }
+  },
+  "detail": {
+    "header": "Event details",
+    "notFound": "Event not found.",
+    "tabs": {
+      "tracks": "Tracks",
+      "runs": "Runs",
+      "statistics": "Statistics"
+    },
+    "lifecycle": {
+      "label": "Status",
+      "transitionButton": {
+        "OPEN": "Publish event",
+        "START": "Start racing",
+        "COMPLETE": "Complete event",
+        "ARCHIVE": "Archive event"
+      },
+      "transitionSuccess": "Event status updated.",
+      "transitionError": "Failed to update event status. Please try again."
+    },
+    "leaderboards": {
+      "header": "Leaderboards",
+      "columnHeaders": {
+        "track": "Track",
+        "fleet": "Fleet",
+        "headerText": "Header text",
+        "footerText": "Footer text"
+      }
+    },
+    "tracks": {
+      "emptyTitle": "No tracks configured",
+      "emptySubtitle": "Add a track to this event to start timekeeping.",
+      "addTrackButton": "Add track",
+      "defaultTrackName": "Track {{number}}",
+      "removeTrackButton": "Remove track",
+      "removeConfirmTitle": "Remove track from event",
+      "removeConfirmMessage": "Are you sure you want to remove track \"{{name}}\"? This action cannot be undone.",
+      "addSuccessMessage": "Track added successfully.",
+      "addErrorMessage": "Failed to add track. Please try again.",
+      "editErrorMessage": "Failed to save track changes. Please try again.",
+      "removeSuccessMessage": "Track \"{{name}}\" has been removed.",
+      "removeErrorMessage": "Failed to remove track \"{{name}}\". Please try again.",
+      "combinedTabLabel": "Combined",
+      "trackSettingsHeader": "Track settings",
+      "table": {
+        "header": "Tracks",
+        "columnHeaders": {
+          "name": "Track name",
+          "trackType": "Track layout",
+          "fleetId": "Fleet"
+        },
+        "timekeepLink": "Timekeep",
+        "timekeepDisabledReason": "Timekeeping is only available while the event is In Progress.",
+        "leaderboardLink": "Leaderboard",
+        "streamingOverlayLink": "Streaming overlay",
+        "addDisabledReasonEventState": "Tracks can only be added while the event is in Draft or Open status.",
+        "addDisabledReasonMaxTracks": "This event already has the maximum of 10 tracks.",
+        "addDisabledReasonNoTrackType": "Choose a track layout in the Race Configuration section before adding tracks.",
+        "removeDisabledReason": "Tracks can only be removed while the event is in Draft status."
+      },
+      "addModal": {
+        "header": "Add track to event",
+        "addButton": "Add",
+        "fields": {
+          "leaderBoardTitle": {
+            "label": "Header text",
+            "placeholder": "Enter a name for this track",
+            "description": "Text displayed on top of the leaderboard"
+          },
+          "leaderBoardFooter": {
+            "label": "Leaderboard footer",
+            "description": "Footer text displayed at the bottom of this track's leaderboard.",
+            "placeholder": "Enter footer text (optional)"
+          },
+          "fleetId": {
+            "label": "Fleet",
+            "placeholder": "Select a fleet (optional)",
+            "description": "The fleet of cars and timers assigned to this track.",
+            "noFleetOption": "No fleet"
+          }
+        },
+        "validation": {
+          "leaderBoardTitleRequired": "Track name is required."
+        }
+      },
+      "combinedLeaderboard": {
+        "header": "Combined leaderboard ({{strategy}})",
+        "headerFallback": "Combined leaderboard",
+        "previewMessage": "A combined leaderboard will be created automatically once this event has 2 or more tracks.",
+        "fields": {
+          "combinedLeaderBoardHeader": {
+            "label": "Header text",
+            "placeholder": "Enter a name for the combined leaderboard",
+            "description": "Text displayed on top of the combined leaderboard."
+          },
+          "combinedLeaderBoardFooter": {
+            "label": "Leaderboard footer",
+            "placeholder": "Enter footer text (optional)",
+            "description": "Footer text displayed at the bottom of the combined leaderboard."
+          }
+        },
+        "emptyTitle": "No combined results yet",
+        "emptySubtitle": "The combined leaderboard will populate once racers have submitted results on at least one track.",
+        "errorTitle": "Unable to load combined leaderboard",
+        "errorMessage": "Something went wrong while loading the combined leaderboard. Please try again.",
+        "columnHeaders": {
+          "rank": "Rank",
+          "racer": "Racer",
+          "score": "Score"
+        }
+      }
+    },
+    "runs": {
+      "emptyTitle": "No runs yet",
+      "emptySubtitle": "Runs will appear here once the event is in progress.",
+      "lookup": {
+        "header": "Find a run",
+        "trackPlaceholder": "Choose a track",
+        "racerPlaceholder": "Choose a racer",
+        "runPlaceholder": "Choose a run",
+        "noTracks": "This event has no tracks configured.",
+        "noRacers": "No racers have submitted runs on this track.",
+        "noRuns": "No runs found for this track.",
+        "runsLoadError": "Failed to load runs for this track. Please try again.",
+        "runOptionLabel": "{{createdAt}} — {{runStatus}}",
+        "notFound": "No run was found for that track and run ID. Double check the IDs and try again."
+      },
+      "lapTable": {
+        "header": "Laps for run {{runId}}",
+        "empty": "This run has no recorded laps.",
+        "valid": "Valid",
+        "invalid": "Invalid",
+        "editButton": "Edit",
+        "editedBy": "Edited by {{editedBy}}",
+        "columns": {
+          "lapNumber": "Lap",
+          "lapTimeMs": "Lap time",
+          "isValid": "Validity",
+          "editHistory": "Edit history"
+        }
+      },
+      "lapEdit": {
+        "modalHeader": "Edit lap {{lapNumber}}",
+        "description": "Editing lap {{lapNumber}} preserves the original recorded time and logs this change for audit purposes.",
+        "saveButton": "Save changes",
+        "saveSuccess": "Lap time updated successfully.",
+        "saveError": "Failed to update lap time. Please try again.",
+        "historyTitle": "This lap has been edited before",
+        "history": {
+          "originalLapTime": "Original lap time",
+          "editedBy": "Last edited by",
+          "editedAt": "Last edited at",
+          "editReason": "Last edit reason"
+        },
+        "fields": {
+          "lapTimeMs": {
+            "label": "Lap time (mm:ss.sss)",
+            "description": "New lap time in minutes and seconds, e.g. 00:37.264."
+          },
+          "editReason": {
+            "label": "Reason for edit",
+            "description": "Required. Explain why this lap time is being corrected.",
+            "placeholder": "e.g. Timer strip double-triggered; corrected using video replay timing"
+          }
+        },
+        "validation": {
+          "lapTimeRequired": "Lap time is required.",
+          "lapTimeInvalid": "Lap time must be in mm:ss.sss format, e.g. 00:37.264.",
+          "lapTimePositive": "Lap time must be a positive number.",
+          "editReasonRequired": "A reason for the edit is required."
+        }
+      }
+    },
+    "runStatus": {
+      "READY": "Ready",
+      "IN_PROGRESS": "In progress",
+      "PAUSED": "Paused",
+      "FINISHED": "Finished",
+      "SUBMITTED": "Submitted",
+      "DISCARDED": "Discarded"
+    },
+    "statistics": {
+      "header": "Event statistics",
+      "emptyTitle": "No statistics yet",
+      "emptySubtitle": "Statistics will be available once runs have been completed.",
+      "errorTitle": "Unable to load statistics",
+      "errorMessage": "Something went wrong while loading event statistics. Please try again.",
+      "retryButton": "Retry",
+      "metrics": {
+        "totalRuns": "Total runs",
+        "completedRuns": "Completed runs",
+        "discardedRuns": "Discarded runs",
+        "uniqueRacerCount": "Unique racers",
+        "totalValidLaps": "Total valid laps",
+        "averageLapsPerRun": "Average laps per run",
+        "fastestLapMs": "Fastest lap",
+        "averageLapTimeMs": "Average lap time",
+        "completionRate": "Completion rate"
+      }
+    }
+  },
+  "unauthorized": {
+    "header": "Unauthorized",
+    "message": "The page you are trying to view is only available to administrators and race facilitators.",
+    "returnHome": "Return to Home"
+  }
+}

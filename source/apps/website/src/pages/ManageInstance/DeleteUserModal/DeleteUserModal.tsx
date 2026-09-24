@@ -5,6 +5,7 @@ import Button from '@cloudscape-design/components/button';
 import Modal from '@cloudscape-design/components/modal';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import { Profile } from '@deepracer-indy/typescript-client';
+import { useTranslation } from 'react-i18next';
 
 import { useAppDispatch } from '#hooks/useAppDispatch';
 import { useDeleteProfileMutation } from '#services/deepRacer/profileApi';
@@ -18,6 +19,7 @@ interface DeleteUserModalProps {
 }
 
 const DeleteUserModal = ({ isOpen, setIsOpen, selectedUser, onClearSelection }: DeleteUserModalProps) => {
+  const { t } = useTranslation('manageInstance');
   const dispatch = useAppDispatch();
   const [deleteProfile, { isLoading: isDeletingProfile }] = useDeleteProfileMutation();
 
@@ -37,7 +39,7 @@ const DeleteUserModal = ({ isOpen, setIsOpen, selectedUser, onClearSelection }: 
 
       dispatch(
         displaySuccessNotification({
-          content: `User ${selectedUser.alias} has been deleted from the system`,
+          content: t('deleteUserModal.notifications.success', { alias: selectedUser.alias }),
         }),
       );
 
@@ -47,20 +49,26 @@ const DeleteUserModal = ({ isOpen, setIsOpen, selectedUser, onClearSelection }: 
       console.error('Failed to delete user');
       dispatch(
         displayErrorNotification({
-          content: 'Failed to delete user. Please try again.',
+          content: t('deleteUserModal.notifications.error'),
         }),
       );
     }
   };
 
   return (
-    <Modal onDismiss={handleClose} visible={isOpen} closeAriaLabel="Close modal" size="medium" header="Delete user">
+    <Modal
+      onDismiss={handleClose}
+      visible={isOpen}
+      closeAriaLabel="Close modal"
+      size="medium"
+      header={t('deleteUserModal.header')}
+    >
       <SpaceBetween size="m">
-        <div>Delete this user from the system? This action cannot be undone.</div>
+        <div>{t('deleteUserModal.confirmMessage')}</div>
         <SpaceBetween size="xs" direction="horizontal">
-          <Button onClick={handleClose}>Cancel</Button>
+          <Button onClick={handleClose}>{t('deleteUserModal.buttons.cancel')}</Button>
           <Button variant="primary" onClick={handleDeleteUser} loading={isDeletingProfile}>
-            Delete
+            {t('deleteUserModal.buttons.delete')}
           </Button>
         </SpaceBetween>
       </SpaceBetween>

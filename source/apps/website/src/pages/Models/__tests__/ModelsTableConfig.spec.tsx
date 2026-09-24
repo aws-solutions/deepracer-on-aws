@@ -73,3 +73,71 @@ describe('useModelsTableConfig', () => {
     });
   });
 });
+
+describe('useModelsTableConfig — agentAlgorithm column', () => {
+  it('renders agent algorithm from metadata', () => {
+    const model = { ...mockModel, metadata: { ...mockModel.metadata, agentAlgorithm: 'SAC' } } as Model;
+    const TestComp = () => {
+      const { columnDefinitions } = useModelsTableConfig([model]);
+      const col = columnDefinitions.find((c) => c.id === 'AgentAlgorithm');
+      return <div data-testid="cell">{col?.cell?.(model)}</div>;
+    };
+    render(
+      <BrowserRouter>
+        <TestComp />
+      </BrowserRouter>,
+    );
+    expect(screen.getByTestId('cell')).toHaveTextContent('SAC');
+  });
+
+  it('renders dash when metadata.agentAlgorithm is undefined', () => {
+    const model = { ...mockModel, metadata: undefined } as unknown as Model;
+    const TestComp = () => {
+      const { columnDefinitions } = useModelsTableConfig([model]);
+      const col = columnDefinitions.find((c) => c.id === 'AgentAlgorithm');
+      return <div data-testid="cell">{col?.cell?.(model)}</div>;
+    };
+    render(
+      <BrowserRouter>
+        <TestComp />
+      </BrowserRouter>,
+    );
+    expect(screen.getByTestId('cell')).toHaveTextContent('-');
+  });
+
+  it('sorting comparator sorts alphabetically by agentAlgorithm', () => {
+    const modelA = { ...mockModel, metadata: { ...mockModel.metadata, agentAlgorithm: 'PPO' } } as Model;
+    const modelB = { ...mockModel, metadata: { ...mockModel.metadata, agentAlgorithm: 'SAC' } } as Model;
+    const TestComp = () => {
+      const { columnDefinitions } = useModelsTableConfig([modelA, modelB]);
+      const col = columnDefinitions.find((c) => c.id === 'AgentAlgorithm');
+      const result = col?.sortingComparator?.(modelA, modelB);
+      return <div data-testid="sort">{result}</div>;
+    };
+    render(
+      <BrowserRouter>
+        <TestComp />
+      </BrowserRouter>,
+    );
+    const sortValue = Number(screen.getByTestId('sort').textContent);
+    expect(sortValue).toBeLessThan(0);
+  });
+
+  it('sorting comparator handles undefined metadata gracefully', () => {
+    const modelA = { ...mockModel, metadata: undefined } as unknown as Model;
+    const modelB = { ...mockModel, metadata: { ...mockModel.metadata, agentAlgorithm: 'SAC' } } as Model;
+    const TestComp = () => {
+      const { columnDefinitions } = useModelsTableConfig([modelA, modelB]);
+      const col = columnDefinitions.find((c) => c.id === 'AgentAlgorithm');
+      const result = col?.sortingComparator?.(modelA, modelB);
+      return <div data-testid="sort">{result}</div>;
+    };
+    render(
+      <BrowserRouter>
+        <TestComp />
+      </BrowserRouter>,
+    );
+    const sortValue = Number(screen.getByTestId('sort').textContent);
+    expect(sortValue).toBeLessThan(0);
+  });
+});

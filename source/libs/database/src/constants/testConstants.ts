@@ -7,17 +7,20 @@ import {
   CarShell,
   EpisodeStatus,
   EvaluationConfig,
+  EventStatus,
+  EventType,
   ExplorationType,
   JobStatus,
   LidarSensor,
+  LiveQueueItemStatus,
   LossType,
   ModelStatus,
   NotFoundError,
+  RaceFormat,
   RaceType,
   TimingMethod,
   TrackDirection,
   TrackId,
-  LiveQueueItemStatus,
 } from '@deepracer-indy/typescript-server-client';
 
 import { ErrorMessage } from './errorMessages.js';
@@ -25,11 +28,14 @@ import { DynamoDBItemAttribute } from './itemAttributes.js';
 import { JobType } from './jobType.js';
 import type { AccountResourceUsageItem } from '../entities/AccountResourceUsageEntity.js';
 import type { EvaluationItem } from '../entities/EvaluationsEntity.js';
+import { type EventItem } from '../entities/EventsEntity.js';
+import type { LapItem } from '../entities/LapsEntity.js';
 import type { LeaderboardItem } from '../entities/LeaderboardsEntity.js';
 import type { LiveQueueItem } from '../entities/LiveQueueItemEntity.js';
 import type { ModelItem, ModelsEntity } from '../entities/ModelsEntity.js';
 import type { ProfileItem } from '../entities/ProfilesEntity.js';
 import type { RankingItem } from '../entities/RankingsEntity.js';
+import type { RunItem } from '../entities/RunsEntity.js';
 import type { SubmissionItem } from '../entities/SubmissionsEntity.js';
 import type { TrainingItem } from '../entities/TrainingsEntity.js';
 import type { JobItem } from '../types/jobItem.js';
@@ -653,6 +659,25 @@ export const TEST_ACCOUNT_RESOURCE_USAGE_NORMAL2: AccountResourceUsageItem = {
   accountComputeMinutesQueued: 300,
 };
 
+export const TEST_EVENT_ID = generateResourceId();
+
+export const TEST_EVENT_ITEM: EventItem = {
+  createdAt: TEST_TIMESTAMP,
+  createdBy: TEST_PROFILE_ITEM.alias,
+  updatedAt: TEST_TIMESTAMP,
+  eventId: TEST_EVENT_ID,
+  name: 'Test Event',
+  eventType: EventType.OFFICIAL_TRACK_RACE,
+  eventStatus: EventStatus.DRAFT,
+  eventDate: '2026-09-07',
+  countryCode: 'US',
+  raceFormat: RaceFormat.BEST_LAP,
+  maxLaps: 5,
+  maxTimeInMinutes: 3,
+  maxRunsPerRacer: 3,
+  maxResets: 0,
+};
+
 export const TEST_GLOBAL_CONFIG_NEW_USER = {
   newUserComputeMinutesLimit: 10,
   newUserModelCountLimit: 10,
@@ -691,4 +716,34 @@ export const TEST_LIVE_QUEUE_ITEMS: LiveQueueItem[] = [
     participantName: 'testAlias3',
     modelName: 'Test Model 3',
   },
+];
+
+export const TEST_RUN_ID = generateResourceId();
+
+export const TEST_RUN_ITEM: RunItem = {
+  createdAt: TEST_TIMESTAMP,
+  updatedAt: TEST_TIMESTAMP,
+  runId: TEST_RUN_ID,
+  leaderboardId: TEST_LEADERBOARD_ID,
+  eventId: TEST_EVENT_ID,
+  profileId: TEST_PROFILE_ID_1,
+  runStatus: 'READY' as RunItem['runStatus'],
+  racedByProxy: false,
+};
+
+export const TEST_LAP_ITEM: LapItem = {
+  createdAt: TEST_TIMESTAMP,
+  updatedAt: TEST_TIMESTAMP,
+  leaderboardId: TEST_LEADERBOARD_ID,
+  runId: TEST_RUN_ID,
+  lapNumber: 1,
+  lapTimeMs: 12000,
+  isValid: true,
+  resets: 0,
+};
+
+export const TEST_LAP_ITEMS: LapItem[] = [
+  TEST_LAP_ITEM,
+  { ...TEST_LAP_ITEM, lapNumber: 2, lapTimeMs: 11000 },
+  { ...TEST_LAP_ITEM, lapNumber: 3, lapTimeMs: 13000 },
 ];

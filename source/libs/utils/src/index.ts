@@ -8,3 +8,4 @@ export * from './metrics/metricsSender.js';
 export * from './powertools/powertools.js';
 export * from './s3/index.js';
 export * from './waitForAll.js';
+export * from './mapWithConcurrency.js';

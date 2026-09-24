@@ -38,6 +38,25 @@ import {
 
 import { DeepRacerApiQueryTagType, LIST_QUERY_TAG_ID } from './constants.js';
 import { deepRacerApi, paginatedQuery } from './deepRacerApi.js';
+import { eventsApi } from './eventsApi.js';
+
+/**
+ * `eventId` is read from the mutation response (the Leaderboard read shape owns it; it is
+ * not part of LeaderboardDefinition). On a failed edit there is no response and therefore
+ * no event-tracks tag to invalidate, which is correct — nothing changed server-side.
+ */
+export const editLeaderboardInvalidatesTags = (
+  leaderboardId: string,
+  updatedLeaderboard?: Pick<Leaderboard, 'eventId'>,
+) => {
+  const eventId = updatedLeaderboard?.eventId;
+
+  return [
+    { type: DeepRacerApiQueryTagType.LEADERBOARDS, id: leaderboardId },
+    { type: DeepRacerApiQueryTagType.LEADERBOARDS, id: LIST_QUERY_TAG_ID },
+    ...(eventId ? [{ type: DeepRacerApiQueryTagType.EVENTS, id: `${eventId}-tracks` }] : []),
+  ];
+};
 
 export const leaderboardsApi = deepRacerApi.injectEndpoints({
   endpoints: (build) => ({
@@ -81,10 +100,25 @@ export const leaderboardsApi = deepRacerApi.injectEndpoints({
         command: new EditLeaderboardCommand(input),
       }),
       transformResponse: (response: EditLeaderboardCommandOutput) => response.leaderboard,
-      invalidatesTags: (_result, _meta, { leaderboardId }) => [
-        { type: DeepRacerApiQueryTagType.LEADERBOARDS, id: leaderboardId },
-        { type: DeepRacerApiQueryTagType.LEADERBOARDS, id: LIST_QUERY_TAG_ID },
-      ],
+      async onQueryStarted(_input, { dispatch, queryFulfilled }) {
+        try {
+          const { data: updatedLeaderboard } = await queryFulfilled;
+          if (!updatedLeaderboard.eventId) return;
+
+          dispatch(
+            eventsApi.util.updateQueryData('listEventTracks', { eventId: updatedLeaderboard.eventId }, (tracks) => {
+              const trackIndex = tracks.findIndex((track) => track.leaderboardId === updatedLeaderboard.leaderboardId);
+              if (trackIndex !== -1) {
+                tracks.splice(trackIndex, 1, updatedLeaderboard);
+              }
+            }),
+          );
+        } catch {
+          // The API middleware surfaces mutation errors; leave cached tracks unchanged.
+        }
+      },
+      invalidatesTags: (updatedLeaderboard, _meta, { leaderboardId }) =>
+        editLeaderboardInvalidatesTags(leaderboardId, updatedLeaderboard),
     }),
     getLiveRaceState: build.query<GetLiveRaceStateCommandOutput, GetLiveRaceStateCommandInput>({
       query: (input) => ({

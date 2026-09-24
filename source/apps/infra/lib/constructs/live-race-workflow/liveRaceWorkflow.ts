@@ -4,7 +4,7 @@
 import path from 'node:path';
 
 import { TrainingJobStatus } from '@aws-sdk/client-sagemaker';
-import { Duration } from 'aws-cdk-lib';
+import { Duration, Stack } from 'aws-cdk-lib';
 import { Alarm, ComparisonOperator, TreatMissingData } from 'aws-cdk-lib/aws-cloudwatch';
 import { TableV2 } from 'aws-cdk-lib/aws-dynamodb';
 import { Rule } from 'aws-cdk-lib/aws-events';
@@ -235,9 +235,15 @@ export class LiveRaceWorkflow extends Construct {
     jobMonitorInvocation.next(
       new Choice(this, 'Evaluation done?')
         .when(
-          Condition.or(
-            Condition.stringEquals('$.trainingJob.status', TrainingJobStatus.IN_PROGRESS),
-            Condition.stringEquals('$.trainingJob.status', TrainingJobStatus.STOPPING),
+          // `$.trainingJob` is absent when initialization stopped before creating the SageMaker job.
+          // Without the isPresent guard, reading `$.trainingJob.status` raises States.Runtime instead
+          // of following the controlled finalize/fail path.
+          Condition.and(
+            Condition.isPresent('$.trainingJob.status'),
+            Condition.or(
+              Condition.stringEquals('$.trainingJob.status', TrainingJobStatus.IN_PROGRESS),
+              Condition.stringEquals('$.trainingJob.status', TrainingJobStatus.STOPPING),
+            ),
           ),
           waitForJob.next(jobMonitorInvocation),
         )
@@ -272,7 +278,7 @@ export class LiveRaceWorkflow extends Construct {
       stateMachineName: `${namespace}-LiveRaceWorkflow`,
       logs: {
         destination: new LogGroup(this, 'LiveRaceExecutionLogs', {
-          logGroupName: `/aws/vendedlogs/states/${namespace}-LiveRaceWorkflow`,
+          logGroupName: `/aws/vendedlogs/states/${Stack.of(this).stackName}-LiveRaceWorkflow`,
           removalPolicy: DefaultLogRemovalPolicy,
           retention: DefaultLogRetentionDays,
           encryptionKey,

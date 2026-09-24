@@ -1,3 +1,6 @@
+// Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+// SPDX-License-Identifier: Apache-2.0
+
 import { InternalFailureError, LiveQueueItemStatus, NotFoundError } from '@deepracer-indy/typescript-server-client';
 import { logger, logMethod } from '@deepracer-indy/utils';
 import { CreateEntityItem, Service } from 'electrodb';

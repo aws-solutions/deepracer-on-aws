@@ -26,4 +26,8 @@ export const toLeaderboardResponse = (item: LeaderboardItem): Leaderboard => ({
   liveEventTime: item.liveEventTime ? new Date(item.liveEventTime) : undefined,
   liveEventStatus: item.liveEventStatus,
   maxResets: item.maxResets,
+  eventId: item.eventId,
+  fleetId: item.fleetId,
+  trackType: item.trackType,
+  leaderBoardFooter: item.leaderBoardFooter,
 });

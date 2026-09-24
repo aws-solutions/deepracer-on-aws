@@ -1,0 +1,155 @@
+{
+  "header": "Timekeeping",
+  "description": "The Timekeeper starts and ends races, captures individual laps, and records car resets.",
+  "missingParamsError": "Missing event or track information. Please navigate to this page from an event's track list.",
+  "contextSelection": {
+    "header": "Race setup",
+    "raceFormatLabel": "Race format:",
+    "automaticTimerLabel": "Automatic Timer:",
+    "timerNotConnected": "Not connected",
+    "eventLabel": "Event",
+    "eventPlaceholder": "Choose an event",
+    "loadingEvents": "Loading events",
+    "trackLabel": "Track",
+    "trackPlaceholder": "Choose a track",
+    "loadingTracks": "Loading tracks...",
+    "selectModalConfirm": "Select",
+    "selectModalCancel": "Cancel"
+  },
+  "runSetup": {
+    "header": "Select Racer: {{event}} on {{track}}",
+    "racerLabel": "Racer name",
+    "racerDescription": "Select which racer to time",
+    "raceAllowance": "Event races",
+    "completedRaces": "Completed races:",
+    "maxRaces": "Max races:",
+    "maxRacesReached": "{{racer}} has already completed the maximum of {{maxRaces}} races for this event.",
+    "racedByProxy": "Raced by proxy",
+    "racedByProxyDescription": "Racer not present",
+    "cancel": "Cancel",
+    "next": "Next"
+  },
+  "racerSelector": {
+    "header": "Racer name:",
+    "label": "Select racer",
+    "description": "Choose the racer for this run.",
+    "placeholder": "Choose a racer",
+    "loadingText": "Loading racers"
+  },
+  "carSelector": {
+    "label": "Car name:",
+    "description": "Choose the car assigned to this run.",
+    "placeholder": "Choose a car",
+    "loadingText": "Loading cars"
+  },
+  "errors": {
+    "startRun": "Unable to start the Run. Please try again.",
+    "transitionRun": "Unable to update the Run. Please try again.",
+    "countdown": "Unable to publish the countdown update."
+  },
+  "runs": {
+    "header": "Runs",
+    "noRunInProgress": "No run in progress",
+    "emptyTitle": "No runs on this track yet",
+    "emptySubtitle": "Select an event, track, and racer above, then start a new run to begin timing.",
+    "sortingLabel": "Sorting",
+    "columnHeaders": {
+      "racer": "Racer",
+      "status": "Status",
+      "started": "Started",
+      "racedByProxy": "Raced by proxy"
+    },
+    "proxy": {
+      "yes": "Yes",
+      "no": "No"
+    },
+    "pagination": {
+      "nextPageLabel": "Next page",
+      "previousPageLabel": "Previous page",
+      "pageLabel": "Page {{pageNumber}}"
+    },
+    "preferences": {
+      "title": "Runs preferences",
+      "confirmLabel": "Confirm",
+      "cancelLabel": "Cancel",
+      "pageSizeTitle": "Runs per page",
+      "pageSizeOptionsLabel": "{{count}} runs"
+    }
+  },
+  "manualTiming": {
+    "header": "Timing",
+    "status": {
+      "noRunSelected": "Select a Run to begin timing",
+      "waitingForFirstCrossing": "Waiting to start first lap",
+      "lapInProgress": "Lap in progress",
+      "paused": "Timing paused",
+      "timingStateUnavailable": "Timing state unavailable after refresh",
+      "finished": "Timing finished"
+    },
+    "countdownLabel": "Time left:",
+    "lapElapsedLabel": "Current lap",
+    "timeLimit": "Run limit: {{minutes}} minutes",
+    "recoveredMessage": "The countdown and lap stopwatch cannot be recovered after a refresh. Use the Run controls above to finish or discard the Run.",
+    "markFirstCrossing": "Start first lap",
+    "recordLap": "Record lap",
+    "markLapInvalid": "Mark lap invalid",
+    "markLapInvalidError": "Unable to mark lap invalid.",
+    "didNotFinish": "Did not finish",
+    "didNotFinishError": "Unable to record Did not finish lap.",
+    "retryLap": "Retry record lap",
+    "carReset": "Car reset",
+    "resetsLabel": "Resets",
+    "unlimitedResets": "Unlimited",
+    "lapPending": "Lap request pending. Retry to reconcile.",
+    "lapError": "Unable to record lap. Retry the request."
+  },
+  "countdown": {
+    "header": "Countdown",
+    "placeholder": "--:--"
+  },
+  "runControls": {
+    "header": "Run controls"
+  },
+  "runStatus": {
+    "READY": "Ready",
+    "IN_PROGRESS": "In progress",
+    "PAUSED": "Paused",
+    "FINISHED": "Finished",
+    "SUBMITTED": "Submitted",
+    "DISCARDED": "Discarded"
+  },
+  "actions": {
+    "createRun": "Start new run",
+    "startNewRun": "Start new Run",
+    "discardRun": "Discard Run",
+    "submitRun": "Submit Run",
+    "START": "Start",
+    "PAUSE": "Pause",
+    "RESUME": "Resume",
+    "FINISH": "End",
+    "RESUME_FROM_FINISHED": "Resume",
+    "SUBMIT": "Submit results",
+    "DISCARD": "Discard"
+  },
+  "lapTable": {
+    "header": "Recorded laps",
+    "fastestHeader": "Fastest lap",
+    "fastestEmptyTitle": "No valid laps recorded",
+    "fastestEmptySubtitle": "The fastest lap will appear here once a valid lap is recorded.",
+    "emptyTitle": "No laps recorded",
+    "emptySubtitle": "Laps will appear here as they are recorded.",
+    "valid": "Yes",
+    "invalid": "No",
+    "markValid": "Mark lap {{lapNumber}} valid",
+    "markInvalid": "Mark lap {{lapNumber}} invalid",
+    "toggleValidityError": "Unable to update lap validity. Please try again.",
+    "columnHeaders": {
+      "lapNumber": "Lap",
+      "lapTimeMs": "Time",
+      "isValid": "Validity",
+      "resets": "Resets",
+      "car": "Car name",
+      "actions": "Actions"
+    }
+  }
+}

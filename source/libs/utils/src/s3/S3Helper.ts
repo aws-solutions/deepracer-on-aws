@@ -104,16 +104,25 @@ export class S3Helper {
    * @param location S3 location as string
    * @param expiresIn URL expiration time in seconds
    * @param downloadFilename Optional filename for Content-Disposition header
+   * @param contentType Optional MIME type to set as ResponseContentType (e.g. 'video/mp4').
+   *   Use this when S3 stores the object as binary/octet-stream but the browser needs
+   *   the correct MIME type to play/display it inline.
    * @returns Presigned URL for the S3 object
    */
   async getPresignedUrl(
     location: string,
     expiresIn = this.DEFAULT_PRESIGNED_URL_EXPIRE_TIME,
     downloadFilename?: string,
+    contentType?: string,
   ) {
     const s3Location = new AmazonS3URI(location);
     const sanitizedFilename = downloadFilename?.replace(/[\r\n"\\;]/g, '_');
-    logger.info('Generating presigned URL', { s3Location, expiresIn, downloadFilename: sanitizedFilename });
+    logger.info('Generating presigned URL', {
+      s3Location,
+      expiresIn,
+      downloadFilename: sanitizedFilename,
+      contentType,
+    });
 
     try {
       const presignedUrl = await getSignedUrl(
@@ -122,6 +131,7 @@ export class S3Helper {
           Bucket: s3Location.bucket,
           Key: s3Location.key,
           ResponseContentDisposition: sanitizedFilename ? `attachment; filename="${sanitizedFilename}"` : undefined,
+          ResponseContentType: contentType,
         }),
         { expiresIn },
       );
@@ -131,6 +141,16 @@ export class S3Helper {
       logger.error('Unable to generate presigned URL', { s3Location, error });
       throw error;
     }
+  }
+
+  /**
+   * Presigned URL for an MP4 video asset. Sets ResponseContentType to 'video/mp4' so browsers
+   * stream/play it inline instead of downloading it as binary/octet-stream.
+   * @param location S3 location as string
+   * @returns Presigned URL for the video object
+   */
+  async getPresignedVideoUrl(location: string) {
+    return this.getPresignedUrl(location, undefined, undefined, 'video/mp4');
   }
 
   /**
@@ -185,6 +205,11 @@ export class S3Helper {
       for await (const { Contents } of paginator) {
         const deleteableContent = Contents?.map((obj: _Object) => ({ Key: obj.Key })) ?? [];
         objectKeys.push(...deleteableContent);
+      }
+
+      if (objectKeys.length === 0) {
+        logger.info('No objects to delete at location', { s3Location });
+        return;
       }
 
       logger.info('Deleting objects', { bucket: s3Location.bucket, objectKeys });

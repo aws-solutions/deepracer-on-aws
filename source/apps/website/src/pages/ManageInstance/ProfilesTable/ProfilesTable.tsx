@@ -14,6 +14,7 @@ import {
 } from '@cloudscape-design/components';
 import { Profile } from '@deepracer-indy/typescript-client';
 import { useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 
 import {
   formatComputeUsage,
@@ -28,21 +29,26 @@ interface ProfilesTableProps {
   profiles: Profile[];
   currentUserProfileId?: string;
   onInviteUser: () => void;
+  onInviteMultipleUsers: () => void;
   onDeleteUser: (user: Profile, clearSelection: () => void) => void;
   onDeleteUserModels: (user: Profile) => void;
   onUpdateUserQuotas: (user: Profile, clearSelection: () => void) => void;
   onChangeUserRole: (user: Profile, clearSelection: () => void) => void;
+  onResendInvite: (users: Profile[], clearSelection: () => void) => void;
 }
 
 const ProfilesTable = ({
   profiles,
   currentUserProfileId,
   onInviteUser,
+  onInviteMultipleUsers,
   onDeleteUser,
   onDeleteUserModels,
   onUpdateUserQuotas,
   onChangeUserRole,
+  onResendInvite,
 }: ProfilesTableProps) => {
+  const { t } = useTranslation('manageInstance');
   const [filterText, setFilterText] = useState('');
   const [selectedItems, setSelectedItems] = useState<Profile[]>([]);
 
@@ -75,34 +81,34 @@ const ProfilesTable = ({
       columnDefinitions={[
         {
           id: 'email',
-          header: 'Email',
-          cell: (item) => item.emailAddress || '-/-',
+          header: t('profilesTable.columns.email'),
+          cell: (item) => item.emailAddress || t('profilesTable.empty_value'),
         },
         {
           id: 'name',
-          header: 'Alias',
+          header: t('profilesTable.columns.alias'),
           cell: (item) => item.alias,
         },
         {
           id: 'role',
-          header: 'Role',
-          cell: (item) => formatRoleName(item.roleName),
+          header: t('profilesTable.columns.role'),
+          cell: (item) => formatRoleName(t, item.roleName),
         },
         {
           id: 'currentUsage',
-          header: 'Current usage',
-          cell: (item) => formatComputeUsage(item.computeMinutesUsed),
+          header: t('profilesTable.columns.currentUsage'),
+          cell: (item) => formatComputeUsage(t, item.computeMinutesUsed),
         },
         {
           id: 'queuedUsage',
-          header: 'Queued usage',
-          cell: (item) => formatComputeUsage(item.computeMinutesQueued),
+          header: t('profilesTable.columns.queuedUsage'),
+          cell: (item) => formatComputeUsage(t, item.computeMinutesQueued),
         },
         {
           id: 'usageLimit',
           header: (
             <SpaceBetween direction="horizontal" size="xs" alignItems="center">
-              Usage limit
+              {t('profilesTable.columns.usageLimit')}
               <Popover
                 dismissButton={false}
                 position="right"
@@ -110,9 +116,7 @@ const ProfilesTable = ({
                 triggerType="custom"
                 content={
                   <Box padding="s">
-                    The maximum number of training and evaluation hours an individual user can consume. This can be{' '}
-                    changed by selecting the checkbox in the user's row and clicking <i>Actions</i> &gt;{' '}
-                    <i>Update usage quotas</i>.
+                    <Trans t={t} i18nKey="profilesTable.usageLimitPopover" />
                   </Box>
                 }
               >
@@ -120,13 +124,14 @@ const ProfilesTable = ({
               </Popover>
             </SpaceBetween>
           ),
-          cell: (item) => formatValue(item.maxTotalComputeMinutes, 'hours', convertMinutesToHours),
+          cell: (item) =>
+            formatValue(t, item.maxTotalComputeMinutes, t('usageSummary.units.hours'), convertMinutesToHours),
         },
         {
           id: 'modelLimit',
           header: (
             <SpaceBetween direction="horizontal" size="xs" alignItems="center">
-              Model limit
+              {t('profilesTable.columns.modelLimit')}
               <Popover
                 dismissButton={false}
                 position="right"
@@ -134,8 +139,7 @@ const ProfilesTable = ({
                 triggerType="custom"
                 content={
                   <Box padding="s">
-                    The maximum number of models an individual user can have. This can be changed by selecting the
-                    checkbox in the user's row and clicking <i>Actions</i> &gt; <i>Update usage quotas</i>.
+                    <Trans t={t} i18nKey="profilesTable.modelLimitPopover" />
                   </Box>
                 }
               >
@@ -143,31 +147,31 @@ const ProfilesTable = ({
               </Popover>
             </SpaceBetween>
           ),
-          cell: (item) => formatValue(item.maxModelCount, 'models'),
+          cell: (item) => formatValue(t, item.maxModelCount, t('usageSummary.units.models')),
         },
         {
           id: 'modelStorage',
-          header: 'Model storage',
-          cell: (item) => formatStorageUsage(item.modelStorageUsage),
+          header: t('profilesTable.columns.modelStorage'),
+          cell: (item) => formatStorageUsage(t, item.modelStorageUsage),
         },
         {
           id: 'dateAdded',
-          header: 'Date added',
-          cell: (item) => formatProfileCreationDate(item.createdAt),
+          header: t('profilesTable.columns.dateAdded'),
+          cell: (item) => formatProfileCreationDate(t, item.createdAt),
         },
       ]}
       items={filteredProfiles}
-      loadingText="Loading users"
+      loadingText={t('profilesTable.loadingUsers')}
       empty={
         <Box textAlign="center" color="inherit">
           <SpaceBetween size="s">
             <div>
-              <b>No users</b>
+              <b>{t('profilesTable.empty.title')}</b>
               <Box padding={{ bottom: 's' }} variant="p" color="inherit">
-                No users to display.
+                {t('profilesTable.empty.description')}
               </Box>
             </div>
-            <Button disabled={true}>Add user</Button>
+            <Button disabled={true}>{t('profilesTable.addUser')}</Button>
           </SpaceBetween>
         </Box>
       }
@@ -175,19 +179,49 @@ const ProfilesTable = ({
         <SpaceBetween size="m">
           <Header
             counter={`(${filteredProfiles.length})`}
-            description={selectedItems.length > 0 ? `${selectedItems.length} selected` : undefined}
+            description={
+              selectedItems.length > 0 ? t('profilesTable.selectedCount', { count: selectedItems.length }) : undefined
+            }
             actions={
               <ButtonDropdown
                 items={[
-                  { text: 'Invite user', disabled: selectedItems.length > 0, id: 'invite' },
-                  { text: 'Change role', disabled: isChangeRoleDisabled(), id: 'change-role' },
-                  { text: 'Update usage quotas', disabled: selectedItems.length !== 1, id: 'update-quotas' },
-                  { text: 'Delete models', disabled: selectedItems.length !== 1, id: 'delete-models' },
-                  { text: 'Delete user', disabled: selectedItems.length !== 1, id: 'delete-user' },
+                  { text: t('profilesTable.actions.inviteUser'), disabled: selectedItems.length > 0, id: 'invite' },
+                  {
+                    text: t('profilesTable.actions.inviteMultipleUsers'),
+                    disabled: selectedItems.length > 0,
+                    id: 'invite-multiple',
+                  },
+                  {
+                    text: t('profilesTable.actions.changeRole'),
+                    disabled: isChangeRoleDisabled(),
+                    id: 'change-role',
+                  },
+                  {
+                    text: t('profilesTable.actions.updateUsageQuotas'),
+                    disabled: selectedItems.length !== 1,
+                    id: 'update-quotas',
+                  },
+                  {
+                    text: t('profilesTable.actions.deleteModels'),
+                    disabled: selectedItems.length !== 1,
+                    id: 'delete-models',
+                  },
+                  {
+                    text: t('profilesTable.actions.deleteUser'),
+                    disabled: selectedItems.length !== 1,
+                    id: 'delete-user',
+                  },
+                  {
+                    text: t('profilesTable.actions.resendInvitation'),
+                    disabled: selectedItems.length === 0,
+                    id: 'resend-invite',
+                  },
                 ]}
                 onItemClick={({ detail }) => {
                   if (detail.id === 'invite') {
                     onInviteUser();
+                  } else if (detail.id === 'invite-multiple') {
+                    onInviteMultipleUsers();
                   } else if (detail.id === 'change-role' && selectedItems.length === 1) {
                     onChangeUserRole(selectedItems[0], clearSelection);
                   } else if (detail.id === 'delete-user' && selectedItems.length === 1) {
@@ -196,20 +230,22 @@ const ProfilesTable = ({
                     onDeleteUserModels(selectedItems[0]);
                   } else if (detail.id === 'update-quotas' && selectedItems.length === 1) {
                     onUpdateUserQuotas(selectedItems[0], clearSelection);
+                  } else if (detail.id === 'resend-invite' && selectedItems.length > 0) {
+                    onResendInvite(selectedItems, clearSelection);
                   }
                 }}
               >
-                Actions
+                {t('profilesTable.actions.label')}
               </ButtonDropdown>
             }
           >
-            Users
+            {t('profilesTable.header')}
           </Header>
           <SpaceBetween direction="horizontal" size="xs" alignItems="center">
             <div style={{ minWidth: '400px' }}>
               <TextFilter
                 filteringText={filterText}
-                filteringPlaceholder="Find user by alias or email"
+                filteringPlaceholder={t('profilesTable.filterPlaceholder')}
                 onChange={({ detail }) => setFilterText(detail.filteringText)}
               />
             </div>
@@ -220,11 +256,7 @@ const ProfilesTable = ({
               triggerType="custom"
               content={
                 <Box padding="s">
-                  Search for users by alias or email address. Examples:
-                  <br />
-                  <strong>Alias:</strong> "john" matches "John Smith" or "johnson"
-                  <br />
-                  <strong>Email:</strong> "example.com" matches any user with that domain
+                  <Trans t={t} i18nKey="profilesTable.filterPopover" />
                 </Box>
               }
             >

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Profile } from '@deepracer-indy/typescript-client';
+import { TFunction } from 'i18next';
 import { describe, it, expect } from 'vitest';
 
 import {
@@ -12,40 +13,49 @@ import {
   calculateModelCount,
 } from '../helpers';
 
+// Real 'manageInstance' translations for the keys these helpers use.
+const translations: Record<string, string> = {
+  'usageSummary.units.empty': '-/-',
+  'usageSummary.units.unlimited': 'Unlimited',
+  'usageSummary.units.hours': 'hours',
+  'usageSummary.units.models': 'models',
+};
+const t = ((key: string) => translations[key] ?? key) as unknown as TFunction<'manageInstance'>;
+
 describe('helpers', () => {
   describe('formatValue', () => {
     it('should return "-/-" when value is undefined', () => {
-      expect(formatValue(undefined, 'units')).toBe('-/-');
+      expect(formatValue(t, undefined, 'units')).toBe('-/-');
     });
 
     it('should return "-/-" when value is null', () => {
-      expect(formatValue(null as unknown as undefined, 'units')).toBe('-/-');
+      expect(formatValue(t, null as unknown as undefined, 'units')).toBe('-/-');
     });
 
     it('should return "-/-" when value is 0', () => {
-      expect(formatValue(0, 'units')).toBe('-/-');
+      expect(formatValue(t, 0, 'units')).toBe('-/-');
     });
 
     it('should return "Unlimited" when value is -1', () => {
-      expect(formatValue(-1, 'units')).toBe('Unlimited');
+      expect(formatValue(t, -1, 'units')).toBe('Unlimited');
     });
 
     it('should format a number value with the unit of measurement', () => {
-      expect(formatValue(42, 'hours')).toBe('42 hours');
+      expect(formatValue(t, 42, 'hours')).toBe('42 hours');
     });
 
     it('should format a string value (that can be converted to a number) with the unit of measurement', () => {
-      expect(formatValue('42', 'hours')).toBe('42 hours');
+      expect(formatValue(t, '42', 'hours')).toBe('42 hours');
     });
 
     it('should apply the transform function when provided', () => {
       const transformFn = (value: number) => value * 2;
-      expect(formatValue(42, 'hours', transformFn)).toBe('84 hours');
+      expect(formatValue(t, 42, 'hours', transformFn)).toBe('84 hours');
     });
 
     it('should apply the transform function that returns a string when provided', () => {
       const transformFn = (value: number) => `${value.toFixed(2)}`;
-      expect(formatValue(42, 'hours', transformFn)).toBe('42.00 hours');
+      expect(formatValue(t, 42, 'hours', transformFn)).toBe('42.00 hours');
     });
   });
 
@@ -77,17 +87,17 @@ describe('helpers', () => {
 
   describe('calculateTrainingAndEvaluationHoursUsed', () => {
     it('should return "-/-" when there are no profiles', () => {
-      expect(calculateTrainingAndEvaluationHoursUsed([])).toBe('-/-');
+      expect(calculateTrainingAndEvaluationHoursUsed(t, [])).toBe('-/-');
     });
 
     it('should return "-/-" when all profiles have 0 computeMinutesUsed', () => {
       const profiles = [{ computeMinutesUsed: 0 }, { computeMinutesUsed: 0 }] as Profile[];
-      expect(calculateTrainingAndEvaluationHoursUsed(profiles)).toBe('-/-');
+      expect(calculateTrainingAndEvaluationHoursUsed(t, profiles)).toBe('-/-');
     });
 
     it('should return "-/-" when all profiles have undefined computeMinutesUsed', () => {
       const profiles = [{ computeMinutesUsed: undefined }, { computeMinutesUsed: undefined }] as Profile[];
-      expect(calculateTrainingAndEvaluationHoursUsed(profiles)).toBe('-/-');
+      expect(calculateTrainingAndEvaluationHoursUsed(t, profiles)).toBe('-/-');
     });
 
     it('should calculate total hours correctly for multiple profiles', () => {
@@ -96,7 +106,7 @@ describe('helpers', () => {
         { computeMinutesUsed: 30 },
         { computeMinutesUsed: 90 },
       ] as Profile[];
-      expect(calculateTrainingAndEvaluationHoursUsed(profiles)).toBe('3.00 hours');
+      expect(calculateTrainingAndEvaluationHoursUsed(t, profiles)).toBe('3.00 hours');
     });
 
     it('should handle mixed undefined and defined values', () => {
@@ -105,23 +115,23 @@ describe('helpers', () => {
         { computeMinutesUsed: undefined },
         { computeMinutesUsed: 90 },
       ] as Profile[];
-      expect(calculateTrainingAndEvaluationHoursUsed(profiles)).toBe('2.50 hours');
+      expect(calculateTrainingAndEvaluationHoursUsed(t, profiles)).toBe('2.50 hours');
     });
   });
 
   describe('calculateModelStorageUsed', () => {
     it('should return "-/-" when there are no profiles', () => {
-      expect(calculateModelStorageUsed([])).toBe('-/-');
+      expect(calculateModelStorageUsed(t, [])).toBe('-/-');
     });
 
     it('should return "-/-" when all profiles have 0 modelStorageUsage', () => {
       const profiles = [{ modelStorageUsage: 0 }, { modelStorageUsage: 0 }] as Profile[];
-      expect(calculateModelStorageUsed(profiles)).toBe('-/-');
+      expect(calculateModelStorageUsed(t, profiles)).toBe('-/-');
     });
 
     it('should return "-/-" when all profiles have undefined modelStorageUsage', () => {
       const profiles = [{ modelStorageUsage: undefined }, { modelStorageUsage: undefined }] as Profile[];
-      expect(calculateModelStorageUsed(profiles)).toBe('-/-');
+      expect(calculateModelStorageUsed(t, profiles)).toBe('-/-');
     });
 
     it('should calculate total GB correctly for multiple profiles', () => {
@@ -131,7 +141,7 @@ describe('helpers', () => {
         { modelStorageUsage: storage * 2 },
         { modelStorageUsage: storage * 0.5 },
       ] as Profile[];
-      expect(calculateModelStorageUsed(profiles)).toBe('3.50 GB');
+      expect(calculateModelStorageUsed(t, profiles)).toBe('3.50 GB');
     });
 
     it('should handle mixed undefined and defined values', () => {
@@ -141,33 +151,33 @@ describe('helpers', () => {
         { modelStorageUsage: undefined },
         { modelStorageUsage: storage * 2 },
       ] as Profile[];
-      expect(calculateModelStorageUsed(profiles)).toBe('3.00 GB');
+      expect(calculateModelStorageUsed(t, profiles)).toBe('3.00 GB');
     });
   });
 
   describe('calculateModelCount', () => {
     it('should return "-/-" when there are no profiles', () => {
-      expect(calculateModelCount([])).toBe('-/-');
+      expect(calculateModelCount(t, [])).toBe('-/-');
     });
 
     it('should return "-/-" when all profiles have 0 modelCount', () => {
       const profiles = [{ modelCount: 0 }, { modelCount: 0 }] as Profile[];
-      expect(calculateModelCount(profiles)).toBe('-/-');
+      expect(calculateModelCount(t, profiles)).toBe('-/-');
     });
 
     it('should return "-/-" when all profiles have undefined modelCount', () => {
       const profiles = [{ modelCount: undefined }, { modelCount: undefined }] as Profile[];
-      expect(calculateModelCount(profiles)).toBe('-/-');
+      expect(calculateModelCount(t, profiles)).toBe('-/-');
     });
 
     it('should calculate total model count correctly for multiple profiles', () => {
       const profiles = [{ modelCount: 5 }, { modelCount: 3 }, { modelCount: 2 }] as Profile[];
-      expect(calculateModelCount(profiles)).toBe('10 models');
+      expect(calculateModelCount(t, profiles)).toBe('10 models');
     });
 
     it('should handle mixed undefined and defined values', () => {
       const profiles = [{ modelCount: 5 }, { modelCount: undefined }, { modelCount: 2 }] as Profile[];
-      expect(calculateModelCount(profiles)).toBe('7 models');
+      expect(calculateModelCount(t, profiles)).toBe('7 models');
     });
   });
 });

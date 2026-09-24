@@ -12,6 +12,7 @@ vi.mock('aws-amplify/auth', () => ({
 }));
 
 const mockSubscribe = vi.fn().mockResolvedValue(undefined);
+const mockPublish = vi.fn().mockResolvedValue(undefined);
 const mockStart = vi.fn();
 const mockStop = vi.fn();
 const mockClose = vi.fn();
@@ -23,6 +24,7 @@ const mockClient = {
     eventHandlers[event].push(handler);
   }),
   start: mockStart,
+  publish: mockPublish,
   stop: mockStop,
   close: mockClose,
   subscribe: mockSubscribe,

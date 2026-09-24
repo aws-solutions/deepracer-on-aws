@@ -131,106 +131,141 @@ export const validateEndTime: Yup.TestFunction<string> = function (endTime, ctx)
   return true;
 };
 
-export const createRaceValidationSchema = Yup.object().shape({
-  raceName: Yup.string()
-    .required(i18n.t('createRace:required'))
-    .max(RESOURCE_NAME_MAX_LENGTH, i18n.t('createRace:addRaceDetails.errorNameMaxLength'))
-    .matches(RESOURCE_NAME_REGEX, i18n.t('createRace:addRaceDetails.nameOfRacingEventNoMatch')),
-  startDate: Yup.string()
-    .default('')
-    .when('isLive', {
-      is: false,
-      then: (schema) => schema.required(i18n.t('createRace:required')).test(validateStartDate),
-    }),
-  startTime: Yup.string()
-    .default('')
-    .when('isLive', {
-      is: false,
-      then: (schema) => schema.required(i18n.t('createRace:required')).test(validateStartTime),
-    }),
-  endDate: Yup.string()
-    .default('')
-    .when('isLive', {
-      is: false,
-      then: (schema) => schema.required(i18n.t('createRace:required')).test(validateEndDate),
-    }),
-  endTime: Yup.string()
-    .default('')
-    .when('isLive', {
-      is: false,
-      then: (schema) => schema.required(i18n.t('createRace:required')).test(validateEndTime),
-    }),
-  raceType: Yup.mixed<RaceType>().required(i18n.t('createRace:required')),
-  track: Yup.mixed<TrackConfig>().required(i18n.t('createRace:required')),
-  desc: Yup.string()
-    .optional()
-    .max(RESOURCE_DESCRIPTION_MAX_LENGTH)
-    .matches(RESOURCE_DESCRIPTION_REGEX, {
-      excludeEmptyString: true,
-      message: i18n.t('createRace:addRaceDetails.errorDescriptionNoMatch'),
-    }),
-  ranking: Yup.mixed<TimingMethod>().required(i18n.t('createRace:required')),
-  minLap: Yup.string().required(i18n.t('createRace:required')),
-  maxLap: Yup.string()
-    .required(i18n.t('createRace:required'))
-    .test(
-      'maxLap-gte-minLap',
-      i18n.t('createRace:addRaceDetails.validationErrors.maxLapsLessThanMinLaps'),
-      function (maxLap) {
-        const { minLap, ranking } = this.parent;
-        if (ranking === TimingMethod.TOTAL_TIME) {
-          return Number(maxLap) === Number(minLap);
-        }
-        return Number(maxLap) >= Number(minLap);
-      },
-    ),
-  offTrackPenalty: Yup.string().required(i18n.t('createRace:required')),
-  collisionPenalty: Yup.string().required(i18n.t('createRace:required')),
-  maxSubmissionsPerUser: Yup.number().required(i18n.t('createRace:required')),
-  objectAvoidanceConfig: Yup.object()
-    .required()
-    .shape({
-      numberOfObjects: Yup.number()
-        .min(1, i18n.t('createModel:modelInfo.objectAvoidanceConfig.minimumNumberOfObjectsError'))
-        .max(5, i18n.t('createModel:modelInfo.objectAvoidanceConfig.maximumNumberOfObjectsError'))
-        .required(i18n.t('createRace:required')),
-      objectPositions: Yup.array().of(
-        Yup.object().shape({
-          laneNumber: Yup.number().required(i18n.t('createRace:required')),
-          trackPercentage: Yup.number()
-            .max(0.9, i18n.t('createRace:addRaceDetails.percentConstraint'))
-            .min(0.07, i18n.t('createRace:addRaceDetails.percentConstraint'))
-            .required(i18n.t('createRace:required'))
-            .test(
-              'is-object-positions-valid',
-              i18n.t('createRace:addRaceDetails.obstacleDistanceError'),
-              function (_, context) {
-                const objectPositions = context?.from?.[1]?.value?.objectPositions ?? [];
-                const index = parseInt(this.path.split('[')[1].split(']')[0], 10);
-                return validateObjectPositions(objectPositions, index);
-              },
-            ),
-        }),
+/**
+ * Validates that the end date/time is after now — needed specifically for an active-race
+ * admin edit, where the start date/time is expected to already be in the past (the race has
+ * started) and its own future-check is intentionally suppressed. Without this, an admin could
+ * pick an end time after the past start but still before now, see no inline error, and have
+ * the submission rejected by the server ('End time must be in the future.') instead.
+ */
+export const validateEndTimeIsInFuture: Yup.TestFunction<string> = function (endTime, ctx) {
+  const { endDate } = this.parent;
+
+  if (!endDate || !endTime) return true;
+
+  const [endYear, endMonth, endDay] = endDate.split('-').map(Number);
+  const [endHours, endMinutes] = endTime.split(':').map(Number);
+  const end = new Date(endYear, endMonth - 1, endDay, endHours, endMinutes);
+
+  if (end <= new Date()) {
+    return ctx.createError({ message: i18n.t('createRace:addRaceDetails.validationErrors.endTimeInPast') });
+  }
+
+  return true;
+};
+
+export const createRaceValidationSchema = (isActiveRaceAdminEdit = false) =>
+  Yup.object().shape({
+    raceName: Yup.string()
+      .required(i18n.t('createRace:required'))
+      .max(RESOURCE_NAME_MAX_LENGTH, i18n.t('createRace:addRaceDetails.errorNameMaxLength'))
+      .matches(RESOURCE_NAME_REGEX, i18n.t('createRace:addRaceDetails.nameOfRacingEventNoMatch')),
+    startDate: Yup.string()
+      .default('')
+      .when('isLive', {
+        is: false,
+        then: (schema) =>
+          // An active race's start date is already in the past — that's expected, not an
+          // error — when an admin is only editing the end time/max submissions.
+          isActiveRaceAdminEdit
+            ? schema.required(i18n.t('createRace:required'))
+            : schema.required(i18n.t('createRace:required')).test(validateStartDate),
+      }),
+    startTime: Yup.string()
+      .default('')
+      .when('isLive', {
+        is: false,
+        then: (schema) =>
+          isActiveRaceAdminEdit
+            ? schema.required(i18n.t('createRace:required'))
+            : schema.required(i18n.t('createRace:required')).test(validateStartTime),
+      }),
+    endDate: Yup.string()
+      .default('')
+      .when('isLive', {
+        is: false,
+        then: (schema) => schema.required(i18n.t('createRace:required')).test(validateEndDate),
+      }),
+    endTime: Yup.string()
+      .default('')
+      .when('isLive', {
+        is: false,
+        then: (schema) =>
+          isActiveRaceAdminEdit
+            ? schema.required(i18n.t('createRace:required')).test(validateEndTime).test(validateEndTimeIsInFuture)
+            : schema.required(i18n.t('createRace:required')).test(validateEndTime),
+      }),
+    raceType: Yup.mixed<RaceType>().required(i18n.t('createRace:required')),
+    track: Yup.mixed<TrackConfig>().required(i18n.t('createRace:required')),
+    desc: Yup.string()
+      .optional()
+      .max(RESOURCE_DESCRIPTION_MAX_LENGTH)
+      .matches(RESOURCE_DESCRIPTION_REGEX, {
+        excludeEmptyString: true,
+        message: i18n.t('createRace:addRaceDetails.errorDescriptionNoMatch'),
+      }),
+    ranking: Yup.mixed<TimingMethod>().required(i18n.t('createRace:required')),
+    minLap: Yup.string().required(i18n.t('createRace:required')),
+    maxLap: Yup.string()
+      .required(i18n.t('createRace:required'))
+      .test(
+        'maxLap-gte-minLap',
+        i18n.t('createRace:addRaceDetails.validationErrors.maxLapsLessThanMinLaps'),
+        function (maxLap) {
+          const { minLap, ranking } = this.parent;
+          if (ranking === TimingMethod.TOTAL_TIME) {
+            return Number(maxLap) === Number(minLap);
+          }
+          return Number(maxLap) >= Number(minLap);
+        },
       ),
-    }),
-  randomizeObstacles: Yup.boolean().required(i18n.t('createRace:required')),
-  isLive: Yup.boolean().required(),
-  liveEventDate: Yup.string()
-    .default('')
-    .when('isLive', {
-      is: true,
-      then: (schema) => schema.required(i18n.t('createRace:required')).test(validateLiveEventDate),
-    }),
-  liveEventTime: Yup.string()
-    .default('')
-    .when('isLive', {
-      is: true,
-      then: (schema) => schema.required(i18n.t('createRace:required')).test(validateLiveEventTime),
-    }),
-  maxResets: Yup.number()
-    .default(DEFAULT_MAX_RESETS)
-    .when('isLive', {
-      is: true,
-      then: (schema) => schema.required(i18n.t('createRace:required')),
-    }),
-});
+    offTrackPenalty: Yup.string().required(i18n.t('createRace:required')),
+    collisionPenalty: Yup.string().required(i18n.t('createRace:required')),
+    maxSubmissionsPerUser: Yup.number().required(i18n.t('createRace:required')),
+    objectAvoidanceConfig: Yup.object()
+      .required()
+      .shape({
+        numberOfObjects: Yup.number()
+          .min(1, i18n.t('createModel:modelInfo.objectAvoidanceConfig.minimumNumberOfObjectsError'))
+          .max(5, i18n.t('createModel:modelInfo.objectAvoidanceConfig.maximumNumberOfObjectsError'))
+          .required(i18n.t('createRace:required')),
+        objectPositions: Yup.array().of(
+          Yup.object().shape({
+            laneNumber: Yup.number().required(i18n.t('createRace:required')),
+            trackPercentage: Yup.number()
+              .max(0.9, i18n.t('createRace:addRaceDetails.percentConstraint'))
+              .min(0.07, i18n.t('createRace:addRaceDetails.percentConstraint'))
+              .required(i18n.t('createRace:required'))
+              .test(
+                'is-object-positions-valid',
+                i18n.t('createRace:addRaceDetails.obstacleDistanceError'),
+                function (_, context) {
+                  const objectPositions = context?.from?.[1]?.value?.objectPositions ?? [];
+                  const index = parseInt(this.path.split('[')[1].split(']')[0], 10);
+                  return validateObjectPositions(objectPositions, index);
+                },
+              ),
+          }),
+        ),
+      }),
+    randomizeObstacles: Yup.boolean().required(i18n.t('createRace:required')),
+    isLive: Yup.boolean().required(),
+    liveEventDate: Yup.string()
+      .default('')
+      .when('isLive', {
+        is: true,
+        then: (schema) => schema.required(i18n.t('createRace:required')).test(validateLiveEventDate),
+      }),
+    liveEventTime: Yup.string()
+      .default('')
+      .when('isLive', {
+        is: true,
+        then: (schema) => schema.required(i18n.t('createRace:required')).test(validateLiveEventTime),
+      }),
+    maxResets: Yup.number()
+      .default(DEFAULT_MAX_RESETS)
+      .when('isLive', {
+        is: true,
+        then: (schema) => schema.required(i18n.t('createRace:required')),
+      }),
+  });

@@ -5,6 +5,7 @@ import Button from '@cloudscape-design/components/button';
 import Modal from '@cloudscape-design/components/modal';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import { Profile } from '@deepracer-indy/typescript-client';
+import { useTranslation } from 'react-i18next';
 
 import { useAppDispatch } from '#hooks/useAppDispatch';
 import { useDeleteProfileModelsMutation } from '#services/deepRacer/profileApi';
@@ -17,6 +18,7 @@ interface DeleteUserModelsModalProps {
 }
 
 const DeleteUserModelsModal = ({ isOpen, setIsOpen, selectedUser }: DeleteUserModelsModalProps) => {
+  const { t } = useTranslation('manageInstance');
   const dispatch = useAppDispatch();
   const [deleteProfileModels, { isLoading: isDeletingModels }] = useDeleteProfileModelsMutation();
 
@@ -36,7 +38,7 @@ const DeleteUserModelsModal = ({ isOpen, setIsOpen, selectedUser }: DeleteUserMo
 
       dispatch(
         displaySuccessNotification({
-          content: `All models for user ${selectedUser.alias} have been deleted`,
+          content: t('deleteUserModelsModal.notifications.success', { alias: selectedUser.alias }),
         }),
       );
 
@@ -45,23 +47,26 @@ const DeleteUserModelsModal = ({ isOpen, setIsOpen, selectedUser }: DeleteUserMo
       console.error('Failed to delete user models');
       dispatch(
         displayErrorNotification({
-          content: 'Failed to delete user models. Please try again.',
+          content: t('deleteUserModelsModal.notifications.error'),
         }),
       );
     }
   };
 
   return (
-    <Modal onDismiss={handleClose} visible={isOpen} closeAriaLabel="Close modal" size="medium" header="Delete models">
+    <Modal
+      onDismiss={handleClose}
+      visible={isOpen}
+      closeAriaLabel="Close modal"
+      size="medium"
+      header={t('deleteUserModelsModal.header')}
+    >
       <SpaceBetween size="m">
-        <div>
-          Delete all models for user {selectedUser?.alias}? This will permanently remove all models associated with this
-          user. This action cannot be undone.
-        </div>
+        <div>{t('deleteUserModelsModal.confirmMessage', { alias: selectedUser?.alias })}</div>
         <SpaceBetween size="xs" direction="horizontal">
-          <Button onClick={handleClose}>Cancel</Button>
+          <Button onClick={handleClose}>{t('deleteUserModelsModal.buttons.cancel')}</Button>
           <Button variant="primary" onClick={handleDeleteModels} loading={isDeletingModels}>
-            Delete
+            {t('deleteUserModelsModal.buttons.delete')}
           </Button>
         </SpaceBetween>
       </SpaceBetween>

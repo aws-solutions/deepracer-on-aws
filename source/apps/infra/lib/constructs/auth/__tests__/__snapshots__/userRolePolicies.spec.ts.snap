@@ -119,7 +119,7 @@ exports[`UserRolePolicies > should match snapshot 1`] = `
                       {
                         "Ref": "AWS::Partition",
                       },
-                      ":iot:us-east-1:123456789012:topicfilter/deepracer/test-namespace/leaderboard/*",
+                      ":iot:us-east-1:123456789012:topicfilter/deepracer/test-namespace/*",
                     ],
                   ],
                 },
@@ -131,11 +131,81 @@ exports[`UserRolePolicies > should match snapshot 1`] = `
                       {
                         "Ref": "AWS::Partition",
                       },
-                      ":iot:us-east-1:123456789012:topic/deepracer/test-namespace/leaderboard/*",
+                      ":iot:us-east-1:123456789012:topic/deepracer/test-namespace/*",
                     ],
                   ],
                 },
               ],
+            },
+            {
+              "Action": "execute-api:Invoke",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/race-management/stats",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/race-management/stats",
+                    ],
+                  ],
+                },
+              ],
+            },
+            {
+              "Action": "iot:Publish",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition",
+                    },
+                    ":iot:us-east-1:123456789012:topic/deepracer/test-namespace/leaderboard/*/countdown",
+                  ],
+                ],
+              },
+            },
+            {
+              "Action": "iot:Publish",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition",
+                    },
+                    ":iot:us-east-1:123456789012:topic/deepracer/test-namespace/race/*",
+                  ],
+                ],
+              },
             },
           ],
           "Version": "2012-10-17",
@@ -149,23 +219,10 @@ exports[`UserRolePolicies > should match snapshot 1`] = `
       },
       "Type": "AWS::IAM::Policy",
     },
-    "RaceFacilitatorRoleDefaultPolicyFDB21350": {
+    "CommentatorRoleDefaultPolicy35D74000": {
       "Properties": {
         "PolicyDocument": {
           "Statement": [
-            {
-              "Action": [
-                "s3:PutObject",
-                "s3:PutObjectAcl",
-                "s3:ListMultipartUploadParts",
-                "s3:AbortMultipartUpload",
-                "s3:ListBucketMultipartUploads",
-                "s3:CreateMultipartUpload",
-                "s3:CompleteMultipartUpload",
-              ],
-              "Effect": "Allow",
-              "Resource": "arn:aws:s3:::test-bucket/*",
-            },
             {
               "Action": "iot:Connect",
               "Effect": "Allow",
@@ -197,7 +254,7 @@ exports[`UserRolePolicies > should match snapshot 1`] = `
                       {
                         "Ref": "AWS::Partition",
                       },
-                      ":iot:us-east-1:123456789012:topicfilter/deepracer/test-namespace/leaderboard/*",
+                      ":iot:us-east-1:123456789012:topicfilter/deepracer/test-namespace/*",
                     ],
                   ],
                 },
@@ -209,7 +266,285 @@ exports[`UserRolePolicies > should match snapshot 1`] = `
                       {
                         "Ref": "AWS::Partition",
                       },
-                      ":iot:us-east-1:123456789012:topic/deepracer/test-namespace/leaderboard/*",
+                      ":iot:us-east-1:123456789012:topic/deepracer/test-namespace/*",
+                    ],
+                  ],
+                },
+              ],
+            },
+            {
+              "Action": "execute-api:Invoke",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/profile",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/profile",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/PATCH/profile",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/POST/live-race/connect",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/live-race/connect",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/race-management/events/*/leaderboard",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/race-management/events/*/leaderboard",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/events",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/events",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/events/*",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/events/*",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/events/*/tracks",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/events/*/tracks",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/events/*/statistics",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/events/*/statistics",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/events/*/combined-leaderboard",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/events/*/combined-leaderboard",
                     ],
                   ],
                 },
@@ -218,16 +553,16 @@ exports[`UserRolePolicies > should match snapshot 1`] = `
           ],
           "Version": "2012-10-17",
         },
-        "PolicyName": "RaceFacilitatorRoleDefaultPolicyFDB21350",
+        "PolicyName": "CommentatorRoleDefaultPolicy35D74000",
         "Roles": [
           {
-            "Ref": "RaceFacilitatorRoleFE0274ED",
+            "Ref": "CommentatorRoleE1C2582E",
           },
         ],
       },
       "Type": "AWS::IAM::Policy",
     },
-    "RaceFacilitatorRoleFE0274ED": {
+    "CommentatorRoleE1C2582E": {
       "Properties": {
         "AssumeRolePolicyDocument": {
           "Statement": [
@@ -244,12 +579,23 @@ exports[`UserRolePolicies > should match snapshot 1`] = `
       },
       "Type": "AWS::IAM::Role",
     },
-    "RaceFacilitatorRoleOverflowPolicy16377523A": {
+    "RaceFacilitatorRoleDefaultPolicyFDB21350": {
       "Properties": {
-        "Description": "Part of the policies for TestStack/RaceFacilitatorRole",
-        "Path": "/",
         "PolicyDocument": {
           "Statement": [
+            {
+              "Action": [
+                "s3:PutObject",
+                "s3:PutObjectAcl",
+                "s3:ListMultipartUploadParts",
+                "s3:AbortMultipartUpload",
+                "s3:ListBucketMultipartUploads",
+                "s3:CreateMultipartUpload",
+                "s3:CompleteMultipartUpload",
+              ],
+              "Effect": "Allow",
+              "Resource": "arn:aws:s3:::test-bucket/*",
+            },
             {
               "Action": "execute-api:Invoke",
               "Effect": "Allow",
@@ -654,6 +1000,12 @@ exports[`UserRolePolicies > should match snapshot 1`] = `
                     ],
                   ],
                 },
+              ],
+            },
+            {
+              "Action": "execute-api:Invoke",
+              "Effect": "Allow",
+              "Resource": [
                 {
                   "Fn::Join": [
                     "",
@@ -1034,6 +1386,262 @@ exports[`UserRolePolicies > should match snapshot 1`] = `
                       {
                         "Ref": "TestApi65B47ECD",
                       },
+                      "/*/POST/models/*/retry-training",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/models/*/retry-training",
+                    ],
+                  ],
+                },
+              ],
+            },
+            {
+              "Action": "execute-api:Invoke",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/events/*/tracks/*/runs/*/transition",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/POST/events/*/tracks/*/runs/*/laps",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/events/*/tracks/*/runs/*/laps",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/PUT/events/*/tracks/*/runs/*/laps/*/validity",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/events/*/tracks/*/runs/*/laps/*/validity",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/POST/race-management/users",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/race-management/users",
+                    ],
+                  ],
+                },
+              ],
+            },
+            {
+              "Action": "iot:Connect",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition",
+                    },
+                    ":iot:us-east-1:123456789012:client/*",
+                  ],
+                ],
+              },
+            },
+            {
+              "Action": [
+                "iot:Subscribe",
+                "iot:Receive",
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":iot:us-east-1:123456789012:topicfilter/deepracer/test-namespace/*",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":iot:us-east-1:123456789012:topic/deepracer/test-namespace/*",
+                    ],
+                  ],
+                },
+              ],
+            },
+            {
+              "Action": "iot:Publish",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition",
+                    },
+                    ":iot:us-east-1:123456789012:topic/deepracer/test-namespace/leaderboard/*/countdown",
+                  ],
+                ],
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "PolicyName": "RaceFacilitatorRoleDefaultPolicyFDB21350",
+        "Roles": [
+          {
+            "Ref": "RaceFacilitatorRoleFE0274ED",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Policy",
+    },
+    "RaceFacilitatorRoleFE0274ED": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "cognito-identity.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "RaceFacilitatorRoleOverflowPolicy16377523A": {
+      "Properties": {
+        "Description": "Part of the policies for TestStack/RaceFacilitatorRole",
+        "Path": "/",
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "execute-api:Invoke",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
                       "/*/GET/admin/profiles",
                     ],
                   ],
@@ -1178,22 +1786,6 @@ exports[`UserRolePolicies > should match snapshot 1`] = `
                       {
                         "Ref": "TestApi65B47ECD",
                       },
-                      "/*/POST/profile",
-                    ],
-                  ],
-                },
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "arn:",
-                      {
-                        "Ref": "AWS::Partition",
-                      },
-                      ":execute-api:us-east-1:123456789012:",
-                      {
-                        "Ref": "TestApi65B47ECD",
-                      },
                       "/*/OPTIONS/rewardFunction",
                     ],
                   ],
@@ -1278,6 +1870,1028 @@ exports[`UserRolePolicies > should match snapshot 1`] = `
                     ],
                   ],
                 },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/POST/importphysicalmodel",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/importphysicalmodel",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/POST/models/*/package",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/models/*/package",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/POST/models/*/deployments",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/models/*/deployments",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/models/*/deployments",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/models/*/deployments/*",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/models/*/deployments/*",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/deployments",
+                    ],
+                  ],
+                },
+              ],
+            },
+            {
+              "Action": "iot:Publish",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition",
+                    },
+                    ":iot:us-east-1:123456789012:topic/deepracer/test-namespace/race/*",
+                  ],
+                ],
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "Roles": [
+          {
+            "Ref": "RaceFacilitatorRoleFE0274ED",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::ManagedPolicy",
+    },
+    "RaceFacilitatorRoleOverflowPolicy280EB559F": {
+      "Properties": {
+        "Description": "Part of the policies for TestStack/RaceFacilitatorRole",
+        "Path": "/",
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "execute-api:Invoke",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/deployments",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/admin/models",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/admin/models",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/events/*/deployments",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/events/*/deployments",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/devices",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/devices",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/POST/devices/activate",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/devices/activate",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/POST/devices/batch-update",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/devices/batch-update",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/PATCH/devices/*",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/DELETE/devices/*",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/devices/*",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/POST/devices/*/restart",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/devices/*/restart",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/POST/devices/*/stop",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/devices/*/stop",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/PATCH/devices/*/color",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/devices/*/color",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/POST/devices/*/clear-models",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/devices/*/clear-models",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/POST/fleets",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/fleets",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/fleets",
+                    ],
+                  ],
+                },
+              ],
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "Roles": [
+          {
+            "Ref": "RaceFacilitatorRoleFE0274ED",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::ManagedPolicy",
+    },
+    "RaceFacilitatorRoleOverflowPolicy3B1327B11": {
+      "Properties": {
+        "Description": "Part of the policies for TestStack/RaceFacilitatorRole",
+        "Path": "/",
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "execute-api:Invoke",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/PATCH/fleets/*",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/DELETE/fleets/*",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/fleets/*",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/POST/events/*/fleets",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/events/*/fleets",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/events/*/devices",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/events/*/devices",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/events",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/events",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/events/*",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/events/*",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/events/*/statistics",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/events/*/statistics",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/events/*/combined-leaderboard",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/events/*/combined-leaderboard",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/race-management/events/*/leaderboard",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/race-management/events/*/leaderboard",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/events/*/tracks",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/events/*/tracks",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/POST/events/*/tracks/*/runs",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/events/*/tracks/*/runs",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/events/*/tracks/*/runs",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/events/*/tracks/*/runs/*",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/events/*/tracks/*/runs/*",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/POST/events/*/tracks/*/runs/*/transition",
+                    ],
+                  ],
+                },
               ],
             },
           ],
@@ -1358,6 +2972,38 @@ exports[`UserRolePolicies > should match snapshot 1`] = `
                         "Ref": "TestApi65B47ECD",
                       },
                       "/*/POST/importmodel",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/POST/importphysicalmodel",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/importphysicalmodel",
                     ],
                   ],
                 },
@@ -1697,6 +3343,12 @@ exports[`UserRolePolicies > should match snapshot 1`] = `
                     ],
                   ],
                 },
+              ],
+            },
+            {
+              "Action": "execute-api:Invoke",
+              "Effect": "Allow",
+              "Resource": [
                 {
                   "Fn::Join": [
                     "",
@@ -1869,6 +3521,38 @@ exports[`UserRolePolicies > should match snapshot 1`] = `
                       {
                         "Ref": "TestApi65B47ECD",
                       },
+                      "/*/POST/models/*/retry-training",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/models/*/retry-training",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
                       "/*/GET/profile",
                     ],
                   ],
@@ -1902,22 +3586,6 @@ exports[`UserRolePolicies > should match snapshot 1`] = `
                         "Ref": "TestApi65B47ECD",
                       },
                       "/*/PATCH/profile",
-                    ],
-                  ],
-                },
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "arn:",
-                      {
-                        "Ref": "AWS::Partition",
-                      },
-                      ":execute-api:us-east-1:123456789012:",
-                      {
-                        "Ref": "TestApi65B47ECD",
-                      },
-                      "/*/POST/profile",
                     ],
                   ],
                 },
@@ -2017,6 +3685,172 @@ exports[`UserRolePolicies > should match snapshot 1`] = `
                     ],
                   ],
                 },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/events",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/events",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/events/*",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/events/*",
+                    ],
+                  ],
+                },
+              ],
+            },
+            {
+              "Action": "execute-api:Invoke",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/events/*/combined-leaderboard",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/events/*/combined-leaderboard",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/events/*/tracks/*/runs",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/events/*/tracks/*/runs",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/events/*/tracks/*/runs/*",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/events/*/tracks/*/runs/*",
+                    ],
+                  ],
+                },
               ],
             },
             {
@@ -2050,7 +3884,7 @@ exports[`UserRolePolicies > should match snapshot 1`] = `
                       {
                         "Ref": "AWS::Partition",
                       },
-                      ":iot:us-east-1:123456789012:topicfilter/deepracer/test-namespace/leaderboard/*",
+                      ":iot:us-east-1:123456789012:topicfilter/deepracer/test-namespace/*",
                     ],
                   ],
                 },
@@ -2062,7 +3896,7 @@ exports[`UserRolePolicies > should match snapshot 1`] = `
                       {
                         "Ref": "AWS::Partition",
                       },
-                      ":iot:us-east-1:123456789012:topic/deepracer/test-namespace/leaderboard/*",
+                      ":iot:us-east-1:123456789012:topic/deepracer/test-namespace/*",
                     ],
                   ],
                 },
@@ -2075,6 +3909,125 @@ exports[`UserRolePolicies > should match snapshot 1`] = `
         "Roles": [
           {
             "Ref": "RacerRole3F0786F0",
+          },
+        ],
+      },
+      "Type": "AWS::IAM::Policy",
+    },
+    "RegistrationManagerRole7009F4FF": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "cognito-identity.amazonaws.com",
+              },
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+      },
+      "Type": "AWS::IAM::Role",
+    },
+    "RegistrationManagerRoleDefaultPolicyC6024C53": {
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "execute-api:Invoke",
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/GET/profile",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/profile",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/PATCH/profile",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/POST/race-management/users",
+                    ],
+                  ],
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition",
+                      },
+                      ":execute-api:us-east-1:123456789012:",
+                      {
+                        "Ref": "TestApi65B47ECD",
+                      },
+                      "/*/OPTIONS/race-management/users",
+                    ],
+                  ],
+                },
+              ],
+            },
+          ],
+          "Version": "2012-10-17",
+        },
+        "PolicyName": "RegistrationManagerRoleDefaultPolicyC6024C53",
+        "Roles": [
+          {
+            "Ref": "RegistrationManagerRole7009F4FF",
           },
         ],
       },

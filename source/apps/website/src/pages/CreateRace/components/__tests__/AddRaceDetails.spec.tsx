@@ -1,6 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import createWrapper from '@cloudscape-design/components/test-utils/dom';
 import { RaceType, TimingMethod, TrackDirection, TrackId } from '@deepracer-indy/typescript-client';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -15,11 +16,16 @@ import { CreateRaceFormValues } from '../../CreateRace';
 import AddRaceDetails, { AddRaceDetailsProps } from '../AddRaceDetails';
 
 vi.mock('#components/TrackSelection', () => ({
-  default: ({ control }: { control: unknown }) => <div data-testid="track-selection">Track Selection Component</div>,
+  default: ({ control, disabled }: { control: unknown; disabled?: boolean }) => (
+    <div data-testid="track-selection" data-disabled={disabled ?? false}>
+      Track Selection Component
+    </div>
+  ),
 }));
 
 vi.mock('#utils/dateTimeUtils', () => ({
   isDateRangeInvalid: vi.fn(() => false),
+  isEndTimeInvalidForActiveRaceEdit: vi.fn(() => false),
   getUTCOffsetTimeZoneText: vi.fn(() => 'UTC-0500 America/New_York'),
 }));
 
@@ -58,9 +64,11 @@ const defaultFormValues: CreateRaceFormValues = {
 const TestWrapper = ({
   initialValues = defaultFormValues,
   isEditMode,
+  isConfigLocked,
 }: {
   initialValues?: CreateRaceFormValues;
   isEditMode?: boolean;
+  isConfigLocked?: boolean;
 }) => {
   const { control, setValue } = useForm<CreateRaceFormValues>({
     defaultValues: initialValues,
@@ -72,6 +80,7 @@ const TestWrapper = ({
     nameRef,
     control,
     isEditMode,
+    isConfigLocked,
   };
 
   return <AddRaceDetails {...props} />;
@@ -487,6 +496,125 @@ describe('AddRaceDetails', () => {
       render(<TestWrapper initialValues={{ ...defaultFormValues, isLive: true }} />);
 
       expect(screen.getByText(i18n.t('createRace:addRaceDetails.liveEventTime'))).toBeInTheDocument();
+    });
+  });
+
+  describe('scoring field lock', () => {
+    it('disables scoring selects when isConfigLocked is true', async () => {
+      const { container } = render(
+        <TestWrapper
+          initialValues={{ ...defaultFormValues, isLive: true, ranking: TimingMethod.BEST_LAP_TIME }}
+          isConfigLocked
+        />,
+      );
+      const wrapper = createWrapper(container);
+
+      const expandButton = screen.getByText(i18n.t('createRace:addRaceDetails.raceCustom'));
+      fireEvent.click(expandButton);
+
+      await waitFor(() => {
+        expect(screen.getByText(i18n.t('createRace:addRaceDetails.rankingMethod'))).toBeInTheDocument();
+      });
+
+      const allSelects = wrapper.findAllSelects();
+      const disabledSelects = allSelects.filter((s) => s.isDisabled());
+      expect(disabledSelects.length).toBeGreaterThanOrEqual(3);
+    });
+
+    it('shows lock alerts when isConfigLocked is true', async () => {
+      const { container } = render(
+        <TestWrapper
+          initialValues={{ ...defaultFormValues, isLive: true, ranking: TimingMethod.BEST_LAP_TIME }}
+          isConfigLocked
+        />,
+      );
+      const wrapper = createWrapper(container);
+
+      const expandButton = screen.getByText(i18n.t('createRace:addRaceDetails.raceCustom'));
+      fireEvent.click(expandButton);
+
+      await waitFor(() => {
+        expect(screen.getByText(i18n.t('createRace:addRaceDetails.rankingMethod'))).toBeInTheDocument();
+      });
+
+      const alerts = wrapper.findAllAlerts();
+      const lockAlerts = alerts.filter(
+        (a) =>
+          a.findContent()?.getElement().textContent ===
+          i18n.t('createRace:addRaceDetails.validationErrors.scoringLockedByQueue'),
+      );
+      expect(lockAlerts.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('does not disable scoring fields when isConfigLocked is false', async () => {
+      const { container } = render(
+        <TestWrapper
+          initialValues={{ ...defaultFormValues, isLive: true, ranking: TimingMethod.BEST_LAP_TIME }}
+          isConfigLocked={false}
+        />,
+      );
+      const wrapper = createWrapper(container);
+
+      const expandButton = screen.getByText(i18n.t('createRace:addRaceDetails.raceCustom'));
+      fireEvent.click(expandButton);
+
+      await waitFor(() => {
+        expect(screen.getByText(i18n.t('createRace:addRaceDetails.rankingMethod'))).toBeInTheDocument();
+      });
+
+      const disabledSelects = wrapper.findAllSelects().filter((s) => s.isDisabled());
+      expect(disabledSelects).toHaveLength(0);
+
+      const alerts = wrapper.findAllAlerts();
+      const lockAlerts = alerts.filter(
+        (a) =>
+          a.findContent()?.getElement().textContent ===
+          i18n.t('createRace:addRaceDetails.validationErrors.scoringLockedByQueue'),
+      );
+      expect(lockAlerts).toHaveLength(0);
+    });
+
+    it('sets race type tiles to readOnly when isConfigLocked is true', () => {
+      const { container } = render(
+        <TestWrapper
+          initialValues={{ ...defaultFormValues, isLive: true, ranking: TimingMethod.BEST_LAP_TIME }}
+          isConfigLocked
+        />,
+      );
+      const wrapper = createWrapper(container);
+
+      const tiles = wrapper.findTiles();
+      expect(tiles).not.toBeNull();
+
+      const timeTrialInput = screen.getByLabelText(i18n.t('createRace:addRaceDetails.timeTrial'));
+      expect(timeTrialInput).toHaveAttribute('aria-disabled', 'true');
+
+      const objectAvoidanceInput = screen.getByLabelText(i18n.t('createRace:addRaceDetails.objectAvoidance'));
+      expect(objectAvoidanceInput).toHaveAttribute('aria-disabled', 'true');
+    });
+
+    it('passes disabled to TrackSelection when isConfigLocked is true', () => {
+      render(
+        <TestWrapper
+          initialValues={{ ...defaultFormValues, isLive: true, ranking: TimingMethod.BEST_LAP_TIME }}
+          isConfigLocked
+        />,
+      );
+
+      const trackSelection = screen.getByTestId('track-selection');
+      expect(trackSelection).toHaveAttribute('data-disabled', 'true');
+    });
+
+    it('does not pass disabled to TrackSelection when isConfigLocked is false', () => {
+      render(
+        <TestWrapper
+          initialValues={{ ...defaultFormValues, isLive: true, ranking: TimingMethod.BEST_LAP_TIME }}
+          isConfigLocked={false}
+        />,
+      );
+
+      const trackSelection = screen.getByTestId('track-selection');
+      expect(trackSelection).toHaveAttribute('data-disabled', 'false');
     });
   });
 });

@@ -38,7 +38,7 @@ describe('ClearLiveLeaderboard', () => {
   beforeEach(() => {
     mockSfnClient.reset();
     mockSfnClient.on(StopExecutionCommand).resolves({});
-    vi.spyOn(rankingDao, 'deleteByLeaderboardId').mockResolvedValue(undefined);
+    vi.spyOn(rankingDao, 'deleteByLeaderboardId').mockResolvedValue([]);
     vi.spyOn(lookupModule, 'lookupInProgressSageMakerJob').mockResolvedValue(undefined);
     vi.spyOn(sageMakerHelper, 'stopTrainingJob').mockResolvedValue();
   });

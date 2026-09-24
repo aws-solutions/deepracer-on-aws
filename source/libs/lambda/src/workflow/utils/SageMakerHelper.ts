@@ -12,6 +12,7 @@ import {
   TrainingJobStatus,
   TrainingInstanceType,
   paginateListTrainingJobs,
+  type SageMakerClient,
 } from '@aws-sdk/client-sagemaker';
 import { deepRacerIndyAppConfig } from '@deepracer-indy/config';
 import { JobItem, JobName, ModelItem, jobNameHelper, modelDao } from '@deepracer-indy/database';
@@ -20,13 +21,53 @@ import { logMethod, AmazonS3URI, logger, waitForAll } from '@deepracer-indy/util
 
 import { serviceQuotasHelper } from './ServiceQuotasHelper';
 import { sageMakerClient } from '../../utils/clients/sageMakerClient.js';
-import { TrainingInstanceQuotaCode } from '../constants/sageMaker.js';
+import {
+  DESCRIBE_TRAINING_JOB_CONCURRENCY,
+  SAGEMAKER_ACTIVE_JOB_STATUSES,
+  SAGEMAKER_SERVICE_CODE,
+  TOTAL_TRAINING_INSTANCE_QUOTA_CODE,
+  TrainingInstanceQuotaCode,
+} from '../constants/sageMaker.js';
 import { SimulationLaunchFile } from '../constants/simulation.js';
+import { CapacityStatus, CapacityUnavailableReason, type CapacityCheckResult } from '../types/capacityCheckResult.js';
 import type { SageMakerHyperparameters } from '../types/sageMakerHyperparameters.js';
+
+/** Instance-unit usage for the two quotas the capacity check evaluates. */
+type TrainingInstanceUsage = {
+  /** Instances held by active training jobs of the effective instance type. */
+  effectiveTypeUsage: number;
+  /** Instances held by every active training job in the account. */
+  totalInstanceUsage: number;
+};
+
+/**
+ * In-process caches for the training-instance quotas and usage. Every admission point (CreateModel,
+ * RetryTraining, JobInitializer) performs the same both-quota check, and the fixed SageMaker
+ * ListTrainingJobs/DescribeTrainingJob request rates throttle under bursts, so caching cuts the call
+ * rate. Module state survives warm invocations.
+ */
+const QUOTA_CACHE_TTL_MS = 5 * 60 * 1000; // The quota rarely changes, so it can be cached for longer.
+const USAGE_CACHE_TTL_MS = 10 * 1000; // Usage changes quickly, so cache it only briefly.
+
+/** Quota value by Service Quotas quota code. */
+const quotaCache = new Map<string, { value: number; expiresAt: number }>();
+/** Instance usage by effective instance type. */
+const usageCache = new Map<string, { value: TrainingInstanceUsage; expiresAt: number }>();
+
+/** ABAC-tagged SageMaker client. Only constructable via createTaggedSageMakerClient. */
+export type AbacTaggedSageMakerClient = SageMakerClient & { readonly __abacTagged: unique symbol };
 
 class SageMakerHelper {
   @logMethod
-  async createTrainingJob({ jobItem, modelItem }: { jobItem: JobItem; modelItem: ModelItem }) {
+  async createTrainingJob({
+    jobItem,
+    modelItem,
+    client,
+  }: {
+    jobItem: JobItem;
+    modelItem: ModelItem;
+    client: AbacTaggedSageMakerClient;
+  }) {
     // TODO: metrics handling
     // eslint-disable-next-line no-useless-catch
     try {
@@ -60,9 +101,11 @@ class SageMakerHelper {
         RemoteDebugConfig: {
           EnableRemoteDebug: process.env.DEPLOYMENT_MODE?.toLowerCase() === 'dev',
         },
+        // ABAC: scopes bucket access to the caller's profile prefix via session tag.
+        SessionChainingConfig: { EnableSessionTagChaining: true },
       };
 
-      const { TrainingJobArn } = await sageMakerClient.send(new CreateTrainingJobCommand(createTrainingJobInput));
+      const { TrainingJobArn } = await client.send(new CreateTrainingJobCommand(createTrainingJobInput));
 
       return TrainingJobArn as string;
     } catch (error) {
@@ -219,70 +262,242 @@ class SageMakerHelper {
     return sageMakerHyperparameters;
   }
 
-  async getTrainingInstanceQuota() {
-    const instanceQuota = await serviceQuotasHelper.getServiceQuota(
-      'sagemaker',
-      TrainingInstanceQuotaCode[deepRacerIndyAppConfig.sageMaker.instanceType],
-    );
-
-    logger.info(
-      `SageMaker ${deepRacerIndyAppConfig.sageMaker.instanceType} training instance quota is set to ${instanceQuota.Value}`,
-    );
-
-    return instanceQuota.Value as number;
-  }
-
-  async getTrainingInstanceUsage() {
-    const TWENTY_FOUR_HOURS_10_MINS_IN_MILLIS = 24 * 60 * 60 * 1000 + 10 * 60 * 1000; // Longest job duration + 10 min buffer
-
-    let instanceUsage = 0;
-
-    try {
-      for await (const result of paginateListTrainingJobs(
-        { client: sageMakerClient },
-        {
-          CreationTimeAfter: new Date(Date.now() - TWENTY_FOUR_HOURS_10_MINS_IN_MILLIS),
-          NameContains: 'deepracerindy',
-          StatusEquals: TrainingJobStatus.IN_PROGRESS,
-        },
-      )) {
-        instanceUsage += result.TrainingJobSummaries?.length ?? 0;
-      }
-      for await (const result of paginateListTrainingJobs(
-        { client: sageMakerClient },
-        {
-          CreationTimeAfter: new Date(Date.now() - TWENTY_FOUR_HOURS_10_MINS_IN_MILLIS),
-          NameContains: 'deepracerindy',
-          StatusEquals: TrainingJobStatus.STOPPING,
-        },
-      )) {
-        instanceUsage += result.TrainingJobSummaries?.length ?? 0;
-      }
-
-      return instanceUsage;
-    } catch (error) {
-      logger.error('Error fetching SageMaker instance usage', { error });
-      throw error;
+  async getTrainingInstanceQuota(quotaCode: string, label: string) {
+    const cached = quotaCache.get(quotaCode);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.value;
     }
+
+    const instanceQuota = await serviceQuotasHelper.getServiceQuota(SAGEMAKER_SERVICE_CODE, quotaCode);
+
+    // `ServiceQuota.Value` is optional. Coercing a missing value to a number would cache `undefined`
+    // and make every later comparison against it `false`, so the check would report AVAILABLE — the
+    // opposite of the fail-closed contract. Throwing routes the caller to UNKNOWN instead.
+    const { Value: value } = instanceQuota;
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+      throw new TypeError(`SageMaker ${label} quota (${quotaCode}) returned no usable value`);
+    }
+
+    logger.info(`SageMaker ${label} quota (${quotaCode}) is set to ${value}`);
+
+    quotaCache.set(quotaCode, { value, expiresAt: Date.now() + QUOTA_CACHE_TTL_MS });
+
+    return value;
   }
 
-  async isTrainingInstanceCapacityAvailable() {
-    const [instanceQuota, instanceUsage] = await waitForAll([
-      this.getTrainingInstanceQuota(),
-      this.getTrainingInstanceUsage(),
-    ]);
+  /**
+   * Resolves the instance type CreateTrainingJob will actually request.
+   *
+   * `SAGEMAKER_INSTANCE_TYPE` overrides the application default in customized deployments, so the
+   * quota check has to resolve it the same way job creation does — otherwise the check compares
+   * usage against the wrong quota.
+   *
+   * @throws when the resolved type has no known per-instance-type training quota code.
+   */
+  getEffectiveInstanceType(): { instanceType: string; quotaCode: string } {
+    const instanceType = process.env.SAGEMAKER_INSTANCE_TYPE || deepRacerIndyAppConfig.sageMaker.instanceType;
+    const quotaCode = TrainingInstanceQuotaCode[instanceType as keyof typeof TrainingInstanceQuotaCode];
 
-    const isCapacityAvailable = instanceQuota > instanceUsage;
+    if (!quotaCode) {
+      throw new Error(`No known SageMaker training instance quota code for instance type '${instanceType}'`);
+    }
 
-    if (isCapacityAvailable) {
-      logger.info(`Active SageMaker training instances [${instanceUsage}] is less than quota [${instanceQuota}]`);
-    } else {
-      logger.warn(
-        `Active SageMaker training instances [${instanceUsage}] is equal to or greater than quota [${instanceQuota}]`,
+    return { instanceType, quotaCode };
+  }
+
+  /**
+   * Sums the instances currently held by active training jobs in this account.
+   *
+   * Usage is measured in *instance units* rather than job count, because a training job may request
+   * more than one instance and both quotas are expressed in instances. Every active training job is
+   * counted, including jobs the customer created outside this solution, because the account-wide
+   * quota does not distinguish them.
+   */
+  async getTrainingInstanceUsage(effectiveInstanceType: string): Promise<TrainingInstanceUsage> {
+    const cached = usageCache.get(effectiveInstanceType);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.value;
+    }
+
+    const TWENTY_FOUR_HOURS_10_MINS_IN_MILLIS = 24 * 60 * 60 * 1000 + 10 * 60 * 1000; // Longest job duration + 10 min buffer
+    const creationTimeAfter = new Date(Date.now() - TWENTY_FOUR_HOURS_10_MINS_IN_MILLIS);
+
+    const activeJobNames: string[] = [];
+
+    for (const status of SAGEMAKER_ACTIVE_JOB_STATUSES) {
+      for await (const page of paginateListTrainingJobs(
+        { client: sageMakerClient },
+        {
+          CreationTimeAfter: creationTimeAfter,
+          StatusEquals: status,
+          // Max page size (default 10) to reduce paginated calls and stay under the rate limit.
+          MaxResults: 100,
+        },
+      )) {
+        for (const summary of page.TrainingJobSummaries ?? []) {
+          if (summary.TrainingJobName) {
+            activeJobNames.push(summary.TrainingJobName);
+          }
+        }
+      }
+    }
+
+    const { resourceConfigs, failedJobNames } = await this.describeInstanceUsage(activeJobNames);
+
+    if (failedJobNames.length > 0) {
+      // A describe failure is indistinguishable here between "job legitimately disappeared between
+      // the list and the describe" and a systemic problem (throttling, a missing IAM permission).
+      // Silently contributing 0 instances for a failed describe would let a broad failure produce
+      // an under-counted usage and a false AVAILABLE, contradicting the fail-closed contract — so
+      // any describe failure propagates as an error instead.
+      throw new Error(
+        `Unable to describe ${failedJobNames.length} of ${activeJobNames.length} active training job(s) while computing instance usage: ${failedJobNames.join(', ')}`,
       );
     }
 
-    return isCapacityAvailable;
+    const usage = resourceConfigs.reduce<TrainingInstanceUsage>(
+      (acc, { instanceType, instanceCount }) => ({
+        totalInstanceUsage: acc.totalInstanceUsage + instanceCount,
+        effectiveTypeUsage: acc.effectiveTypeUsage + (instanceType === effectiveInstanceType ? instanceCount : 0),
+      }),
+      { totalInstanceUsage: 0, effectiveTypeUsage: 0 },
+    );
+
+    logger.info('Active SageMaker training instance usage', {
+      activeJobCount: activeJobNames.length,
+      effectiveInstanceType,
+      ...usage,
+    });
+
+    usageCache.set(effectiveInstanceType, { value: usage, expiresAt: Date.now() + USAGE_CACHE_TTL_MS });
+
+    return usage;
+  }
+
+  /**
+   * Describes the given training jobs with bounded concurrency to read each one's instance type and
+   * count. Every describe failure is reported via `failedJobNames` — including a job that legitimately
+   * disappeared between the list and the describe — because a failed describe is indistinguishable
+   * from a systemic problem (throttling, a missing IAM permission) at this layer. The caller decides
+   * whether any failure should invalidate the usage computation; silently contributing 0 instances
+   * for a failed describe would let a broad failure under-count usage.
+   */
+  private async describeInstanceUsage(jobNames: string[]) {
+    const results: { instanceType?: string; instanceCount: number }[] = [];
+    const failedJobNames: string[] = [];
+    const queue = [...jobNames];
+
+    const worker = async () => {
+      for (let jobName = queue.shift(); jobName !== undefined; jobName = queue.shift()) {
+        try {
+          const { ResourceConfig } = await sageMakerClient.send(
+            new DescribeTrainingJobCommand({ TrainingJobName: jobName }),
+          );
+          results.push({
+            instanceType: ResourceConfig?.InstanceType,
+            instanceCount: ResourceConfig?.InstanceCount ?? 0,
+          });
+        } catch (error) {
+          logger.warn('Unable to describe active training job while computing instance usage', { jobName, error });
+          failedJobNames.push(jobName);
+        }
+      }
+    };
+
+    await waitForAll(Array.from({ length: Math.min(DESCRIBE_TRAINING_JOB_CONCURRENCY, queue.length) }, () => worker()));
+
+    return { resourceConfigs: results, failedJobNames };
+  }
+
+  /**
+   * Counts the about-to-dispatch job against the cached usage so a second admission check within
+   * the usage-cache TTL — a concurrent CreateModel/RetryTraining call, or the JobInitializer
+   * recheck immediately following dispatch — observes this job instead of stale usage and cannot
+   * also pass. ListTrainingJobs is eventually consistent, so re-reading it within the TTL would
+   * under-report the job that was just admitted.
+   *
+   * A no-op if the entry already expired or was never populated; the next read repopulates it from
+   * a fresh (and by then consistent) listing.
+   */
+  private recordOptimisticDispatch(effectiveInstanceType: string, requiredInstanceCount: number): void {
+    const cached = usageCache.get(effectiveInstanceType);
+    if (!cached || cached.expiresAt <= Date.now()) {
+      return;
+    }
+
+    cached.value = {
+      effectiveTypeUsage: cached.value.effectiveTypeUsage + requiredInstanceCount,
+      totalInstanceUsage: cached.value.totalInstanceUsage + requiredInstanceCount,
+    };
+  }
+
+  /**
+   * Checks both SageMaker training quotas for room to start one training job.
+   *
+   * Shared by CreateModel, RetryTraining, and JobInitializer so all three admission points apply
+   * the same contract. A lookup failure returns {@link CapacityStatus.UNKNOWN} rather than being
+   * conflated with confirmed capacity — every caller must fail closed on it.
+   */
+  async checkTrainingCapacity(): Promise<CapacityCheckResult> {
+    let effectiveInstanceType: string | undefined;
+    let requiredInstanceCount: number | undefined;
+
+    try {
+      const { instanceType, quotaCode } = this.getEffectiveInstanceType();
+      effectiveInstanceType = instanceType;
+      requiredInstanceCount = deepRacerIndyAppConfig.sageMaker.instanceCount;
+
+      const [effectiveTypeQuota, totalInstanceQuota, { effectiveTypeUsage, totalInstanceUsage }] = await waitForAll([
+        this.getTrainingInstanceQuota(quotaCode, `${instanceType} training instances`),
+        this.getTrainingInstanceQuota(TOTAL_TRAINING_INSTANCE_QUOTA_CODE, 'instances across all training jobs'),
+        this.getTrainingInstanceUsage(instanceType),
+      ]);
+
+      const capacityContext = {
+        effectiveInstanceType: instanceType,
+        requiredInstanceCount,
+        effectiveTypeQuota,
+        effectiveTypeUsage,
+        totalInstanceQuota,
+        totalInstanceUsage,
+      };
+
+      if (requiredInstanceCount + effectiveTypeUsage > effectiveTypeQuota) {
+        logger.warn('SageMaker instance-type training quota has no room for a new job', capacityContext);
+        return {
+          status: CapacityStatus.UNAVAILABLE,
+          effectiveInstanceType: instanceType,
+          requiredInstanceCount,
+          reason: CapacityUnavailableReason.INSTANCE_TYPE_QUOTA,
+        };
+      }
+
+      if (requiredInstanceCount + totalInstanceUsage > totalInstanceQuota) {
+        logger.warn('SageMaker total training instance quota has no room for a new job', capacityContext);
+        return {
+          status: CapacityStatus.UNAVAILABLE,
+          effectiveInstanceType: instanceType,
+          requiredInstanceCount,
+          reason: CapacityUnavailableReason.TOTAL_INSTANCE_QUOTA,
+        };
+      }
+
+      logger.info('SageMaker training capacity is available', capacityContext);
+
+      // Count this dispatch against the cache immediately so a concurrent or immediately-following
+      // admission check cannot also read pre-dispatch usage and also pass.
+      this.recordOptimisticDispatch(instanceType, requiredInstanceCount);
+
+      return { status: CapacityStatus.AVAILABLE, effectiveInstanceType: instanceType, requiredInstanceCount };
+    } catch (error) {
+      logger.error('Unable to verify SageMaker training capacity', { error, effectiveInstanceType });
+      return {
+        status: CapacityStatus.UNKNOWN,
+        effectiveInstanceType,
+        requiredInstanceCount,
+        error: error as Error,
+      };
+    }
   }
 }
 

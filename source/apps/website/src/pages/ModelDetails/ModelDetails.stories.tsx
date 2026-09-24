@@ -10,6 +10,7 @@ import {
   NotFoundError,
   ModelStatus,
   JobStatus,
+  RetryTrainingCommand,
 } from '@deepracer-indy/typescript-client';
 import type { Meta, Parameters, StoryObj } from '@storybook/react';
 import { screen, userEvent } from '@storybook/test';
@@ -233,5 +234,153 @@ export const DeleteModelFails: Story = {
   },
   play: async () => {
     await openDeleteModal();
+  },
+};
+
+export const PhysicalModelReady: Story = {
+  parameters: {
+    deepRacerApiMocks: (mockClient) => {
+      mockClient.on(GetModelCommand).resolves({
+        model: {
+          ...mockModel,
+          name: 'my-physical-model',
+          status: ModelStatus.READY,
+          trainingStatus: JobStatus.COMPLETED,
+          modelSource: 'IMPORTED_PHYSICAL',
+          optimizationStatus: 'OPTIMIZED',
+          metadata: {
+            ...mockModel.metadata,
+            agentAlgorithm: 'PPO',
+            sensors: { camera: 'FRONT_FACING_CAMERA' },
+            actionSpace: {
+              discrete: [
+                { speed: 0.5, steeringAngle: -30 },
+                { speed: 1, steeringAngle: 0 },
+              ],
+            },
+          },
+        },
+      });
+      mockClient.on(ListEvaluationsCommand).resolves({ evaluations: [] });
+    },
+  },
+};
+
+export const PhysicalModelImporting: Story = {
+  parameters: {
+    deepRacerApiMocks: (mockClient) => {
+      mockClient.on(GetModelCommand).resolves({
+        model: {
+          ...mockModel,
+          name: 'importing-physical',
+          status: ModelStatus.IMPORTING,
+          trainingStatus: JobStatus.COMPLETED,
+          modelSource: 'IMPORTED_PHYSICAL',
+          metadata: {
+            ...mockModel.metadata,
+          },
+        },
+      });
+      mockClient.on(ListEvaluationsCommand).resolves({ evaluations: [] });
+    },
+  },
+};
+
+export const PhysicalModelError: Story = {
+  parameters: {
+    deepRacerApiMocks: (mockClient) => {
+      mockClient.on(GetModelCommand).resolves({
+        model: {
+          ...mockModel,
+          name: 'failed-physical',
+          status: ModelStatus.ERROR,
+          trainingStatus: JobStatus.COMPLETED,
+          modelSource: 'IMPORTED_PHYSICAL',
+          importErrorMessage: 'Malware detected in uploaded file',
+          metadata: {
+            ...mockModel.metadata,
+          },
+        },
+      });
+      mockClient.on(ListEvaluationsCommand).resolves({ evaluations: [] });
+    },
+  },
+};
+
+const waitingForCapacityModel = {
+  ...mockModel3,
+  status: ModelStatus.WAITING_FOR_CAPACITY,
+  trainingStatus: JobStatus.WAITING_FOR_CAPACITY,
+  statusMessage: 'Training capacity is not available. Please try again later.',
+};
+
+export const ModelWaitingForCapacity: Story = {
+  parameters: {
+    deepRacerApiMocks: (mockClient) => {
+      mockClient.on(GetModelCommand).resolves({ model: waitingForCapacityModel });
+      mockClient.on(ListEvaluationsCommand).resolves({ evaluations: [] });
+    },
+  },
+};
+
+const openRetryTrainingModal = async () => {
+  // The header trigger button and the modal's confirm button share the same accessible name; the
+  // modal is present-but-hidden in the DOM even before it's opened. The trigger renders first.
+  const [retryButton] = await screen.findAllByRole('button', { name: 'Retry training' });
+  await userEvent.click(retryButton);
+};
+
+export const RetryTrainingModalOpens: Story = {
+  parameters: {
+    deepRacerApiMocks: (mockClient) => {
+      ModelWaitingForCapacity.parameters?.deepRacerApiMocks?.(mockClient);
+    },
+  },
+  play: async () => {
+    await openRetryTrainingModal();
+  },
+};
+
+export const RetryTrainingSucceeds: Story = {
+  parameters: {
+    deepRacerApiMocks: (mockClient) => {
+      ModelWaitingForCapacity.parameters?.deepRacerApiMocks?.(mockClient);
+      mockClient.on(RetryTrainingCommand).resolves({
+        modelId: waitingForCapacityModel.modelId,
+        status: ModelStatus.QUEUED,
+        message: 'Training job dispatched successfully.',
+      });
+    },
+  },
+  play: async () => {
+    await openRetryTrainingModal();
+  },
+};
+
+export const RetryTrainingStillWaiting: Story = {
+  parameters: {
+    deepRacerApiMocks: (mockClient) => {
+      ModelWaitingForCapacity.parameters?.deepRacerApiMocks?.(mockClient);
+      mockClient.on(RetryTrainingCommand).resolves({
+        modelId: waitingForCapacityModel.modelId,
+        status: ModelStatus.WAITING_FOR_CAPACITY,
+        message: 'Training capacity is still not available.',
+      });
+    },
+  },
+  play: async () => {
+    await openRetryTrainingModal();
+  },
+};
+
+export const RetryTrainingFails: Story = {
+  parameters: {
+    deepRacerApiMocks: (mockClient) => {
+      ModelWaitingForCapacity.parameters?.deepRacerApiMocks?.(mockClient);
+      mockClient.on(RetryTrainingCommand).rejects(new Error('Retry failed'));
+    },
+  },
+  play: async () => {
+    await openRetryTrainingModal();
   },
 };

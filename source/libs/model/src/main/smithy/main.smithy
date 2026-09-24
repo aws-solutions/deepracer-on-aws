@@ -19,11 +19,26 @@ service DeepRacerIndy {
     version: "1.0"
     operations: [
         ImportModel
+        ImportPhysicalModel
         TestRewardFunction
         ListAdminProfiles
+        ListAdminModels
         ListModelsForProfile
         GetAdminAssetUrl
         AttachLiveRacePolicy
+        AssignEventFleets
+        ListEventDevices
+        ClearDeviceModels
+        BatchUpdateDevice
+        ListDeploymentsByBatch
+        ListDeploymentsByEvent
+        GetEventLeaderboard
+        RegisterUser
+        GetRaceStats
+        BulkInviteUser
+        GetBulkInviteUserJobStatus
+        ListBulkInviteUserJobs
+        ResendInvite
     ]
     resources: [
         ModelResource
@@ -31,6 +46,10 @@ service DeepRacerIndy {
         ProfileResource
         GlobalSettingResource
         LiveQueueItemResource
+        DeviceResource
+        FleetResource
+        EventResource
+        RunResource
     ]
     errors: [
         BadRequestError
@@ -51,10 +70,23 @@ resource ModelResource {
     operations: [
         GetAssetUrl
         StopModel
+        PackageModel
+        RetryTraining
     ]
     resources: [
         EvaluationResource
+        DeploymentResource
     ]
+}
+
+resource DeploymentResource {
+    identifiers: {
+        modelId: ResourceIdentifier
+        deploymentId: ResourceIdentifier
+    }
+    create: DeployModel
+    list: ListDeployments
+    read: GetDeployment
 }
 
 resource EvaluationResource {
@@ -112,4 +144,65 @@ resource LiveQueueItemResource {
         submissionId: ResourceIdentifier
     }
     list: ListLiveQueueItems
+}
+
+resource DeviceResource {
+    identifiers: {
+        instanceId: InstanceId
+    }
+    list: ListDevices
+    delete: DeleteDevice
+    update: UpdateDevice
+    collectionOperations: [
+        ActivateDevice
+    ]
+    operations: [
+        RestartDevice
+        StopDevice
+        ChangeDeviceColor
+    ]
+}
+
+resource FleetResource {
+    identifiers: {
+        fleetId: ResourceIdentifier
+    }
+    create: CreateFleet
+    list: ListFleets
+    update: UpdateFleet
+    delete: DeleteFleet
+}
+
+resource EventResource {
+    identifiers: {
+        eventId: ResourceIdentifier
+    }
+    create: CreateEvent
+    delete: DeleteEvent
+    list: ListEvents
+    read: GetEvent
+    update: EditEvent
+    operations: [
+        TransitionEventStatus
+        AddTrackToEvent
+        RemoveTrackFromEvent
+        ListEventTracks
+        GetCombinedLeaderboard
+        CreateRun
+        ListRuns
+        GetEventStatistics
+    ]
+}
+
+resource RunResource {
+    identifiers: {
+        runId: ResourceIdentifier
+    }
+    read: GetRun
+    operations: [
+        TransitionRunStatus
+        CreateLap
+        UpdateLap
+        SetLapValidity
+    ]
 }

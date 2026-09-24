@@ -1,7 +1,11 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { AdminAddUserToGroupCommand, CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
+import {
+  AdminAddUserToGroupCommand,
+  AdminUpdateUserAttributesCommand,
+  CognitoIdentityProviderClient,
+} from '@aws-sdk/client-cognito-identity-provider';
 import type { PostConfirmationTriggerEvent, Context, Callback } from 'aws-lambda';
 import { mockClient } from 'aws-sdk-client-mock';
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -55,6 +59,57 @@ describe('PostConfirmation lambda', () => {
 
     // Verify event is returned unchanged
     expect(result).toBe(event);
+  });
+
+  it('persists custom:countryCode when present in sign-up attributes', async () => {
+    cognitoMock.on(AdminAddUserToGroupCommand).resolves({});
+    cognitoMock.on(AdminUpdateUserAttributesCommand).resolves({});
+
+    const event: PostConfirmationTriggerEvent = {
+      version: '1',
+      region: 'us-east-1',
+      userPoolId: 'us-east-1_123456789',
+      userName: 'testuser',
+      callerContext: { awsSdkVersion: 'aws-sdk-unknown-unknown', clientId: 'client123' },
+      triggerSource: 'PostConfirmation_ConfirmSignUp',
+      request: {
+        userAttributes: {
+          sub: 'user123',
+          email: 'test@example.com',
+          'custom:countryCode': 'GB',
+        },
+      },
+      response: {},
+    };
+
+    await PostConfirmation(event, context, callback);
+
+    expect(cognitoMock.calls()).toHaveLength(2);
+    const updateCall = cognitoMock.commandCalls(AdminUpdateUserAttributesCommand)[0];
+    expect(updateCall.args[0].input).toEqual({
+      UserPoolId: 'us-east-1_123456789',
+      Username: 'testuser',
+      UserAttributes: [{ Name: 'custom:countryCode', Value: 'GB' }],
+    });
+  });
+
+  it('skips AdminUpdateUserAttributes when countryCode is absent', async () => {
+    cognitoMock.on(AdminAddUserToGroupCommand).resolves({});
+
+    const event: PostConfirmationTriggerEvent = {
+      version: '1',
+      region: 'us-east-1',
+      userPoolId: 'us-east-1_123456789',
+      userName: 'testuser',
+      callerContext: { awsSdkVersion: 'aws-sdk-unknown-unknown', clientId: 'client123' },
+      triggerSource: 'PostConfirmation_ConfirmSignUp',
+      request: { userAttributes: { sub: 'user123', email: 'test@example.com' } },
+      response: {},
+    };
+
+    await PostConfirmation(event, context, callback);
+
+    expect(cognitoMock.commandCalls(AdminUpdateUserAttributesCommand)).toHaveLength(0);
   });
 
   it('throws an error if the call to cognito fails', async () => {

@@ -3,7 +3,7 @@
 
 import path from 'node:path';
 
-import { Duration, RemovalPolicy } from 'aws-cdk-lib';
+import { Duration, RemovalPolicy, Stack } from 'aws-cdk-lib';
 import { Alarm, AlarmRule, CompositeAlarm, Metric, TreatMissingData } from 'aws-cdk-lib/aws-cloudwatch';
 import { TableV2 } from 'aws-cdk-lib/aws-dynamodb';
 import { IVpc, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
@@ -73,6 +73,7 @@ export class ImportWorkflow extends Construct {
     // Create Import Model Queues
     this.importModelJobDlq = new Queue(this, 'ImportModelDLQ', {
       encryption: QueueEncryption.KMS_MANAGED,
+      enforceSSL: true,
       removalPolicy: RemovalPolicy.DESTROY,
       retentionPeriod: Duration.days(1),
       visibilityTimeout: Duration.minutes(6),
@@ -83,16 +84,19 @@ export class ImportWorkflow extends Construct {
       enforceSSL: true,
       removalPolicy: RemovalPolicy.DESTROY,
       retentionPeriod: Duration.hours(1),
-      visibilityTimeout: Duration.minutes(6),
+      visibilityTimeout: Duration.minutes(36),
       deadLetterQueue: {
         queue: this.importModelJobDlq,
         maxReceiveCount: 2,
       },
     });
 
-    // Find the model validation ECR repository mapping from EcrStack
+    // The ECR mapping ID is the resolved repository name, including an optional override.
+    const modelValidationRepositoryId =
+      this.node.tryGetContext('OVERRIDE_MODEL_VALIDATION_REPO_NAME') ??
+      this.node.getContext('MODEL_VALIDATION_REPO_NAME');
     const modelValidationMapping = ecrStack.imageRepositoryMappings.find(
-      (mapping) => mapping.repositoryId === this.node.getContext('MODEL_VALIDATION_REPO_NAME'),
+      (mapping) => mapping.repositoryId === modelValidationRepositoryId,
     );
 
     if (!modelValidationMapping) {
@@ -263,7 +267,7 @@ export class ImportWorkflow extends Construct {
       stateMachineName: `${namespace}-DeepRacerImportModelWorkflow`,
       logs: {
         destination: new LogGroup(this, 'ImportExecutionLogs', {
-          logGroupName: `/aws/vendedlogs/states/${namespace}-DeepRacerIndyImportModelWorkflow`,
+          logGroupName: `/aws/vendedlogs/states/${Stack.of(this).stackName}-DeepRacerIndyImportModelWorkflow`,
           removalPolicy: DefaultLogRemovalPolicy,
           encryptionKey,
         }),
@@ -360,7 +364,7 @@ export class ImportWorkflow extends Construct {
       functionName: 'DeepRacerImportWorkflow-ImportDispatcherFn',
       logGroupCategory: LogGroupCategory.WORKFLOW,
       namespace,
-      timeout: Duration.minutes(1),
+      timeout: Duration.minutes(6),
       environment: {
         MODEL_DATA_BUCKET_NAME: modelStorageBucket.bucketName,
         IMPORT_MODEL_WORKFLOW_STATE_MACHINE_ARN: this.stateMachine.stateMachineArn,

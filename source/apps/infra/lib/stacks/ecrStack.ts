@@ -4,14 +4,17 @@
 import { NestedStack, NestedStackProps, Duration, CfnOutput } from 'aws-cdk-lib';
 import { ComputeType } from 'aws-cdk-lib/aws-codebuild';
 import { Repository } from 'aws-cdk-lib/aws-ecr';
+import { Key } from 'aws-cdk-lib/aws-kms';
 import { Construct } from 'constructs';
 
-import { getImageTag } from './utils/helpers.js';
+import { KmsHelper } from '#constructs/common/kmsHelper.js';
 import {
   EcrImageDownloaderWithTrigger,
   ImageRepositoryMapping,
-} from '../constructs/ecr-image-downloader/ecrImageDownloaderWithTrigger.js';
-import { EcrRepository } from '../constructs/storage/ecr.js';
+} from '#constructs/ecr-image-downloader/ecrImageDownloaderWithTrigger.js';
+import { EcrRepository } from '#constructs/storage/ecr.js';
+
+import { getImageTag } from './utils/helpers.js';
 
 export interface EcrImageConfig {
   /**
@@ -85,6 +88,27 @@ export class EcrStack extends NestedStack {
   public readonly imageRepositoryMappings: ImageRepositoryMapping[];
   public readonly imageDownloader: EcrImageDownloaderWithTrigger;
 
+  /**
+   * The solution-wide customer-managed KMS key.
+   *
+   * It lives in this stack for historical reasons, not by design: `KmsHelper.get()`
+   * is a static singleton that creates the key in whichever stack calls it first,
+   * and `EcrImageDownloaderWithTrigger` (a child of this stack) has always been the
+   * first caller.
+   *
+   * It must NOT be moved. The key carries an explicit alias
+   * (`AwsSolutions/DeepracerOnAWS/{namespace}`), so relocating it to another stack
+   * makes CloudFormation create the new key before deleting the old one, collide on
+   * the alias, and roll the update back. Every log group in the solution is also
+   * `RemovalPolicy.RETAIN` and encrypted under this key, so retiring it would render
+   * retained log data unreadable.
+   *
+   * It is created explicitly here — rather than being left to emerge from whichever
+   * construct calls the singleton first — so that its owning stack is a deliberate,
+   * stable decision rather than a side effect of construct creation order.
+   */
+  public readonly encryptionKey: Key;
+
   constructor(scope: Construct, id: string, props: EcrStackProps) {
     // Override the nested stack name to be shorter
     const shortStackProps = {
@@ -104,6 +128,11 @@ export class EcrStack extends NestedStack {
       computeType = ComputeType.MEDIUM,
       namespace,
     } = props;
+
+    // Materialize the solution CMK here, deliberately and first, so its owning stack
+    // is a stable decision. Same scope and construct id the singleton would have used,
+    // so the logical ID is unchanged — this is a wiring change with no template effect.
+    this.encryptionKey = KmsHelper.get(this, namespace);
 
     // Create one ECR repository for each image configuration
     this.repositories = [];

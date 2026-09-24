@@ -3,15 +3,39 @@
 
 import { Leaderboard, LiveEventStatus } from '@deepracer-indy/typescript-client';
 
+/** Returns true when a (non-live) community race's submission window is currently open. */
+export const isActiveRace = (leaderboard: Leaderboard): boolean => {
+  const now = new Date();
+  return !leaderboard.isLive && now >= leaderboard.openTime && now < leaderboard.closeTime;
+};
+
 /** Returns true when the delete button should be disabled. */
-export const isDeleteDisabled = (leaderboard: Leaderboard): boolean =>
-  leaderboard.isLive
-    ? leaderboard.liveEventStatus === LiveEventStatus.IN_PROGRESS
-    : new Date() >= leaderboard.openTime && new Date() < leaderboard.closeTime;
+export const isDeleteDisabled = (leaderboard: Leaderboard, isAdmin = false): boolean => {
+  if (leaderboard.isLive) {
+    return leaderboard.liveEventStatus === LiveEventStatus.IN_PROGRESS;
+  }
+
+  // Admins may delete an active community race; non-admins cannot.
+  if (isActiveRace(leaderboard)) return !isAdmin;
+
+  return false;
+};
 
 /** Returns true when the edit button should be disabled. */
-export const isEditDisabled = (leaderboard: Leaderboard): boolean =>
-  leaderboard.isLive ? leaderboard.liveEventStatus !== LiveEventStatus.SCHEDULED : new Date() >= leaderboard.openTime;
+export const isEditDisabled = (leaderboard: Leaderboard, isAdmin = false): boolean => {
+  if (leaderboard.isLive) {
+    return leaderboard.liveEventStatus !== LiveEventStatus.SCHEDULED;
+  }
+
+  // Admins may edit an active community race (within the backend allowlist).
+  if (isActiveRace(leaderboard)) return !isAdmin;
+
+  // Race has not started yet — anyone can edit.
+  if (new Date() < leaderboard.openTime) return false;
+
+  // Race is closed — no edits.
+  return true;
+};
 
 /**
  * Returns true when the enter race button should be disabled.

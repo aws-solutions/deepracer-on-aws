@@ -33,6 +33,18 @@ export enum MetricsSubscriptionKeyValue {
   DELETE_PROFILE_MODELS = 'DeleteProfileModels',
   CREATE_USER = 'CreateUser',
   DEEP_RACER_JOB = 'DeepRacerJob',
+  EVENT_LIFECYCLE_TRANSITION = 'EventLifecycleTransition',
+  EVENTS_CREATED = 'EventsCreated',
+  LAP_EDITED = 'LapEdited',
+  IMPORT_PHYSICAL_MODEL = 'ImportPhysicalModel',
+  DEPLOY_MODEL = 'DeployModel',
+  OPTIMIZE_MODEL = 'OptimizeModel',
+  RUNS_COMPLETED = 'RunsCompleted',
+  LAPS_RECORDED = 'LapsRecorded',
+  LAP_VALIDITY_SET = 'LapValiditySet',
+  COMBINED_LEADERBOARD_RECOMPUTED = 'CombinedLeaderboardRecomputed',
+  COMBINED_LEADERBOARD_RECOMPUTE_FAILED = 'CombinedLeaderboardRecomputeFailed',
+  RACE_MANAGEMENT_STATS_REBUILT = 'RaceManagementStatsRebuilt',
 }
 
 export type HeartbeatInput = {
@@ -68,6 +80,40 @@ export type CreateSubmissionInput = {
 
 export type DownloadModelInput = {
   modelId: string;
+};
+
+export type EventLifecycleTransitionInput = {
+  from: string;
+  to: string;
+};
+
+export type LapsRecordedInput = {
+  leaderboardId?: string;
+  runId?: string;
+};
+
+export type LapValiditySetInput = {
+  leaderboardId?: string;
+  runId?: string;
+  isValid?: boolean;
+};
+
+export type CombinedLeaderboardRecomputeFailedInput = {
+  eventId?: string;
+  reason?: string;
+};
+
+/**
+ * Aggregate deployment-wide counts only — no profileId, no participant names, no
+ * per-race identifiers. Reported once per stats rebuild.
+ */
+export type RaceManagementStatsRebuiltInput = {
+  totalEvents: number;
+  totalRacers: number;
+  totalRaces: number;
+  totalLaps: number;
+  totalValidLaps: number;
+  totalCountries: number;
 };
 
 export interface HeartbeatMetricsData extends MetricsLogData, HeartbeatInput {
@@ -120,6 +166,22 @@ export interface DeepRacerJobMetricsData extends MetricsLogData, DeepRacerJobInp
 
 export interface UserLoginMetricsData extends MetricsLogData, UserLoginInput {
   metricsLogSubscriptionKey: MetricsSubscriptionKeyValue.USER_LOG_IN;
+}
+
+export interface ImportPhysicalModelMetricsData extends MetricsLogData {
+  metricsLogSubscriptionKey: MetricsSubscriptionKeyValue.IMPORT_PHYSICAL_MODEL;
+}
+
+export interface DeployModelMetricsData extends MetricsLogData {
+  metricsLogSubscriptionKey: MetricsSubscriptionKeyValue.DEPLOY_MODEL;
+}
+
+export type OptimizeModelInput = {
+  optimizationType: string;
+};
+
+export interface OptimizeModelMetricsData extends MetricsLogData, OptimizeModelInput {
+  metricsLogSubscriptionKey: MetricsSubscriptionKeyValue.OPTIMIZE_MODEL;
 }
 
 export type SolutionMetricData = {

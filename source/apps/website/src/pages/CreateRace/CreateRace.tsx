@@ -19,7 +19,7 @@ import { SubmitHandler, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, Link } from 'react-router-dom';
 
-import { buildLeaderboardDefinition } from './buildLeaderboardDefinition';
+import { buildEditSubmissionDefinition, buildLeaderboardDefinition } from './buildLeaderboardDefinition';
 import AddRaceDetails from './components/AddRaceDetails';
 import ReviewRaceDetails from './components/ReviewRaceDetails';
 import { createRaceValidationSchema, DEFAULT_MAX_RESETS } from './validation';
@@ -83,7 +83,19 @@ const initialRaceFormValues: CreateRaceFormValues = {
   maxResets: DEFAULT_MAX_RESETS,
 };
 
-const CreateRace = ({ initialFormValues = initialRaceFormValues, leaderboardId = '' }) => {
+const CreateRace = ({
+  initialFormValues = initialRaceFormValues,
+  leaderboardId = '',
+  isConfigLocked = false,
+  isActiveRaceAdminEdit = false,
+  originalLeaderboard,
+}: {
+  initialFormValues?: CreateRaceFormValues;
+  leaderboardId?: string;
+  isConfigLocked?: boolean;
+  isActiveRaceAdminEdit?: boolean;
+  originalLeaderboard?: LeaderboardDefinition;
+}) => {
   const dispatch = useAppDispatch();
   const [createLeaderboard, { isLoading: isCreatingLeaderboard }] = useCreateLeaderboardMutation();
   const [editLeaderboard, { isLoading: isEdittingLeaderboard }] = useEditLeaderboardMutation();
@@ -126,7 +138,7 @@ const CreateRace = ({ initialFormValues = initialRaceFormValues, leaderboardId =
   const nameRef = useRef<null | HTMLDivElement>(null);
   const { control, setValue, handleSubmit } = useForm<CreateRaceFormValues>({
     values: initialFormValues,
-    resolver: yupResolver(createRaceValidationSchema),
+    resolver: yupResolver(createRaceValidationSchema(isActiveRaceAdminEdit)),
     mode: 'onBlur',
   });
 
@@ -168,8 +180,13 @@ const CreateRace = ({ initialFormValues = initialRaceFormValues, leaderboardId =
       }}
       onSubmit={async () => {
         if (leaderboardId) {
+          const leaderboardDefinition = buildEditSubmissionDefinition(
+            isActiveRaceAdminEdit,
+            originalLeaderboard,
+            currentLeaderboardValues,
+          );
           await editLeaderboard({
-            leaderboardDefinition: currentLeaderboardValues,
+            leaderboardDefinition,
             leaderboardId: leaderboardId,
           })
             .unwrap()
@@ -204,7 +221,14 @@ const CreateRace = ({ initialFormValues = initialRaceFormValues, leaderboardId =
           title: t('addRaceDetails.header'),
           description: t('addRaceDetails.description'),
           content: (
-            <AddRaceDetails setValue={setValue} nameRef={nameRef} control={control} isEditMode={!!leaderboardId} />
+            <AddRaceDetails
+              setValue={setValue}
+              nameRef={nameRef}
+              control={control}
+              isEditMode={!!leaderboardId}
+              isConfigLocked={isConfigLocked}
+              isActiveRaceAdminEdit={isActiveRaceAdminEdit}
+            />
           ),
         },
         {

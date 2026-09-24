@@ -5,14 +5,20 @@ import { Logger } from '@aws-lambda-powertools/logger';
 import { LogAttributes } from '@aws-lambda-powertools/logger/types';
 
 import {
+  CombinedLeaderboardRecomputeFailedInput,
   CreateLeaderboardInput,
   CreateSubmissionInput,
   DeepRacerJobInput,
   DownloadModelInput,
+  EventLifecycleTransitionInput,
   HeartbeatInput,
+  LapsRecordedInput,
+  LapValiditySetInput,
   MetricsLogData,
   metricsLogSubscriptionKeyField,
   MetricsSubscriptionKeyValue,
+  OptimizeModelInput,
+  RaceManagementStatsRebuiltInput,
   UserLoginInput,
 } from './metricsTypes.js';
 
@@ -94,5 +100,59 @@ export class MetricsLogger {
 
   logUserLogin(data: UserLoginInput, message?: string): void {
     this.log({ ...data, [metricsLogSubscriptionKeyField]: MetricsSubscriptionKeyValue.USER_LOG_IN }, message);
+  }
+
+  logEventLifecycleTransition(data: EventLifecycleTransitionInput, message?: string): void {
+    this.log({ ...data, metricsLogSubscriptionKey: MetricsSubscriptionKeyValue.EVENT_LIFECYCLE_TRANSITION }, message);
+  }
+
+  logEventsCreated(message?: string): void {
+    this.log({ metricsLogSubscriptionKey: MetricsSubscriptionKeyValue.EVENTS_CREATED }, message);
+  }
+
+  logLapsRecorded(data?: LapsRecordedInput, message?: string): void {
+    this.log({ ...data, metricsLogSubscriptionKey: MetricsSubscriptionKeyValue.LAPS_RECORDED }, message);
+  }
+
+  logLapValiditySet(data?: LapValiditySetInput, message?: string): void {
+    this.log({ ...data, metricsLogSubscriptionKey: MetricsSubscriptionKeyValue.LAP_VALIDITY_SET }, message);
+  }
+
+  logLapEdited(message?: string): void {
+    this.log({ metricsLogSubscriptionKey: MetricsSubscriptionKeyValue.LAP_EDITED }, message);
+  }
+
+  logImportPhysicalModel(message?: string): void {
+    this.log({ metricsLogSubscriptionKey: MetricsSubscriptionKeyValue.IMPORT_PHYSICAL_MODEL }, message);
+  }
+
+  logDeployModel(message?: string): void {
+    this.log({ metricsLogSubscriptionKey: MetricsSubscriptionKeyValue.DEPLOY_MODEL }, message);
+  }
+
+  logOptimizeModel(data: OptimizeModelInput, message?: string): void {
+    this.log({ ...data, metricsLogSubscriptionKey: MetricsSubscriptionKeyValue.OPTIMIZE_MODEL }, message);
+  }
+
+  logRunsCompleted(message?: string): void {
+    this.log({ metricsLogSubscriptionKey: MetricsSubscriptionKeyValue.RUNS_COMPLETED }, message);
+  }
+
+  logCombinedLeaderboardRecomputed(message?: string): void {
+    this.log({ metricsLogSubscriptionKey: MetricsSubscriptionKeyValue.COMBINED_LEADERBOARD_RECOMPUTED }, message);
+  }
+
+  logCombinedLeaderboardRecomputeFailed(data?: CombinedLeaderboardRecomputeFailedInput, message?: string): void {
+    this.log(
+      { ...data, metricsLogSubscriptionKey: MetricsSubscriptionKeyValue.COMBINED_LEADERBOARD_RECOMPUTE_FAILED },
+      message,
+    );
+  }
+
+  logRaceManagementStatsRebuilt(data: RaceManagementStatsRebuiltInput, message?: string): void {
+    this.log(
+      { ...data, metricsLogSubscriptionKey: MetricsSubscriptionKeyValue.RACE_MANAGEMENT_STATS_REBUILT },
+      message,
+    );
   }
 }

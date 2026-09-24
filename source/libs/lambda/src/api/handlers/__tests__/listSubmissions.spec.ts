@@ -40,6 +40,12 @@ describe('ListSubmissions operation', () => {
         videoUrl: TEST_SUBMISSION_ITEMS[i].assetS3Locations.primaryVideoS3Location,
       });
     });
+    expect(s3Helper.getPresignedUrl).toHaveBeenCalledWith(
+      TEST_SUBMISSION_ITEMS[0].assetS3Locations.primaryVideoS3Location,
+      undefined,
+      undefined,
+      'video/mp4',
+    );
   });
 
   it('should return a list of submissions on success with token', async () => {

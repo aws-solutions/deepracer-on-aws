@@ -99,6 +99,18 @@ const SignInForm = () => {
           <Button loading={isLoadingSignIn} variant="primary" formAction="submit">
             {t('signin')}
           </Button>
+          <SpaceBetween size="xxs" direction="horizontal">
+            <span>{t('signupLink')}</span>
+            <Button
+              variant="inline-link"
+              formAction="none"
+              onClick={() => {
+                navigate(getPath(PageId.SIGN_UP));
+              }}
+            >
+              {t('signup')}
+            </Button>
+          </SpaceBetween>
         </SpaceBetween>
       </Container>
     </form>

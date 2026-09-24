@@ -3,11 +3,12 @@
 
 import { Stack } from 'aws-cdk-lib';
 import { SpecRestApi } from 'aws-cdk-lib/aws-apigateway';
-import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { Effect, PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 
 import { UserRoles } from './userIdentity';
-import { iotTopicPrefix } from '../../constants/iotTopics.js';
+import { EXECUTE_API_RESOURCES_PER_STATEMENT } from '../../constants/iam.js';
+import { iotCountdownTopicFilter, iotRaceTopicPrefix, iotTopicRoot } from '../../constants/iotTopics.js';
 
 export interface UserRolePoliciesProps {
   /**
@@ -26,6 +27,22 @@ export interface UserRolePoliciesProps {
    * Deployment namespace, used to scope IoT topic resources
    */
   namespace: string;
+}
+
+/**
+ * Grant `execute-api:Invoke` on `resources`, split across chunked PolicyStatements so no single
+ * statement exceeds the 6144-byte managed-policy quota. See {@link EXECUTE_API_RESOURCES_PER_STATEMENT}.
+ */
+function grantInvokeChunked(role: Role, resources: string[]): void {
+  for (let i = 0; i < resources.length; i += EXECUTE_API_RESOURCES_PER_STATEMENT) {
+    role.addToPolicy(
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        actions: ['execute-api:Invoke'],
+        resources: resources.slice(i, i + EXECUTE_API_RESOURCES_PER_STATEMENT),
+      }),
+    );
+  }
 }
 
 export class UserRolePolicies extends Construct {
@@ -128,6 +145,9 @@ export class UserRolePolicies extends Construct {
       // models/{modelId}/getasset
       `${apiBaseArn}/*/GET/models/*/getasset`, // GetAssetUrl
       `${apiBaseArn}/*/OPTIONS/models/*/getasset`, // CorsModelsModelidGetasset
+      // models/{modelId}/retry-training
+      `${apiBaseArn}/*/POST/models/*/retry-training`, // RetryTraining
+      `${apiBaseArn}/*/OPTIONS/models/*/retry-training`, // CorsModelsModelidRetryTraining
       // admin/profiles
       `${apiBaseArn}/*/GET/admin/profiles`, // ListAdminProfiles
       `${apiBaseArn}/*/OPTIONS/admin/profiles`, // CorsAdminProfiles
@@ -141,7 +161,6 @@ export class UserRolePolicies extends Construct {
       `${apiBaseArn}/*/GET/profile`, // GetProfile
       `${apiBaseArn}/*/OPTIONS/profile`, // CorsProfile
       `${apiBaseArn}/*/PATCH/profile`, // UpdateProfile
-      `${apiBaseArn}/*/POST/profile`, // CreateProfile
       // rewardFunction
       `${apiBaseArn}/*/OPTIONS/rewardFunction`, // CorsRewardfunction
       `${apiBaseArn}/*/POST/rewardFunction`, // TestRewardFunction
@@ -151,21 +170,109 @@ export class UserRolePolicies extends Construct {
       // live-race/connect
       `${apiBaseArn}/*/POST/live-race/connect`, // AttachLiveRacePolicy
       `${apiBaseArn}/*/OPTIONS/live-race/connect`, // CorsLiveRaceConnect
+      // importphysicalmodel
+      `${apiBaseArn}/*/POST/importphysicalmodel`, // ImportPhysicalModel
+      `${apiBaseArn}/*/OPTIONS/importphysicalmodel`, // CorsImportphysicalmodel
+      // models/{modelId}/package
+      `${apiBaseArn}/*/POST/models/*/package`, // PackageModel
+      `${apiBaseArn}/*/OPTIONS/models/*/package`, // CorsModelsModelidPackage
+      // models/{modelId}/deployments
+      `${apiBaseArn}/*/POST/models/*/deployments`, // DeployModel
+      `${apiBaseArn}/*/GET/models/*/deployments`, // ListDeployments
+      `${apiBaseArn}/*/OPTIONS/models/*/deployments`, // CorsModelsModelidDeployments
+      // models/{modelId}/deployments/{deploymentId}
+      `${apiBaseArn}/*/GET/models/*/deployments/*`, // GetDeployment
+      `${apiBaseArn}/*/OPTIONS/models/*/deployments/*`, // CorsModelsModelidDeploymentsDeploymentid
+      // deployments (list by batch)
+      `${apiBaseArn}/*/GET/deployments`, // ListDeploymentsByBatch
+      `${apiBaseArn}/*/OPTIONS/deployments`, // CorsDeployments
+      // admin/models (ListAdminModels — operator models page with optimization status)
+      `${apiBaseArn}/*/GET/admin/models`, // ListAdminModels
+      `${apiBaseArn}/*/OPTIONS/admin/models`, // CorsAdminModels
+      // events/{eventId}/deployments (ListDeploymentsByEvent — upload status page)
+      `${apiBaseArn}/*/GET/events/*/deployments`, // ListDeploymentsByEvent
+      `${apiBaseArn}/*/OPTIONS/events/*/deployments`, // CorsEventsEventidDeployments
+      // devices — Race Facilitators have full Admin parity for device management
+      `${apiBaseArn}/*/GET/devices`, // ListDevices
+      `${apiBaseArn}/*/OPTIONS/devices`, // CorsDevices
+      `${apiBaseArn}/*/POST/devices/activate`, // ActivateDevice
+      `${apiBaseArn}/*/OPTIONS/devices/activate`, // CorsDevicesActivate
+      `${apiBaseArn}/*/POST/devices/batch-update`, // BatchUpdateDevice
+      `${apiBaseArn}/*/OPTIONS/devices/batch-update`, // CorsDevicesBatchUpdate
+      `${apiBaseArn}/*/PATCH/devices/*`, // UpdateDevice
+      `${apiBaseArn}/*/DELETE/devices/*`, // DeleteDevice
+      `${apiBaseArn}/*/OPTIONS/devices/*`, // CorsDevicesInstanceid
+      `${apiBaseArn}/*/POST/devices/*/restart`, // RestartDevice
+      `${apiBaseArn}/*/OPTIONS/devices/*/restart`, // CorsDevicesRestart
+      `${apiBaseArn}/*/POST/devices/*/stop`, // StopDevice
+      `${apiBaseArn}/*/OPTIONS/devices/*/stop`, // CorsDevicesStop
+      `${apiBaseArn}/*/PATCH/devices/*/color`, // ChangeDeviceColor
+      `${apiBaseArn}/*/OPTIONS/devices/*/color`, // CorsDevicesColor
+      `${apiBaseArn}/*/POST/devices/*/clear-models`, // ClearDeviceModels
+      `${apiBaseArn}/*/OPTIONS/devices/*/clear-models`, // CorsDevicesClearModels
+      // fleets — full Admin parity
+      `${apiBaseArn}/*/POST/fleets`, // CreateFleet
+      `${apiBaseArn}/*/GET/fleets`, // ListFleets
+      `${apiBaseArn}/*/OPTIONS/fleets`, // CorsFleets
+      `${apiBaseArn}/*/PATCH/fleets/*`, // UpdateFleet
+      `${apiBaseArn}/*/DELETE/fleets/*`, // DeleteFleet
+      `${apiBaseArn}/*/OPTIONS/fleets/*`, // CorsFleetsFleetid
+      // events/{eventId}/fleets + devices
+      `${apiBaseArn}/*/POST/events/*/fleets`, // AssignEventFleets
+      `${apiBaseArn}/*/OPTIONS/events/*/fleets`, // CorsEventsFleets
+      `${apiBaseArn}/*/GET/events/*/devices`, // ListEventDevices
+      `${apiBaseArn}/*/OPTIONS/events/*/devices`, // CorsEventsDevices
+      // events
+      `${apiBaseArn}/*/GET/events`, // ListEvents
+      `${apiBaseArn}/*/OPTIONS/events`, // CorsEvents
+      // events/{eventId}
+      `${apiBaseArn}/*/GET/events/*`, // GetEvent
+      `${apiBaseArn}/*/OPTIONS/events/*`, // CorsEventsEventid
+      // events/{eventId}/statistics
+      `${apiBaseArn}/*/GET/events/*/statistics`, // GetEventStatistics
+      `${apiBaseArn}/*/OPTIONS/events/*/statistics`, // CorsEventsEventidStatistics
+      // events/{eventId}/combined-leaderboard
+      `${apiBaseArn}/*/GET/events/*/combined-leaderboard`, // GetCombinedLeaderboard
+      `${apiBaseArn}/*/OPTIONS/events/*/combined-leaderboard`, // CorsEventsEventidCombinedLeaderboard
+      // race-management/events/{eventId}/leaderboard — CommentatorView's per-track leaderboard
+      // hydration query. RequiresCommentator permits Race Facilitators on this route (see
+      // COMMENTATOR_GROUPS), so this grant must match that UI access.
+      `${apiBaseArn}/*/GET/race-management/events/*/leaderboard`, // GetEventLeaderboard
+      `${apiBaseArn}/*/OPTIONS/race-management/events/*/leaderboard`, // CorsGetEventLeaderboard
+      // events/{eventId}/tracks
+      `${apiBaseArn}/*/GET/events/*/tracks`, // ListEventTracks
+      `${apiBaseArn}/*/OPTIONS/events/*/tracks`, // CorsEventsEventidTracks
+      // events/{eventId}/tracks/{leaderboardId}/runs
+      `${apiBaseArn}/*/POST/events/*/tracks/*/runs`, // CreateRun
+      `${apiBaseArn}/*/GET/events/*/tracks/*/runs`, // ListRuns
+      `${apiBaseArn}/*/OPTIONS/events/*/tracks/*/runs`, // CorsEventsEventidTracksLeaderboardidRuns
+      // events/{eventId}/tracks/{leaderboardId}/runs/{runId}
+      `${apiBaseArn}/*/GET/events/*/tracks/*/runs/*`, // GetRun
+      `${apiBaseArn}/*/OPTIONS/events/*/tracks/*/runs/*`, // CorsEventsEventidTracksLeaderboardidRunsRunid
+      // events/{eventId}/tracks/{leaderboardId}/runs/{runId}/transition
+      `${apiBaseArn}/*/POST/events/*/tracks/*/runs/*/transition`, // TransitionRunStatus
+      `${apiBaseArn}/*/OPTIONS/events/*/tracks/*/runs/*/transition`, // CorsEventsEventidTracksLeaderboardidRunsRunidTransition
+      // events/{eventId}/tracks/{leaderboardId}/runs/{runId}/laps
+      `${apiBaseArn}/*/POST/events/*/tracks/*/runs/*/laps`, // CreateLap
+      `${apiBaseArn}/*/OPTIONS/events/*/tracks/*/runs/*/laps`, // CorsEventsEventidTracksLeaderboardidRunsRunidLaps
+      // events/{eventId}/tracks/{leaderboardId}/runs/{runId}/laps/{lapNumber}/validity
+      `${apiBaseArn}/*/PUT/events/*/tracks/*/runs/*/laps/*/validity`, // SetLapValidity
+      `${apiBaseArn}/*/OPTIONS/events/*/tracks/*/runs/*/laps/*/validity`, // CorsEventsEventidTracksLeaderboardidRunsRunidLapsLapnumberValidity
+      // Walk-up racer registration
+      `${apiBaseArn}/*/POST/race-management/users`, // RegisterUser
+      `${apiBaseArn}/*/OPTIONS/race-management/users`, // CorsRaceManagementUsers
     ];
 
-    props.userRoles.raceFacilitatorRole.addToPolicy(
-      new PolicyStatement({
-        effect: Effect.ALLOW,
-        actions: ['execute-api:Invoke'],
-        resources: raceFacApiAllowedResources,
-      }),
-    );
+    grantInvokeChunked(props.userRoles.raceFacilitatorRole, raceFacApiAllowedResources);
 
     // Racer role permissions: can access standard API methods; cannot delete users or all models
     const racerApiAllowedResources = [
       // importmodel
       `${apiBaseArn}/*/OPTIONS/importmodel`, // CorsImportmodel
       `${apiBaseArn}/*/POST/importmodel`, // ImportModel
+      // importphysicalmodel
+      `${apiBaseArn}/*/POST/importphysicalmodel`, // ImportPhysicalModel
+      `${apiBaseArn}/*/OPTIONS/importphysicalmodel`, // CorsImportphysicalmodel
       // leaderboards
       `${apiBaseArn}/*/GET/leaderboards`, // ListLeaderboards
       `${apiBaseArn}/*/OPTIONS/leaderboards`, // CorsLeaderboards
@@ -210,11 +317,13 @@ export class UserRolePolicies extends Construct {
       // models/{modelId}/getasset
       `${apiBaseArn}/*/GET/models/*/getasset`, // GetAssetUrl
       `${apiBaseArn}/*/OPTIONS/models/*/getasset`, // CorsModelsModelidGetasset
+      // models/{modelId}/retry-training
+      `${apiBaseArn}/*/POST/models/*/retry-training`, // RetryTraining
+      `${apiBaseArn}/*/OPTIONS/models/*/retry-training`, // CorsModelsModelidRetryTraining
       // profile
       `${apiBaseArn}/*/GET/profile`, // GetProfile
       `${apiBaseArn}/*/OPTIONS/profile`, // CorsProfile
       `${apiBaseArn}/*/PATCH/profile`, // UpdateProfile
-      `${apiBaseArn}/*/POST/profile`, // CreateProfile
       // rewardFunction
       `${apiBaseArn}/*/OPTIONS/rewardFunction`, // CorsRewardfunction
       `${apiBaseArn}/*/POST/rewardFunction`, // TestRewardFunction
@@ -224,19 +333,29 @@ export class UserRolePolicies extends Construct {
       // live-race/connect
       `${apiBaseArn}/*/POST/live-race/connect`, // AttachLiveRacePolicy
       `${apiBaseArn}/*/OPTIONS/live-race/connect`, // CorsLiveRaceConnect
+      // events
+      `${apiBaseArn}/*/GET/events`, // ListEvents
+      `${apiBaseArn}/*/OPTIONS/events`, // CorsEvents
+      // events/{eventId}
+      `${apiBaseArn}/*/GET/events/*`, // GetEvent
+      `${apiBaseArn}/*/OPTIONS/events/*`, // CorsEventsEventid
+      // events/{eventId}/combined-leaderboard
+      `${apiBaseArn}/*/GET/events/*/combined-leaderboard`, // GetCombinedLeaderboard
+      `${apiBaseArn}/*/OPTIONS/events/*/combined-leaderboard`, // CorsEventsEventidCombinedLeaderboard
+      // events/{eventId}/tracks/{leaderboardId}/runs
+      `${apiBaseArn}/*/GET/events/*/tracks/*/runs`, // ListRuns
+      `${apiBaseArn}/*/OPTIONS/events/*/tracks/*/runs`, // CorsEventsEventidTracksLeaderboardidRuns
+      // events/{eventId}/tracks/{leaderboardId}/runs/{runId}
+      `${apiBaseArn}/*/GET/events/*/tracks/*/runs/*`, // GetRun
+      `${apiBaseArn}/*/OPTIONS/events/*/tracks/*/runs/*`, // CorsEventsEventidTracksLeaderboardidRunsRunid
     ];
 
-    props.userRoles.racerRole.addToPolicy(
-      new PolicyStatement({
-        effect: Effect.ALLOW,
-        actions: ['execute-api:Invoke'],
-        resources: racerApiAllowedResources,
-      }),
-    );
+    grantInvokeChunked(props.userRoles.racerRole, racerApiAllowedResources);
 
     // IoT Core permissions for live race spectating (MQTT over WSS)
     const { region, account, partition } = Stack.of(this);
-    const topicPrefix = iotTopicPrefix(props.namespace);
+    // Root scope so authenticated roles can subscribe to both the leaderboard and race trees.
+    const topicRoot = iotTopicRoot(props.namespace);
     const iotConnectPolicy = new PolicyStatement({
       effect: Effect.ALLOW,
       actions: ['iot:Connect'],
@@ -246,16 +365,101 @@ export class UserRolePolicies extends Construct {
       effect: Effect.ALLOW,
       actions: ['iot:Subscribe', 'iot:Receive'],
       resources: [
-        `arn:${partition}:iot:${region}:${account}:topicfilter/${topicPrefix}/*`,
-        `arn:${partition}:iot:${region}:${account}:topic/${topicPrefix}/*`,
+        `arn:${partition}:iot:${region}:${account}:topicfilter/${topicRoot}/*`,
+        `arn:${partition}:iot:${region}:${account}:topic/${topicRoot}/*`,
       ],
     });
 
     props.userRoles.adminRole.addToPolicy(iotConnectPolicy);
     props.userRoles.adminRole.addToPolicy(iotSubscribeReceivePolicy);
+    props.userRoles.adminRole.addToPolicy(
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        actions: ['execute-api:Invoke'],
+        resources: [
+          `${apiBaseArn}/*/GET/race-management/stats`, // GetRaceStats
+          `${apiBaseArn}/*/OPTIONS/race-management/stats`, // CorsGetRaceStats
+        ],
+      }),
+    );
     props.userRoles.raceFacilitatorRole.addToPolicy(iotConnectPolicy);
     props.userRoles.raceFacilitatorRole.addToPolicy(iotSubscribeReceivePolicy);
     props.userRoles.racerRole.addToPolicy(iotConnectPolicy);
     props.userRoles.racerRole.addToPolicy(iotSubscribeReceivePolicy);
+
+    // Countdown topic publish: the Facilitator/Admin browser session
+    // publishes countdown/pause/resume state directly to IoT Core, bypassing Lambda, for
+    // sub-100ms jitter. Subscribe/receive for the countdown topic is already covered by the
+    // root-scoped iotSubscribeReceivePolicy above for every role that holds it — this grant is
+    // publish-only, and deliberately excludes Racer/Commentator/unauthenticated.
+    const iotCountdownPublishPolicy = new PolicyStatement({
+      effect: Effect.ALLOW,
+      actions: ['iot:Publish'],
+      resources: [`arn:${partition}:iot:${region}:${account}:topic/${iotCountdownTopicFilter(props.namespace)}`],
+    });
+    props.userRoles.adminRole.addToPolicy(iotCountdownPublishPolicy);
+    props.userRoles.raceFacilitatorRole.addToPolicy(iotCountdownPublishPolicy);
+
+    // IoT Publish permission on the race topic tree for admin and facilitators.
+    // AWS IoT requires both the named IoT policy (FacilitatorIoTPolicy, attached
+    // by AttachLiveRacePolicy) AND the IAM role to allow iot:Publish. Without this
+    // IAM grant the MQTT publish is rejected with PUBACK 135 (Not Authorized)
+    // even when the named policy is attached.
+    const raceTopicPrefix = iotRaceTopicPrefix(props.namespace);
+    const iotPublishPolicy = new PolicyStatement({
+      effect: Effect.ALLOW,
+      actions: ['iot:Publish'],
+      resources: [`arn:${partition}:iot:${region}:${account}:topic/${raceTopicPrefix}/*`],
+    });
+    props.userRoles.adminRole.addToPolicy(iotPublishPolicy);
+    props.userRoles.raceFacilitatorRole.addToPolicy(iotPublishPolicy);
+
+    // Commentator role (read-only): IoT subscribe/receive + connect endpoint access.
+    // Race Management endpoint grants are added by follow-up CRs when the routes land, so each new
+    // route goes through explicit "add route + update IAM" review rather than being pre-authorized
+    // by a wildcard here.
+    props.userRoles.commentatorRole.addToPolicy(iotConnectPolicy);
+    props.userRoles.commentatorRole.addToPolicy(iotSubscribeReceivePolicy);
+    props.userRoles.commentatorRole.addToPolicy(
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        actions: ['execute-api:Invoke'],
+        resources: [
+          `${apiBaseArn}/*/GET/profile`, // GetProfile
+          `${apiBaseArn}/*/OPTIONS/profile`, // CorsProfile
+          `${apiBaseArn}/*/PATCH/profile`, // UpdateProfile
+          `${apiBaseArn}/*/POST/live-race/connect`, // AttachLiveRacePolicy
+          `${apiBaseArn}/*/OPTIONS/live-race/connect`, // CorsLiveRaceConnect
+          `${apiBaseArn}/*/GET/race-management/events/*/leaderboard`, // GetEventLeaderboard
+          `${apiBaseArn}/*/OPTIONS/race-management/events/*/leaderboard`, // CorsGetEventLeaderboard
+          `${apiBaseArn}/*/GET/events`, // ListEvents
+          `${apiBaseArn}/*/OPTIONS/events`, // CorsEvents
+          `${apiBaseArn}/*/GET/events/*`, // GetEvent
+          `${apiBaseArn}/*/OPTIONS/events/*`, // CorsEventsEventid
+          `${apiBaseArn}/*/GET/events/*/tracks`, // ListEventTracks
+          `${apiBaseArn}/*/OPTIONS/events/*/tracks`, // CorsEventsEventidTracks
+          `${apiBaseArn}/*/GET/events/*/statistics`, // GetEventStatistics
+          `${apiBaseArn}/*/OPTIONS/events/*/statistics`, // CorsEventsEventidStatistics
+          `${apiBaseArn}/*/GET/events/*/combined-leaderboard`, // GetCombinedLeaderboard
+          `${apiBaseArn}/*/OPTIONS/events/*/combined-leaderboard`, // CorsEventsEventidCombinedLeaderboard
+        ],
+      }),
+    );
+
+    // Registration manager role: create walk-up accounts only. No IoT, no leaderboard mutations.
+    // The POST /race-management/users route is added by a follow-up CR.
+    props.userRoles.registrationManagerRole.addToPolicy(
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        actions: ['execute-api:Invoke'],
+        resources: [
+          `${apiBaseArn}/*/GET/profile`, // GetProfile
+          `${apiBaseArn}/*/OPTIONS/profile`, // CorsProfile
+          `${apiBaseArn}/*/PATCH/profile`, // UpdateProfile
+          `${apiBaseArn}/*/POST/race-management/users`, // RegisterUser
+          `${apiBaseArn}/*/OPTIONS/race-management/users`, // CorsRaceManagementUsers
+        ],
+      }),
+    );
   }
 }

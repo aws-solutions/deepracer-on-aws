@@ -70,10 +70,12 @@ describe('GetAdminAssetUrl operation', () => {
     mockModelDao.load.mockResolvedValue({
       ...READY_MODEL,
       assetS3Locations: { ...READY_MODEL.assetS3Locations, modelArtifactS3Location: undefined },
+      optimizedArtifactsS3Prefix: undefined,
     });
+    mockProfileDao.load.mockResolvedValue(TEST_PROFILE_ITEM);
 
     await expect(GetAdminAssetUrlOperation(INPUT, TEST_OPERATION_CONTEXT)).rejects.toStrictEqual(
-      new NotFoundError({ message: 'Unable to find physical model artifact.' }),
+      new NotFoundError({ message: 'Unable to find model artifact.' }),
     );
   });
 
@@ -138,5 +140,48 @@ describe('GetAdminAssetUrl operation', () => {
 
     expect(result.url).toBe(MOCK_URL);
     expect(result.filename).toBe(EXPECTED_FILENAME);
+  });
+
+  it('should fall back to optimizedArtifactsS3Prefix when modelArtifactS3Location is absent', async () => {
+    vi.spyOn(cognitoClient, 'send').mockImplementation(() =>
+      Promise.resolve({ Groups: [{ GroupName: UserGroups.ADMIN }] }),
+    );
+    const modelWithOptimizedPrefix = {
+      ...READY_MODEL,
+      assetS3Locations: { ...READY_MODEL.assetS3Locations, modelArtifactS3Location: undefined },
+      optimizedArtifactsS3Prefix: 'admin123/models/abc123/optimized/',
+    };
+    mockModelDao.load.mockResolvedValue(modelWithOptimizedPrefix);
+    mockProfileDao.load.mockResolvedValue(TEST_PROFILE_ITEM);
+    process.env.MODEL_DATA_BUCKET_NAME = 'test-model-bucket';
+    vi.spyOn(s3Helper, 'getPresignedUrl').mockResolvedValue(MOCK_URL);
+
+    const result = await GetAdminAssetUrlOperation(INPUT, TEST_OPERATION_CONTEXT);
+
+    expect(result.url).toBe(MOCK_URL);
+    expect(result.filename).toBe(EXPECTED_FILENAME);
+    expect(s3Helper.getPresignedUrl).toHaveBeenCalledWith(
+      's3://test-model-bucket/admin123/models/abc123/optimized/original-model.tar.gz',
+      300,
+      EXPECTED_FILENAME,
+    );
+  });
+
+  it('should throw InternalFailureError when optimizedArtifactsS3Prefix is used but MODEL_DATA_BUCKET_NAME is missing', async () => {
+    vi.spyOn(cognitoClient, 'send').mockImplementation(() =>
+      Promise.resolve({ Groups: [{ GroupName: UserGroups.ADMIN }] }),
+    );
+    const modelWithOptimizedPrefix = {
+      ...READY_MODEL,
+      assetS3Locations: { ...READY_MODEL.assetS3Locations, modelArtifactS3Location: undefined },
+      optimizedArtifactsS3Prefix: 'admin123/models/abc123/optimized/',
+    };
+    mockModelDao.load.mockResolvedValue(modelWithOptimizedPrefix);
+    mockProfileDao.load.mockResolvedValue(TEST_PROFILE_ITEM);
+    delete process.env.MODEL_DATA_BUCKET_NAME;
+
+    await expect(GetAdminAssetUrlOperation(INPUT, TEST_OPERATION_CONTEXT)).rejects.toMatchObject({
+      message: 'Service configuration error.',
+    });
   });
 });

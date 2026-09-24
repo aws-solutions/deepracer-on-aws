@@ -120,3 +120,68 @@ export async function uploadModelFiles(
     }
   }
 }
+
+/**
+ * Uploads a single .tar.gz physical model archive to S3.
+ * Path: uploads/physical-models/{profileId}/{uuid}.tar.gz
+ * The profileId prefix is validated server-side by importPhysicalModel handler.
+ */
+export async function uploadPhysicalModelArchive(
+  file: File,
+  profileId: string,
+  onProgress?: (progress: number) => void,
+): Promise<string> {
+  const uuid = crypto.randomUUID();
+  const s3Key = `uploads/physical-models/${profileId}/${uuid}.tar.gz`;
+
+  let s3Client;
+  try {
+    const session = await fetchAuthSession();
+    if (!session.credentials) {
+      throw new Error('Authentication failed');
+    }
+
+    s3Client = new S3Client({
+      region: environmentConfig.region,
+      credentials: session.credentials,
+      forcePathStyle: false,
+    });
+  } catch (error) {
+    console.error('Error getting auth session:', error);
+    throw new Error('Authentication failed. Please sign in again.');
+  }
+
+  try {
+    const upload = new Upload({
+      client: s3Client,
+      params: {
+        Bucket: environmentConfig.uploadBucketName,
+        Key: s3Key,
+        Body: file,
+        ContentType: 'application/gzip',
+      },
+      queueSize: 4,
+      partSize: 5 * 1024 * 1024,
+      leavePartsOnError: false,
+    });
+
+    upload.on('httpUploadProgress', (progress) => {
+      if (progress.loaded) {
+        const totalProgress = Math.min(99, Math.round((progress.loaded / file.size) * 100));
+        onProgress?.(totalProgress);
+      }
+    });
+
+    await upload.done();
+    onProgress?.(100);
+    return s3Key;
+  } catch (error) {
+    console.error('Error uploading physical model archive:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    if (errorMessage.includes('Access denied') || errorMessage.includes('permission')) {
+      throw new Error('You do not have permission to upload files. Please contact your administrator.');
+    } else {
+      throw new Error('Failed to upload model archive. Please try again later.');
+    }
+  }
+}

@@ -6,7 +6,7 @@ import intervalPlural from 'i18next-intervalplural-postprocessor';
 import { initReactI18next } from 'react-i18next';
 
 import account from '#i18n/en/account.json';
-import adminModelDownload from '#i18n/en/adminModelDownload.json';
+import adminModels from '#i18n/en/adminModels.json';
 import auth from '#i18n/en/auth.json';
 import avatar from '#i18n/en/avatar.json';
 import breadcrumbs from '#i18n/en/breadcrumbs.json';
@@ -14,12 +14,17 @@ import common from '#i18n/en/common.json';
 import createEvaluation from '#i18n/en/createEvaluation.json';
 import createModel from '#i18n/en/createModel.json';
 import createRace from '#i18n/en/createRace.json';
+import devices from '#i18n/en/devices.json';
 import enterRace from '#i18n/en/enterRace.json';
+import events from '#i18n/en/events.json';
+import fleets from '#i18n/en/fleets.json';
 import getStarted from '#i18n/en/getStarted.json';
 import home from '#i18n/en/home.json';
 import importModel from '#i18n/en/importModel.json';
+import importPhysicalModel from '#i18n/en/importPhysicalModel.json';
 import leaderboards from '#i18n/en/leaderboards.json';
 import liveRace from '#i18n/en/liveRace.json';
+import manageInstance from '#i18n/en/manageInstance.json';
 import modelDetails from '#i18n/en/modelDetails.json';
 import models from '#i18n/en/models.json';
 import navigation from '#i18n/en/navigation.json';
@@ -27,14 +32,16 @@ import raceDetails from '#i18n/en/raceDetails.json';
 import racerProfile from '#i18n/en/racerProfile.json';
 import races from '#i18n/en/races.json';
 import submitModelToRace from '#i18n/en/submitModelToRace.json';
+import timekeeping from '#i18n/en/timekeeping.json';
 import trackSelection from '#i18n/en/trackSelection.json';
+import uploadStatus from '#i18n/en/uploadStatus.json';
 import validation from '#i18n/en/validation.json';
 
 const defaultNS = 'common';
 const resources = {
   en: {
     account,
-    adminModelDownload,
+    adminModels,
     auth,
     avatar,
     breadcrumbs,
@@ -42,11 +49,15 @@ const resources = {
     createEvaluation,
     createModel,
     createRace,
+    devices,
     enterRace,
+    events,
+    fleets,
     getStarted,
     home,
     leaderboards,
     liveRace,
+    manageInstance,
     modelDetails,
     models,
     navigation,
@@ -54,9 +65,12 @@ const resources = {
     racerProfile,
     races,
     submitModelToRace,
+    timekeeping,
     trackSelection,
+    uploadStatus,
     validation,
     importModel,
+    importPhysicalModel,
   },
 } as const;
 export type DefaultNS = typeof defaultNS;

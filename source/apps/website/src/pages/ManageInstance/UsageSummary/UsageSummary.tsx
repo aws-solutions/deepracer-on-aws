@@ -3,6 +3,7 @@
 
 import { Box, Container, Grid, Header, Icon, Popover, SpaceBetween } from '@cloudscape-design/components';
 import { Profile } from '@deepracer-indy/typescript-client';
+import { Trans, useTranslation } from 'react-i18next';
 
 import { useGetGlobalSettingQuery } from '#services/deepRacer/settingsApi.js';
 
@@ -15,6 +16,8 @@ import {
 } from './lib';
 
 const UsageSummary = ({ profiles }: { profiles: Profile[] }) => {
+  const { t } = useTranslation('manageInstance');
+
   const { data: globalComputeMinutesLimit } = useGetGlobalSettingQuery({
     key: 'usageQuotas.global.globalComputeMinutesLimit',
   });
@@ -27,75 +30,58 @@ const UsageSummary = ({ profiles }: { profiles: Profile[] }) => {
   });
 
   return (
-    <Container header={<Header variant="h2">Usage summary</Header>} data-testid="usage-summary">
+    <Container header={<Header variant="h2">{t('usageSummary.header')}</Header>} data-testid="usage-summary">
       <SpaceBetween size="m">
-        <Box color="text-body-secondary">
-          Summarizes the current usage of your deployment, including compute resources, model storage, and any limits
-          that have been configured.
-        </Box>
+        <Box color="text-body-secondary">{t('usageSummary.description')}</Box>
         <Grid gridDefinition={[{ colspan: 4 }, { colspan: 4 }, { colspan: 4 }]}>
           <div>
             <SpaceBetween size="s">
               <Box>
                 <SpaceBetween direction="horizontal" size="xs" alignItems="center">
-                  <Box variant="awsui-key-label">Training and evaluation hours used</Box>
+                  <Box variant="awsui-key-label">{t('usageSummary.trainingEvalHoursUsed.label')}</Box>
                   <Popover
                     dismissButton={false}
                     position="right"
                     size="medium"
                     triggerType="custom"
-                    content={
-                      <Box padding="s">
-                        This shows the number of hours that have been spent on training and evaluating machine learning
-                        users on your deployment.
-                      </Box>
-                    }
+                    content={<Box padding="s">{t('usageSummary.trainingEvalHoursUsed.popover')}</Box>}
                   >
                     <Icon name="status-info" size="medium" />
                   </Popover>
                 </SpaceBetween>
                 <Box variant="p" data-testid="training-eval-hrs-used">
-                  {calculateTrainingAndEvaluationHoursUsed(profiles)}
+                  {calculateTrainingAndEvaluationHoursUsed(t, profiles)}
                 </Box>
               </Box>
               <Box>
                 <SpaceBetween direction="horizontal" size="xs" alignItems="center">
-                  <Box variant="awsui-key-label">Models stored</Box>
+                  <Box variant="awsui-key-label">{t('usageSummary.modelsStored.label')}</Box>
                   <Popover
                     dismissButton={false}
                     position="right"
                     size="medium"
                     triggerType="custom"
-                    content={
-                      <Box padding="s">
-                        This shows the total number of models currently stored on your deployment across all users.
-                      </Box>
-                    }
+                    content={<Box padding="s">{t('usageSummary.modelsStored.popover')}</Box>}
                   >
                     <Icon name="status-info" size="medium" />
                   </Popover>
                 </SpaceBetween>
-                <Box variant="p">{calculateModelCount(profiles)}</Box>
+                <Box variant="p">{calculateModelCount(t, profiles)}</Box>
               </Box>
               <Box>
                 <SpaceBetween direction="horizontal" size="xs" alignItems="center">
-                  <Box variant="awsui-key-label">Storage used</Box>
+                  <Box variant="awsui-key-label">{t('usageSummary.storageUsed.label')}</Box>
                   <Popover
                     dismissButton={false}
                     position="right"
                     size="medium"
                     triggerType="custom"
-                    content={
-                      <Box padding="s">
-                        This shows the total amount of storage space used by all models across all users on your
-                        deployment.
-                      </Box>
-                    }
+                    content={<Box padding="s">{t('usageSummary.storageUsed.popover')}</Box>}
                   >
                     <Icon name="status-info" size="medium" />
                   </Popover>
                 </SpaceBetween>
-                <Box variant="p">{calculateModelStorageUsed(profiles)}</Box>
+                <Box variant="p">{calculateModelStorageUsed(t, profiles)}</Box>
               </Box>
             </SpaceBetween>
           </div>
@@ -104,42 +90,35 @@ const UsageSummary = ({ profiles }: { profiles: Profile[] }) => {
             <SpaceBetween size="s">
               <Box>
                 <SpaceBetween direction="horizontal" size="xs" alignItems="center">
-                  <Box variant="awsui-key-label">Number of users</Box>
+                  <Box variant="awsui-key-label">{t('usageSummary.numberOfUsers.label')}</Box>
                   <Popover
                     dismissButton={false}
                     position="right"
                     size="medium"
                     triggerType="custom"
-                    content={
-                      <Box padding="s">This shows the total number of users who are registered on your deployment.</Box>
-                    }
+                    content={<Box padding="s">{t('usageSummary.numberOfUsers.popover')}</Box>}
                   >
                     <Icon name="status-info" size="medium" />
                   </Popover>
                 </SpaceBetween>
                 <Box variant="p" data-testid="number-of-users">
-                  {formatValue(profiles.length, 'users')}
+                  {formatValue(t, profiles.length, t('usageSummary.units.users'))}
                 </Box>
               </Box>
               <Box>
                 <SpaceBetween direction="horizontal" size="xs" alignItems="center">
-                  <Box variant="awsui-key-label">Registration mode</Box>
+                  <Box variant="awsui-key-label">{t('usageSummary.registrationMode.label')}</Box>
                   <Popover
                     dismissButton={false}
                     position="right"
                     size="medium"
                     triggerType="custom"
-                    content={
-                      <Box padding="s">
-                        This indicates how new users join your deployment. "Invite only" means users must be explicitly
-                        invited by an administrator.
-                      </Box>
-                    }
+                    content={<Box padding="s">{t('usageSummary.registrationMode.popover')}</Box>}
                   >
                     <Icon name="status-info" size="medium" />
                   </Popover>
                 </SpaceBetween>
-                <Box variant="p">Invite only</Box>
+                <Box variant="p">{t('usageSummary.registrationMode.value')}</Box>
               </Box>
             </SpaceBetween>
           </div>
@@ -148,47 +127,39 @@ const UsageSummary = ({ profiles }: { profiles: Profile[] }) => {
             <SpaceBetween size="s">
               <Box>
                 <SpaceBetween direction="horizontal" size="xs" alignItems="center">
-                  <Box variant="awsui-key-label">Global compute usage limit</Box>
+                  <Box variant="awsui-key-label">{t('usageSummary.globalComputeLimit.label')}</Box>
                   <Popover
                     dismissButton={false}
                     position="right"
                     size="medium"
                     triggerType="custom"
-                    content={
-                      <Box padding="s">
-                        This shows the maximum total compute hours that can be used across all users in your deployment
-                        for training and evaluation.
-                      </Box>
-                    }
+                    content={<Box padding="s">{t('usageSummary.globalComputeLimit.popover')}</Box>}
                   >
                     <Icon name="status-info" size="medium" />
                   </Popover>
                 </SpaceBetween>
-                <Box variant="p">{formatValue(globalComputeMinutesLimit, 'hours', convertMinutesToHours)}</Box>
+                <Box variant="p">
+                  {formatValue(t, globalComputeMinutesLimit, t('usageSummary.units.hours'), convertMinutesToHours)}
+                </Box>
               </Box>
               <Box>
                 <SpaceBetween direction="horizontal" size="xs" alignItems="center">
-                  <Box variant="awsui-key-label">Global model count limit</Box>
+                  <Box variant="awsui-key-label">{t('usageSummary.globalModelLimit.label')}</Box>
                   <Popover
                     dismissButton={false}
                     position="right"
                     size="medium"
                     triggerType="custom"
-                    content={
-                      <Box padding="s">
-                        This shows the maximum total number of models that can be stored across all users in your
-                        deployment.
-                      </Box>
-                    }
+                    content={<Box padding="s">{t('usageSummary.globalModelLimit.popover')}</Box>}
                   >
                     <Icon name="status-info" size="medium" />
                   </Popover>
                 </SpaceBetween>
-                <Box variant="p">{formatValue(globalModelCountLimit, 'models')}</Box>
+                <Box variant="p">{formatValue(t, globalModelCountLimit, t('usageSummary.units.models'))}</Box>
               </Box>
               <Box>
                 <SpaceBetween direction="horizontal" size="xs" alignItems="center">
-                  <Box variant="awsui-key-label">New user compute usage limit</Box>
+                  <Box variant="awsui-key-label">{t('usageSummary.newUserComputeLimit.label')}</Box>
                   <Popover
                     dismissButton={false}
                     position="right"
@@ -196,8 +167,7 @@ const UsageSummary = ({ profiles }: { profiles: Profile[] }) => {
                     triggerType="custom"
                     content={
                       <Box padding="s">
-                        This shows the default compute usage limit that will be assigned to new users. To change this,
-                        click <i>New user quotas</i> and update <i>New user compute usage limit</i>.
+                        <Trans t={t} i18nKey="usageSummary.newUserComputeLimit.popover" />
                       </Box>
                     }
                   >
@@ -205,12 +175,12 @@ const UsageSummary = ({ profiles }: { profiles: Profile[] }) => {
                   </Popover>
                 </SpaceBetween>
                 <Box variant="p" data-testid="new-user-compute-usage-limit">
-                  {formatValue(newUserComputeMinutesLimit, 'hours', convertMinutesToHours)}
+                  {formatValue(t, newUserComputeMinutesLimit, t('usageSummary.units.hours'), convertMinutesToHours)}
                 </Box>
               </Box>
               <Box>
                 <SpaceBetween direction="horizontal" size="xs" alignItems="center">
-                  <Box variant="awsui-key-label">New user model count limit</Box>
+                  <Box variant="awsui-key-label">{t('usageSummary.newUserModelLimit.label')}</Box>
                   <Popover
                     dismissButton={false}
                     position="right"
@@ -218,15 +188,14 @@ const UsageSummary = ({ profiles }: { profiles: Profile[] }) => {
                     triggerType="custom"
                     content={
                       <Box padding="s">
-                        This shows the default model count limit that will be assigned to new users. To change this,
-                        click <i>New user quotas</i> and update <i>New user model count limit</i>.
+                        <Trans t={t} i18nKey="usageSummary.newUserModelLimit.popover" />
                       </Box>
                     }
                   >
                     <Icon name="status-info" size="medium" />
                   </Popover>
                 </SpaceBetween>
-                <Box variant="p">{formatValue(newUserModelCountLimit, 'models')}</Box>
+                <Box variant="p">{formatValue(t, newUserModelCountLimit, t('usageSummary.units.models'))}</Box>
               </Box>
             </SpaceBetween>
           </div>

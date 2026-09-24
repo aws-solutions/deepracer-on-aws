@@ -66,7 +66,7 @@ describe('UserIdentity', () => {
         AutoVerifiedAttributes: ['email'],
         AliasAttributes: ['email'],
         AdminCreateUserConfig: {
-          AllowAdminCreateUserOnly: true,
+          AllowAdminCreateUserOnly: false,
         },
       }),
     ).not.toThrow();
@@ -89,9 +89,67 @@ describe('UserIdentity', () => {
     expect(() =>
       template.hasResourceProperties('AWS::Cognito::IdentityPool', {
         IdentityPoolName: `${TEST_NAMESPACE}-${BASE_IDENTITY_POOL_NAME}`,
-        AllowUnauthenticatedIdentities: false,
+        AllowUnauthenticatedIdentities: true,
       }),
     ).not.toThrow();
+  });
+
+  it('suppresses the unauthenticated-identities cfn-guard rule on the identity pool', () => {
+    const template = createTestStack();
+    expect(() =>
+      template.hasResource('AWS::Cognito::IdentityPool', {
+        Metadata: {
+          guard: {
+            SuppressedRules: Match.arrayWith(['COGNITO_ALLOW_UNAUTHENTICATED_IDENTITIES_RULE']),
+          },
+        },
+      }),
+    ).not.toThrow();
+  });
+
+  it('creates a scoped unauthenticated spectator role policy', () => {
+    const template = createTestStack();
+    const policies = template.findResources('AWS::IAM::Policy');
+
+    type IamStatement = { Effect: string; Action: string; Resource: unknown };
+    const statementSets = Object.values(policies).map(
+      (p) =>
+        (p as { Properties: { PolicyDocument: { Statement: IamStatement[] } } }).Properties.PolicyDocument.Statement,
+    );
+    // The unauth spectator policy is the one whose Connect is scoped to a spectator-prefixed client.
+    const statements = statementSets.find((set) => JSON.stringify(set).includes('client/spectator-')) ?? [];
+    expect(statements.length).toBeGreaterThan(0);
+
+    // Connect only under the spectator-scoped client id, with a wildcard suffix that permits a
+    // per-connection suffix (multiple tabs for the same identity) without widening past that identity.
+    // Checked as two substrings so no literal contains a "${" sequence that trips template-string lint.
+    expect(
+      statements.some(
+        (s) =>
+          s.Action === 'iot:Connect' &&
+          JSON.stringify(s.Resource).includes('client/spectator-') &&
+          JSON.stringify(s.Resource).includes('cognito-identity.amazonaws.com:sub') &&
+          JSON.stringify(s.Resource).includes('-*'),
+      ),
+    ).toBe(true);
+    // Subscribe/Receive scoped to the race topic tree only.
+    expect(
+      statements.some(
+        (s) =>
+          s.Action === 'iot:Subscribe' &&
+          JSON.stringify(s.Resource).includes(`topicfilter/deepracer/${TEST_NAMESPACE}/race/*`),
+      ),
+    ).toBe(true);
+    expect(
+      statements.some(
+        (s) =>
+          s.Action === 'iot:Receive' && JSON.stringify(s.Resource).includes(`topic/deepracer/${TEST_NAMESPACE}/race/*`),
+      ),
+    ).toBe(true);
+    // Explicit deny on publish.
+    expect(statements.some((s) => s.Effect === 'Deny' && s.Action === 'iot:Publish')).toBe(true);
+    // No API access for unauthenticated spectators.
+    expect(JSON.stringify(statements)).not.toContain('execute-api');
   });
 
   it('creates required user groups', () => {
@@ -118,6 +176,22 @@ describe('UserIdentity', () => {
       template.hasResourceProperties('AWS::Cognito::UserPoolGroup', {
         GroupName: 'dr-racers',
         Description: 'DeepRacer on AWS - Racer user group',
+      }),
+    ).not.toThrow();
+
+    // Verify commentator group
+    expect(() =>
+      template.hasResourceProperties('AWS::Cognito::UserPoolGroup', {
+        GroupName: 'dr-commentators',
+        Description: 'DeepRacer on AWS - Commentator user group',
+      }),
+    ).not.toThrow();
+
+    // Verify registration manager group
+    expect(() =>
+      template.hasResourceProperties('AWS::Cognito::UserPoolGroup', {
+        GroupName: 'dr-registration-managers',
+        Description: 'DeepRacer on AWS - Registration manager user group',
       }),
     ).not.toThrow();
   });
@@ -281,6 +355,18 @@ describe('UserIdentity', () => {
                   Value: 'dr-racers',
                   RoleARN: Match.anyValue(),
                 },
+                {
+                  Claim: 'cognito:groups',
+                  MatchType: 'Contains',
+                  Value: 'dr-commentators',
+                  RoleARN: Match.anyValue(),
+                },
+                {
+                  Claim: 'cognito:groups',
+                  MatchType: 'Contains',
+                  Value: 'dr-registration-managers',
+                  RoleARN: Match.anyValue(),
+                },
               ],
             },
           },
@@ -373,7 +459,8 @@ describe('UserIdentity', () => {
           'detail-type': ['AWS API Call via CloudTrail'],
           detail: {
             eventSource: ['cognito-idp.amazonaws.com'],
-            eventName: ['AdminAddUserToGroup', 'AdminRemoveUserFromGroup'],
+            // Add events only: a remove event would stamp roleName with the group the user just left.
+            eventName: ['AdminAddUserToGroup'],
             requestParameters: {
               userPoolId: Match.anyValue(),
             },
@@ -452,7 +539,7 @@ describe('UserIdentity', () => {
         PolicyDocument: {
           Statement: Match.arrayWith([
             {
-              Action: 'cognito-idp:AdminAddUserToGroup',
+              Action: ['cognito-idp:AdminAddUserToGroup', 'cognito-idp:AdminUpdateUserAttributes'],
               Effect: 'Allow',
               Resource: Match.anyValue(),
             },
@@ -562,6 +649,8 @@ describe('UserIdentity', () => {
     expect(userIdentity.userRoles.adminRole).toBeDefined();
     expect(userIdentity.userRoles.raceFacilitatorRole).toBeDefined();
     expect(userIdentity.userRoles.racerRole).toBeDefined();
+    expect(userIdentity.userRoles.commentatorRole).toBeDefined();
+    expect(userIdentity.userRoles.registrationManagerRole).toBeDefined();
   });
 });
 
@@ -605,7 +694,7 @@ describe('UserIdentity Class', () => {
   });
 
   it('configures identity pool with correct settings', () => {
-    expect(userIdentity.identityPool.allowUnauthenticatedIdentities).toBe(false);
+    expect(userIdentity.identityPool.allowUnauthenticatedIdentities).toBe(true);
     expect(userIdentity.identityPool.cognitoIdentityProviders).toEqual([
       {
         clientId: userIdentity.userPoolClient.userPoolClientId,

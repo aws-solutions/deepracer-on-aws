@@ -1,6 +1,6 @@
 {
   "title": "Import model",
-  "description": "Choose a DeepRacer model to upload from your local file system. The selected model must be a virtual model previously exported from the DeepRacer solution. Physical car models cannot be uploaded to the solution.",
+  "description": "Choose a DeepRacer model to upload from your local file system. The selected model must be a virtual model previously exported from the DeepRacer solution.",
   "details": {
     "title": "Details",
     "modelName": {

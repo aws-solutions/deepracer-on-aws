@@ -3,7 +3,10 @@
   "topNavigation": {
     "profile": "Profile",
     "account": "Account",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "eventAndTrack": "Event & track",
+    "selectEvent": "Select event",
+    "selectTrack": "Select track"
   },
   "jobStatus": {
     "CANCELED": "Canceled",
@@ -12,7 +15,8 @@
     "IN_PROGRESS": "In progress",
     "INITIALIZING": "Initializing",
     "QUEUED": "Queued",
-    "STOPPING": "Stopping"
+    "STOPPING": "Stopping",
+    "WAITING_FOR_CAPACITY": "Waiting for capacity"
   },
   "modelStatus": {
     "DELETING": "Deleting",
@@ -23,7 +27,8 @@
     "READY": "Ready",
     "STOPPING": "Stopping",
     "SUBMITTING": "Submitting",
-    "TRAINING": "Training"
+    "TRAINING": "Training",
+    "WAITING_FOR_CAPACITY": "Waiting for capacity"
   },
   "raceType": {
     "TIME_TRIAL": "Time trial",
@@ -53,5 +58,34 @@
   "videoPlayer": {
     "loadError": "Error loading the video",
     "playError": "Error playing the video"
+  },
+  "propertyFilter": {
+    "filteringAriaLabel": "Filter {{resource}}",
+    "filteringPlaceholder": "Filter {{resource}}",
+    "groupValues": "Values",
+    "groupProperties": "Properties",
+    "operators": "Operators",
+    "operationAnd": "and",
+    "operationOr": "or",
+    "operatorLess": "Less than",
+    "operatorLessOrEqual": "Less than or equal",
+    "operatorGreater": "Greater than",
+    "operatorGreaterOrEqual": "Greater than or equal",
+    "operatorContains": "Contains",
+    "operatorDoesNotContain": "Does not contain",
+    "operatorEquals": "Equals",
+    "operatorDoesNotEqual": "Does not equal",
+    "editTokenHeader": "Edit filter",
+    "propertyText": "Property",
+    "operatorText": "Operator",
+    "valueText": "Value",
+    "cancelAction": "Cancel",
+    "applyAction": "Apply",
+    "allProperties": "All properties",
+    "clearFilters": "Clear filters",
+    "tokenLimitShowMore": "Show more",
+    "tokenLimitShowFewer": "Show fewer",
+    "removeTokenAriaLabel": "Remove filter, {{propertyKey}} {{operator}} {{value}}",
+    "enteredTextLabel": "Use: \"{{text}}\""
   }
 }

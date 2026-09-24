@@ -5,7 +5,7 @@ import { App, Stack } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { describe, expect, it } from 'vitest';
 
-import { generateUniqueConstructId, getImageTag } from '../helpers.js';
+import { generateUniqueConstructId, getImageTag, resolveImageSource } from '../helpers.js';
 
 describe('getImageTag', () => {
   it('returns provided tag when tag is given', () => {
@@ -100,5 +100,61 @@ describe('generateUniqueConstructId', () => {
     const longSuffix = 'z'.repeat(maxIdLength - stackName.length - constructName.length - pathHashLength + 1);
     const id = generateUniqueConstructId(construct, '', longSuffix);
     expect(id.length).toEqual(maxIdLength);
+  });
+});
+
+describe('resolveImageSource', () => {
+  const defaultRegistry = 'public.ecr.aws/aws-solutions';
+  const defaultRepoName = 'deepracer-on-aws-model-optimizer';
+
+  it('keeps the default registry and repo name when no overrides are set', () => {
+    const result = resolveImageSource({
+      defaultRegistry,
+      overrideRegistry: undefined,
+      defaultRepoName,
+      overrideRepoName: undefined,
+    });
+
+    expect(result).toEqual({ repoName: defaultRepoName, registry: defaultRegistry });
+  });
+
+  it('redirects to the override registry when both the registry and repo-name overrides are set', () => {
+    const result = resolveImageSource({
+      defaultRegistry,
+      overrideRegistry: '123456789012.dkr.ecr.us-west-2.amazonaws.com',
+      defaultRepoName,
+      overrideRepoName: 'my-custom-model-optimizer',
+    });
+
+    expect(result).toEqual({
+      repoName: 'my-custom-model-optimizer',
+      registry: '123456789012.dkr.ecr.us-west-2.amazonaws.com',
+    });
+  });
+
+  it('keeps the default registry when only the repo-name override is set (no registry override)', () => {
+    const result = resolveImageSource({
+      defaultRegistry,
+      overrideRegistry: undefined,
+      defaultRepoName,
+      overrideRepoName: 'my-custom-model-optimizer',
+    });
+
+    // Without an override registry, the repo name override still applies, but the image
+    // is sourced from the default registry rather than being left unresolved.
+    expect(result).toEqual({ repoName: 'my-custom-model-optimizer', registry: defaultRegistry });
+  });
+
+  it('keeps the default repo name and registry when only the registry override is set (no repo-name override)', () => {
+    const result = resolveImageSource({
+      defaultRegistry,
+      overrideRegistry: '123456789012.dkr.ecr.us-west-2.amazonaws.com',
+      defaultRepoName,
+      overrideRepoName: undefined,
+    });
+
+    // An image that hasn't opted in via its own repo-name override stays on the default
+    // registry, even if a sibling image's override registry value happens to be set.
+    expect(result).toEqual({ repoName: defaultRepoName, registry: defaultRegistry });
   });
 });

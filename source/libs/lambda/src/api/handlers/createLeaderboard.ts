@@ -32,6 +32,18 @@ export const CreateLeaderboardOperation: Operation<
     throw new BadRequestError({ message: 'Opening time cannot be after close time.' });
   }
 
+  // Community races use openTime/closeTime as their submission window. Live races use
+  // liveEventTime instead, so their required shared timestamps remain unconstrained here.
+  if (!leaderboardDefinition.isLive) {
+    const currentTime = new Date();
+    if (leaderboardDefinition.closeTime <= currentTime) {
+      throw new BadRequestError({ message: 'Close time must be in the future.' });
+    }
+    if (leaderboardDefinition.openTime <= currentTime) {
+      throw new BadRequestError({ message: 'Start time must be in the future.' });
+    }
+  }
+
   if (
     leaderboardDefinition.submissionTerminationConditions.maximumLaps <
     leaderboardDefinition.submissionTerminationConditions.minimumLaps

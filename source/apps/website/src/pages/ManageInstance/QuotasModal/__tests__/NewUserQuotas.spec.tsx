@@ -24,17 +24,17 @@ vi.mock('../BaseQuotasModal', () => ({
     isOpen: boolean;
     setIsOpen: (open: boolean) => void;
     config: {
-      modalHeader: string;
+      modalHeaderKey: string;
       computeField: {
         name: string;
-        label: string;
-        description: string;
+        labelKey: string;
+        descriptionKey: string;
         fieldKey: string;
       };
       modelCountField: {
         name: string;
-        label: string;
-        description: string;
+        labelKey: string;
+        descriptionKey: string;
         fieldKey: string;
       };
       keyToUpdate: string;
@@ -44,14 +44,14 @@ vi.mock('../BaseQuotasModal', () => ({
 
     return (
       <div data-testid="base-quotas-modal">
-        <div data-testid="modal-header">{config.modalHeader}</div>
+        <div data-testid="modal-header">{config.modalHeaderKey}</div>
         <div data-testid="compute-field-name">{config.computeField.name}</div>
-        <div data-testid="compute-field-label">{config.computeField.label}</div>
-        <div data-testid="compute-field-description">{config.computeField.description}</div>
+        <div data-testid="compute-field-label">{config.computeField.labelKey}</div>
+        <div data-testid="compute-field-description">{config.computeField.descriptionKey}</div>
         <div data-testid="compute-field-key">{config.computeField.fieldKey}</div>
         <div data-testid="model-field-name">{config.modelCountField.name}</div>
-        <div data-testid="model-field-label">{config.modelCountField.label}</div>
-        <div data-testid="model-field-description">{config.modelCountField.description}</div>
+        <div data-testid="model-field-label">{config.modelCountField.labelKey}</div>
+        <div data-testid="model-field-description">{config.modelCountField.descriptionKey}</div>
         <div data-testid="model-field-key">{config.modelCountField.fieldKey}</div>
         <div data-testid="key-to-update">{config.keyToUpdate}</div>
         <button onClick={() => setIsOpen(false)}>Close</button>
@@ -92,19 +92,17 @@ describe('NewUserQuotasModal', () => {
   it('should pass correct configuration to BaseQuotasModal', () => {
     render(<NewUserQuotasModal isOpen={true} setIsOpen={vi.fn()} />);
 
-    expect(screen.getByTestId('modal-header')).toHaveTextContent('New user quotas');
+    expect(screen.getByTestId('modal-header')).toHaveTextContent('quotasModal.newUser.header');
 
     expect(screen.getByTestId('compute-field-name')).toHaveTextContent('newUserComputeMinutesLimit');
-    expect(screen.getByTestId('compute-field-label')).toHaveTextContent('New user compute usage limit (hours)');
-    expect(screen.getByTestId('compute-field-description')).toHaveTextContent(
-      'The maximum number of training hours for new users.',
-    );
+    expect(screen.getByTestId('compute-field-label')).toHaveTextContent('quotasModal.newUser.computeLabel');
+    expect(screen.getByTestId('compute-field-description')).toHaveTextContent('quotasModal.newUser.computeDescription');
     expect(screen.getByTestId('compute-field-key')).toHaveTextContent('usageQuotas.newUser.newUserComputeMinutesLimit');
 
     expect(screen.getByTestId('model-field-name')).toHaveTextContent('newUserModelCountLimit');
-    expect(screen.getByTestId('model-field-label')).toHaveTextContent('New user model count limit');
+    expect(screen.getByTestId('model-field-label')).toHaveTextContent('quotasModal.newUser.modelCountLabel');
     expect(screen.getByTestId('model-field-description')).toHaveTextContent(
-      'The maximum number of models for new users.',
+      'quotasModal.newUser.modelCountDescription',
     );
     expect(screen.getByTestId('model-field-key')).toHaveTextContent('usageQuotas.newUser.newUserModelCountLimit');
 
@@ -156,18 +154,16 @@ describe('NewUserQuotasModal', () => {
   it('should have descriptive labels for new user context', () => {
     render(<NewUserQuotasModal isOpen={true} setIsOpen={vi.fn()} />);
 
-    expect(screen.getByTestId('compute-field-label')).toHaveTextContent('New user compute usage limit (hours)');
-    expect(screen.getByTestId('model-field-label')).toHaveTextContent('New user model count limit');
+    expect(screen.getByTestId('compute-field-label')).toHaveTextContent('quotasModal.newUser.computeLabel');
+    expect(screen.getByTestId('model-field-label')).toHaveTextContent('quotasModal.newUser.modelCountLabel');
   });
 
   it('should have appropriate descriptions for new user quotas', () => {
     render(<NewUserQuotasModal isOpen={true} setIsOpen={vi.fn()} />);
 
-    expect(screen.getByTestId('compute-field-description')).toHaveTextContent(
-      'The maximum number of training hours for new users.',
-    );
+    expect(screen.getByTestId('compute-field-description')).toHaveTextContent('quotasModal.newUser.computeDescription');
     expect(screen.getByTestId('model-field-description')).toHaveTextContent(
-      'The maximum number of models for new users.',
+      'quotasModal.newUser.modelCountDescription',
     );
   });
 
@@ -177,6 +173,6 @@ describe('NewUserQuotasModal', () => {
     render(<NewUserQuotasModal isOpen={true} setIsOpen={mockSetIsOpen} />);
 
     expect(screen.getByTestId('base-quotas-modal')).toBeInTheDocument();
-    expect(screen.getByTestId('modal-header')).toHaveTextContent('New user quotas');
+    expect(screen.getByTestId('modal-header')).toHaveTextContent('quotasModal.newUser.header');
   });
 });

@@ -9,16 +9,16 @@ import { describe, expect, it, vi } from 'vitest';
 import ProfilesTable from '../ProfilesTable';
 
 vi.mock('../helpers', () => ({
-  formatComputeUsage: vi.fn((value) => `${(value || 0) / 60} hrs`),
-  formatProfileCreationDate: vi.fn((date) => (date ? new Date(date).toISOString().split('T')[0] : '-/-')),
-  formatRoleName: vi.fn((role) => role || 'Unknown'),
-  formatStorageUsage: vi.fn((value) => `${(value || 0) / (1024 * 1024 * 1024)} GB`),
+  formatComputeUsage: vi.fn((_t, value) => `${(value || 0) / 60} hrs`),
+  formatProfileCreationDate: vi.fn((_t, date) => (date ? new Date(date).toISOString().split('T')[0] : '-/-')),
+  formatRoleName: vi.fn((_t, role) => role || 'Unknown'),
+  formatStorageUsage: vi.fn((_t, value) => `${(value || 0) / (1024 * 1024 * 1024)} GB`),
   sortProfilesByRoleAndName: vi.fn((profiles) => profiles),
 }));
 
 vi.mock('../UsageSummary/lib', () => ({
   convertMinutesToHours: vi.fn((minutes) => minutes / 60),
-  formatValue: vi.fn((value, unit, transformFn) => {
+  formatValue: vi.fn((_t, value, unit, transformFn) => {
     if (!value) return '-/-';
     if (Number(value) === -1) return 'Unlimited';
     const transformed = transformFn ? transformFn(Number(value)) : value;
@@ -57,10 +57,12 @@ const mockProfiles: Profile[] = [
 
 describe('ProfilesTable', () => {
   const mockOnInviteUser = vi.fn();
+  const mockOnInviteMultipleUsers = vi.fn();
   const mockOnDeleteUser = vi.fn();
   const mockOnDeleteUserModels = vi.fn();
   const mockOnUpdateUserQuotas = vi.fn();
   const mockOnChangeUserRole = vi.fn();
+  const mockOnResendInvite = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -75,6 +77,8 @@ describe('ProfilesTable', () => {
         onDeleteUserModels={mockOnDeleteUserModels}
         onUpdateUserQuotas={mockOnUpdateUserQuotas}
         onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
       />,
     );
 
@@ -90,6 +94,8 @@ describe('ProfilesTable', () => {
         onDeleteUserModels={mockOnDeleteUserModels}
         onUpdateUserQuotas={mockOnUpdateUserQuotas}
         onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
       />,
     );
 
@@ -113,6 +119,8 @@ describe('ProfilesTable', () => {
         onDeleteUserModels={mockOnDeleteUserModels}
         onUpdateUserQuotas={mockOnUpdateUserQuotas}
         onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
       />,
     );
 
@@ -129,6 +137,8 @@ describe('ProfilesTable', () => {
         onDeleteUserModels={mockOnDeleteUserModels}
         onUpdateUserQuotas={mockOnUpdateUserQuotas}
         onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
       />,
     );
 
@@ -144,6 +154,8 @@ describe('ProfilesTable', () => {
         onDeleteUserModels={mockOnDeleteUserModels}
         onUpdateUserQuotas={mockOnUpdateUserQuotas}
         onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
       />,
     );
 
@@ -162,6 +174,8 @@ describe('ProfilesTable', () => {
         onDeleteUserModels={mockOnDeleteUserModels}
         onUpdateUserQuotas={mockOnUpdateUserQuotas}
         onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
       />,
     );
 
@@ -181,6 +195,8 @@ describe('ProfilesTable', () => {
         onDeleteUserModels={mockOnDeleteUserModels}
         onUpdateUserQuotas={mockOnUpdateUserQuotas}
         onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
       />,
     );
 
@@ -199,6 +215,8 @@ describe('ProfilesTable', () => {
         onDeleteUserModels={mockOnDeleteUserModels}
         onUpdateUserQuotas={mockOnUpdateUserQuotas}
         onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
       />,
     );
 
@@ -214,6 +232,8 @@ describe('ProfilesTable', () => {
         onDeleteUserModels={mockOnDeleteUserModels}
         onUpdateUserQuotas={mockOnUpdateUserQuotas}
         onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
       />,
     );
 
@@ -231,6 +251,8 @@ describe('ProfilesTable', () => {
         onDeleteUserModels={mockOnDeleteUserModels}
         onUpdateUserQuotas={mockOnUpdateUserQuotas}
         onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
       />,
     );
 
@@ -243,6 +265,98 @@ describe('ProfilesTable', () => {
     expect(mockOnInviteUser).toHaveBeenCalledTimes(1);
   });
 
+  it('calls onInviteMultipleUsers when invite multiple users action is clicked', async () => {
+    const user = userEvent.setup();
+    render(
+      <ProfilesTable
+        profiles={mockProfiles}
+        onInviteUser={mockOnInviteUser}
+        onDeleteUser={mockOnDeleteUser}
+        onDeleteUserModels={mockOnDeleteUserModels}
+        onUpdateUserQuotas={mockOnUpdateUserQuotas}
+        onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
+      />,
+    );
+
+    await user.click(screen.getByText('Actions'));
+    await user.click(screen.getByText('Invite multiple users'));
+
+    expect(mockOnInviteMultipleUsers).toHaveBeenCalledTimes(1);
+  });
+
+  it('disables invite multiple users when a row is selected, matching invite user', async () => {
+    const user = userEvent.setup();
+    render(
+      <ProfilesTable
+        profiles={mockProfiles}
+        onInviteUser={mockOnInviteUser}
+        onDeleteUser={mockOnDeleteUser}
+        onDeleteUserModels={mockOnDeleteUserModels}
+        onUpdateUserQuotas={mockOnUpdateUserQuotas}
+        onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
+      />,
+    );
+
+    const checkboxes = screen.getAllByRole('checkbox');
+    await user.click(checkboxes[1]);
+
+    await user.click(screen.getByText('Actions'));
+    await user.click(screen.getByText('Invite multiple users'));
+
+    expect(mockOnInviteMultipleUsers).not.toHaveBeenCalled();
+  });
+
+  it('calls onResendInvite with all selected users when resend invitation action is clicked', async () => {
+    const user = userEvent.setup();
+    render(
+      <ProfilesTable
+        profiles={mockProfiles}
+        onInviteUser={mockOnInviteUser}
+        onDeleteUser={mockOnDeleteUser}
+        onDeleteUserModels={mockOnDeleteUserModels}
+        onUpdateUserQuotas={mockOnUpdateUserQuotas}
+        onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
+      />,
+    );
+
+    const checkboxes = screen.getAllByRole('checkbox');
+    await user.click(checkboxes[1]);
+    await user.click(checkboxes[2]);
+
+    await user.click(screen.getByText('Actions'));
+    await user.click(screen.getByText('Resend invitation'));
+
+    expect(mockOnResendInvite).toHaveBeenCalledTimes(1);
+    expect(mockOnResendInvite).toHaveBeenCalledWith(mockProfiles, expect.any(Function));
+  });
+
+  it('disables resend invitation when no rows are selected', async () => {
+    const user = userEvent.setup();
+    render(
+      <ProfilesTable
+        profiles={mockProfiles}
+        onInviteUser={mockOnInviteUser}
+        onDeleteUser={mockOnDeleteUser}
+        onDeleteUserModels={mockOnDeleteUserModels}
+        onUpdateUserQuotas={mockOnUpdateUserQuotas}
+        onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
+      />,
+    );
+
+    await user.click(screen.getByText('Actions'));
+    await user.click(screen.getByText('Resend invitation'));
+
+    expect(mockOnResendInvite).not.toHaveBeenCalled();
+  });
+
   it('renders loading text correctly', () => {
     render(
       <ProfilesTable
@@ -252,6 +366,8 @@ describe('ProfilesTable', () => {
         onDeleteUserModels={mockOnDeleteUserModels}
         onUpdateUserQuotas={mockOnUpdateUserQuotas}
         onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
       />,
     );
 
@@ -283,6 +399,8 @@ describe('ProfilesTable', () => {
         onDeleteUserModels={mockOnDeleteUserModels}
         onUpdateUserQuotas={mockOnUpdateUserQuotas}
         onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
       />,
     );
 
@@ -314,6 +432,8 @@ describe('ProfilesTable', () => {
         onDeleteUserModels={mockOnDeleteUserModels}
         onUpdateUserQuotas={mockOnUpdateUserQuotas}
         onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
       />,
     );
 
@@ -329,6 +449,8 @@ describe('ProfilesTable', () => {
         onDeleteUserModels={mockOnDeleteUserModels}
         onUpdateUserQuotas={mockOnUpdateUserQuotas}
         onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
       />,
     );
 
@@ -345,6 +467,8 @@ describe('ProfilesTable', () => {
         onDeleteUserModels={mockOnDeleteUserModels}
         onUpdateUserQuotas={mockOnUpdateUserQuotas}
         onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
       />,
     );
 
@@ -360,6 +484,8 @@ describe('ProfilesTable', () => {
         onDeleteUserModels={mockOnDeleteUserModels}
         onUpdateUserQuotas={mockOnUpdateUserQuotas}
         onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
       />,
     );
 
@@ -376,6 +502,8 @@ describe('ProfilesTable', () => {
         onDeleteUserModels={mockOnDeleteUserModels}
         onUpdateUserQuotas={mockOnUpdateUserQuotas}
         onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
       />,
     );
 
@@ -392,6 +520,8 @@ describe('ProfilesTable', () => {
         onDeleteUserModels={mockOnDeleteUserModels}
         onUpdateUserQuotas={mockOnUpdateUserQuotas}
         onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
       />,
     );
 
@@ -413,6 +543,8 @@ describe('ProfilesTable', () => {
         onDeleteUserModels={mockOnDeleteUserModels}
         onUpdateUserQuotas={mockOnUpdateUserQuotas}
         onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
       />,
     );
 
@@ -458,6 +590,8 @@ describe('ProfilesTable', () => {
         onDeleteUserModels={mockOnDeleteUserModels}
         onUpdateUserQuotas={mockOnUpdateUserQuotas}
         onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
       />,
     );
 
@@ -474,6 +608,8 @@ describe('ProfilesTable', () => {
         onDeleteUserModels={mockOnDeleteUserModels}
         onUpdateUserQuotas={mockOnUpdateUserQuotas}
         onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
       />,
     );
 
@@ -500,6 +636,8 @@ describe('ProfilesTable', () => {
         onDeleteUserModels={mockOnDeleteUserModels}
         onUpdateUserQuotas={mockOnUpdateUserQuotas}
         onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
       />,
     );
 
@@ -526,6 +664,8 @@ describe('ProfilesTable', () => {
         onDeleteUserModels={mockOnDeleteUserModels}
         onUpdateUserQuotas={mockOnUpdateUserQuotas}
         onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
       />,
     );
 
@@ -553,6 +693,8 @@ describe('ProfilesTable', () => {
         onDeleteUserModels={mockOnDeleteUserModels}
         onUpdateUserQuotas={mockOnUpdateUserQuotas}
         onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
       />,
     );
 
@@ -579,6 +721,8 @@ describe('ProfilesTable', () => {
         onDeleteUserModels={mockOnDeleteUserModels}
         onUpdateUserQuotas={mockOnUpdateUserQuotas}
         onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
       />,
     );
 
@@ -605,6 +749,8 @@ describe('ProfilesTable', () => {
         onDeleteUserModels={mockOnDeleteUserModels}
         onUpdateUserQuotas={mockOnUpdateUserQuotas}
         onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
       />,
     );
 
@@ -635,6 +781,8 @@ describe('ProfilesTable', () => {
         onDeleteUserModels={mockOnDeleteUserModels}
         onUpdateUserQuotas={mockOnUpdateUserQuotas}
         onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
       />,
     );
 
@@ -661,6 +809,8 @@ describe('ProfilesTable', () => {
         onDeleteUserModels={mockOnDeleteUserModels}
         onUpdateUserQuotas={mockOnUpdateUserQuotas}
         onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
       />,
     );
 
@@ -684,6 +834,8 @@ describe('ProfilesTable', () => {
         onDeleteUserModels={mockOnDeleteUserModels}
         onUpdateUserQuotas={mockOnUpdateUserQuotas}
         onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
       />,
     );
 
@@ -725,6 +877,8 @@ describe('ProfilesTable', () => {
         onDeleteUserModels={mockOnDeleteUserModels}
         onUpdateUserQuotas={mockOnUpdateUserQuotas}
         onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
       />,
     );
 
@@ -751,6 +905,8 @@ describe('ProfilesTable', () => {
         onDeleteUserModels={mockOnDeleteUserModels}
         onUpdateUserQuotas={mockOnUpdateUserQuotas}
         onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
       />,
     );
 
@@ -779,6 +935,8 @@ describe('ProfilesTable', () => {
         onDeleteUserModels={mockOnDeleteUserModels}
         onUpdateUserQuotas={mockOnUpdateUserQuotas}
         onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
       />,
     );
 
@@ -805,6 +963,8 @@ describe('ProfilesTable', () => {
         onDeleteUserModels={mockOnDeleteUserModels}
         onUpdateUserQuotas={mockOnUpdateUserQuotas}
         onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
       />,
     );
 
@@ -828,6 +988,8 @@ describe('ProfilesTable', () => {
         onDeleteUserModels={mockOnDeleteUserModels}
         onUpdateUserQuotas={mockOnUpdateUserQuotas}
         onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
       />,
     );
 
@@ -870,6 +1032,8 @@ describe('ProfilesTable', () => {
         onDeleteUserModels={mockOnDeleteUserModels}
         onUpdateUserQuotas={mockOnUpdateUserQuotas}
         onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
       />,
     );
 

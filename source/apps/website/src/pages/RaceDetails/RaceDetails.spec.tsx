@@ -123,7 +123,7 @@ describe('<RaceDetails />', () => {
       await screen.findByText(i18n.t('raceDetails:raceType.OBJECT_AVOIDANCE'));
 
       await waitFor(() => {
-        expect(screen.getByText(i18n.t('raceDetails:editRace'))).toBeInTheDocument();
+        expect(screen.getByTestId('btn-edit-race')).toBeInTheDocument();
       });
       expect(screen.getByTestId('btn-delete-race')).toBeInTheDocument();
 
@@ -140,7 +140,7 @@ describe('<RaceDetails />', () => {
       await screen.findByText(i18n.t('raceDetails:raceType.TIME_TRIAL'));
 
       await waitFor(() => {
-        expect(screen.getByText(i18n.t('raceDetails:editRace'))).toBeInTheDocument();
+        expect(screen.getByTestId('btn-edit-race')).toBeInTheDocument();
       });
       expect(screen.getByTestId('btn-delete-race')).toBeInTheDocument();
 
@@ -157,7 +157,7 @@ describe('<RaceDetails />', () => {
       await screen.findByText(i18n.t('raceDetails:raceType.OBJECT_AVOIDANCE'));
 
       await waitFor(() => {
-        expect(screen.queryByText(i18n.t('raceDetails:editRace'))).not.toBeInTheDocument();
+        expect(screen.queryByTestId('btn-edit-race')).not.toBeInTheDocument();
       });
       expect(screen.queryByTestId('btn-delete-race')).not.toBeInTheDocument();
 

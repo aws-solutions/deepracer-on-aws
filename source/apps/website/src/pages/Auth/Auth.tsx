@@ -13,6 +13,7 @@ import ForgotPasswordRequestForm from './components/ForgotPasswordRequestForm';
 import ForgotPasswordResetForm from './components/ForgotPasswordResetForm';
 import NewPasswordForm from './components/NewPasswordForm';
 import SignInForm from './components/SignInForm';
+import SignUpForm from './components/SignUpForm';
 import VerifyEmailForm from './components/VerifyEmailForm';
 
 const Auth = ({ initialAuthState = AuthState.SIGNIN }) => {
@@ -26,6 +27,8 @@ const Auth = ({ initialAuthState = AuthState.SIGNIN }) => {
     switch (currentAuthState) {
       case AuthState.SIGNIN:
         return <SignInForm />;
+      case AuthState.SIGN_UP:
+        return <SignUpForm />;
       case AuthState.FORGOT_PASSWORD_REQUEST:
         return <ForgotPasswordRequestForm />;
       case AuthState.FORGOT_PASSWORD_RESET:

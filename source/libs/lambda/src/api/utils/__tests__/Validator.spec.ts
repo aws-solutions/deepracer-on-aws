@@ -7,6 +7,7 @@ import {
   Sensors,
   ModelDefinition,
   BadRequestError,
+  ModelSource,
   ModelStatus,
   CameraSensor,
   LidarSensor,
@@ -52,6 +53,18 @@ describe('Validator', () => {
         profileId: TEST_MODEL_ITEM.profileId,
         modelId: TEST_MODEL_ITEM.modelId,
       });
+    });
+
+    it('should throw BadRequestError when pre-trained model is a physical import', async () => {
+      vi.spyOn(modelDao, 'get').mockResolvedValue({
+        ...TEST_MODEL_ITEM,
+        status: ModelStatus.READY,
+        modelSource: ModelSource.IMPORTED_PHYSICAL,
+      });
+
+      await expect(
+        validator.validateCloneModel(TEST_MODEL_ITEM.profileId, TEST_MODEL_ITEM.modelId, mockModelDefinition),
+      ).rejects.toThrow('Cannot clone from a physical model.');
     });
 
     it('should validate successfully when all conditions are met', async () => {

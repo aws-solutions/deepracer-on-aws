@@ -9,9 +9,21 @@ import {
   TrackDirection,
   TrackId,
 } from '@deepracer-indy/typescript-server-client';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { TEST_OPERATION_CONTEXT } from '../../constants/testConstants.js';
 import { CreateLeaderboardOperation } from '../createLeaderboard.js';
+
+const TEST_NOW = new Date('2022-10-01T00:00:00.000Z');
+
+beforeEach(() => {
+  vi.useFakeTimers();
+  vi.setSystemTime(TEST_NOW);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe('CreateLeaderboard operation', () => {
   const TEST_LEADERBOARD_DEFINITION: LeaderboardDefinition = {
@@ -40,6 +52,42 @@ describe('CreateLeaderboard operation', () => {
     );
 
     expect(output.leaderboardId).toEqual(TEST_LEADERBOARD_ITEM.leaderboardId);
+  });
+
+  it('should reject an already-closed community race', async () => {
+    const createSpy = vi.spyOn(leaderboardDao, 'create');
+
+    await expect(
+      CreateLeaderboardOperation(
+        {
+          leaderboardDefinition: {
+            ...TEST_LEADERBOARD_DEFINITION,
+            openTime: new Date('2022-09-29T00:00:00.000Z'),
+            closeTime: new Date('2022-09-30T00:00:00.000Z'),
+          },
+        },
+        TEST_OPERATION_CONTEXT,
+      ),
+    ).rejects.toStrictEqual(new BadRequestError({ message: 'Close time must be in the future.' }));
+    expect(createSpy).not.toHaveBeenCalled();
+  });
+
+  it('should reject a community race with a past start time', async () => {
+    const createSpy = vi.spyOn(leaderboardDao, 'create');
+
+    await expect(
+      CreateLeaderboardOperation(
+        {
+          leaderboardDefinition: {
+            ...TEST_LEADERBOARD_DEFINITION,
+            openTime: new Date('2022-09-30T00:00:00.000Z'),
+            closeTime: new Date('2022-10-02T00:00:00.000Z'),
+          },
+        },
+        TEST_OPERATION_CONTEXT,
+      ),
+    ).rejects.toStrictEqual(new BadRequestError({ message: 'Start time must be in the future.' }));
+    expect(createSpy).not.toHaveBeenCalled();
   });
 
   it('should throw error if a request max and minimum laps are invalid', async () => {
@@ -167,7 +215,7 @@ describe('CreateLeaderboard operation for Live Race', () => {
     maxSubmissionsPerUser: TEST_LEADERBOARD_ITEM.maxSubmissionsPerUser,
   };
 
-  it('should create a live race with valid fields', async () => {
+  it('should create a live race with historical shared timestamps and a future event time', async () => {
     vi.spyOn(leaderboardDao, 'create').mockResolvedValue(TEST_LEADERBOARD_ITEM);
 
     const output = await CreateLeaderboardOperation(

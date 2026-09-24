@@ -11,6 +11,7 @@ import { Profile } from '@deepracer-indy/typescript-client';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import * as Yup from 'yup';
 
 import InputField from '#components/FormFields/InputField';
@@ -30,21 +31,22 @@ interface UserQuotasFormValues {
   maxModelCount: number;
 }
 
-const validationSchema = Yup.object().shape({
-  maxTotalComputeMinutes: Yup.number()
-    .required('Usage limit is required')
-    .test('valid-limit', 'Value must be -1 (unlimited) or greater than or equal to 0', (value) => {
-      return value === -1 || (value !== undefined && value >= 0);
-    }),
-  maxModelCount: Yup.number()
-    .required('Model count limit is required')
-    .test('valid-limit', 'Value must be -1 (unlimited) or greater than or equal to 0', (value) => {
-      return value === -1 || (value !== undefined && value >= 0);
-    }),
-});
-
 const UserQuotasModal = ({ isOpen, setIsOpen, selectedUser, onClearSelection }: UserQuotasModalProps) => {
+  const { t } = useTranslation('manageInstance');
   const [updateProfile] = useUpdateProfileMutation();
+
+  const validationSchema = Yup.object().shape({
+    maxTotalComputeMinutes: Yup.number()
+      .required(t('quotasModal.validation.required', { label: t('quotasModal.user.computeLabel') }))
+      .test('valid-limit', t('quotasModal.validation.invalidLimit'), (value) => {
+        return value === -1 || (value !== undefined && value >= 0);
+      }),
+    maxModelCount: Yup.number()
+      .required(t('quotasModal.validation.required', { label: t('quotasModal.user.modelCountLabel') }))
+      .test('valid-limit', t('quotasModal.validation.invalidLimit'), (value) => {
+        return value === -1 || (value !== undefined && value >= 0);
+      }),
+  });
 
   const initialValues: UserQuotasFormValues = {
     maxTotalComputeMinutes: 0,
@@ -120,7 +122,7 @@ const UserQuotasModal = ({ isOpen, setIsOpen, selectedUser, onClearSelection }: 
       setIsOpen(false);
     } catch (err) {
       console.error('Failed to update user quotas');
-      alert('Failed to update user quotas. Please try again.');
+      alert(t('quotasModal.user.error'));
     }
   };
 
@@ -134,17 +136,17 @@ const UserQuotasModal = ({ isOpen, setIsOpen, selectedUser, onClearSelection }: 
       visible={isOpen}
       closeAriaLabel="Close modal"
       size="medium"
-      header={'Update usage quotas'}
+      header={t('quotasModal.user.header')}
     >
       <form onSubmit={handleFormSubmit(handleSubmit)}>
         <Form
           actions={
             <SpaceBetween size="xs" direction="horizontal">
               <Button formAction="none" onClick={handleClose}>
-                Cancel
+                {t('quotasModal.buttons.cancel')}
               </Button>
               <Button formAction="submit" variant="primary">
-                Confirm
+                {t('quotasModal.buttons.confirm')}
               </Button>
             </SpaceBetween>
           }
@@ -154,35 +156,35 @@ const UserQuotasModal = ({ isOpen, setIsOpen, selectedUser, onClearSelection }: 
               <SpaceBetween size="s">
                 <InputField
                   control={control}
-                  label="Usage limit (hours)"
-                  description="The maximum number of training hours for this user."
+                  label={t('quotasModal.user.computeLabel')}
+                  description={t('quotasModal.user.computeDescription')}
                   name="maxTotalComputeMinutes"
                   type="text"
-                  placeholder="Enter training hours limit"
+                  placeholder={t('quotasModal.computePlaceholder')}
                   disabled={isComputeUnlimited}
                 />
                 <Checkbox
                   checked={isComputeUnlimited}
                   onChange={(event) => handleCheckboxChange('maxTotalComputeMinutes', event.detail.checked)}
                 >
-                  Unlimited
+                  {t('quotasModal.unlimited')}
                 </Checkbox>
               </SpaceBetween>
               <SpaceBetween size="s">
                 <InputField
                   control={control}
-                  label="Model count limit"
-                  description="The maximum number of models this user can store."
+                  label={t('quotasModal.user.modelCountLabel')}
+                  description={t('quotasModal.user.modelCountDescription')}
                   name="maxModelCount"
                   type="text"
-                  placeholder="Enter model count limit"
+                  placeholder={t('quotasModal.modelCountPlaceholder')}
                   disabled={isModelCountUnlimited}
                 />
                 <Checkbox
                   checked={isModelCountUnlimited}
                   onChange={(event) => handleCheckboxChange('maxModelCount', event.detail.checked)}
                 >
-                  Unlimited
+                  {t('quotasModal.unlimited')}
                 </Checkbox>
               </SpaceBetween>
             </ColumnLayout>

@@ -9,7 +9,7 @@ import { screen } from '#utils/testUtils';
 
 import * as stories from './EnterRace.stories';
 
-const { Default, LiveRaceFiltered } = composeStories(stories);
+const { Default, LiveRaceFiltered, WithPhysicalModel } = composeStories(stories);
 
 describe('<EnterRace />', () => {
   it('TT leaderboard renders without crashing', async () => {
@@ -47,5 +47,14 @@ describe('<EnterRace />', () => {
 
     await screen.findByText(i18n.t('enterRace:chooseModel'));
     await expect(screen.getByText(i18n.t('enterRace:selection'))).toBeInTheDocument();
+  });
+
+  it('does not show physical models in model selection (filtered by modelSource)', async () => {
+    await WithPhysicalModel.run();
+
+    // Wait for model selection section to render
+    await screen.findByText(i18n.t('enterRace:chooseModel'));
+    // Physical model should be filtered out even though it's in the API response
+    await expect(screen.queryByText('my-physical-model')).not.toBeInTheDocument();
   });
 });

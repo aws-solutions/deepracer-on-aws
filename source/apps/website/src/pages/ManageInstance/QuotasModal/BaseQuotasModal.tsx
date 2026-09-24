@@ -10,6 +10,7 @@ import SpaceBetween from '@cloudscape-design/components/space-between';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import * as Yup from 'yup';
 
 import InputField from '#components/FormFields/InputField';
@@ -18,17 +19,17 @@ import { useGetGlobalSettingQuery, useUpdateGlobalSettingMutation } from '#servi
 import { calculateComputeHours, calculateComputeMinutes, getCheckboxValue } from './helpers';
 
 export interface QuotasConfig {
-  modalHeader: string;
+  modalHeaderKey: string;
   computeField: {
     name: string;
-    label: string;
-    description: string;
+    labelKey: string;
+    descriptionKey: string;
     fieldKey: string;
   };
   modelCountField: {
     name: string;
-    label: string;
-    description: string;
+    labelKey: string;
+    descriptionKey: string;
     fieldKey: string;
   };
   keyToUpdate: string;
@@ -44,22 +45,13 @@ interface QuotasFormValues {
   [fieldKey: string]: number;
 }
 
-const createValidationSchema = (config: QuotasConfig) => {
-  const validationTest = (value: number | undefined) => {
-    return value === -1 || (value !== undefined && value >= 0);
-  };
-
-  return Yup.object().shape({
-    [config.computeField.name]: Yup.number()
-      .required(`${config.computeField.label} is required`)
-      .test('valid-limit', 'Value must be -1 (unlimited) or greater than or equal to 0', validationTest),
-    [config.modelCountField.name]: Yup.number()
-      .required(`${config.modelCountField.label} is required`)
-      .test('valid-limit', 'Value must be -1 (unlimited) or greater than or equal to 0', validationTest),
-  });
-};
-
 const BaseQuotasModal = ({ isOpen, setIsOpen, config }: BaseQuotasModalProps) => {
+  const { t } = useTranslation('manageInstance');
+  // config.*Key fields hold dynamic (per-config) translation keys, so they can't satisfy i18next's
+  // strict literal-key typing for `t`. Cast once here, matching the pattern used elsewhere in the
+  // codebase (see Models.tsx) for computed translation keys.
+  const tDynamic = t as (key: string, options?: Record<string, unknown>) => string;
+
   const { data: computeData } = useGetGlobalSettingQuery({
     key: config.computeField.fieldKey,
   });
@@ -74,7 +66,18 @@ const BaseQuotasModal = ({ isOpen, setIsOpen, config }: BaseQuotasModalProps) =>
     [config.modelCountField.name]: 0,
   };
 
-  const validationSchema = createValidationSchema(config);
+  const validationTest = (value: number | undefined) => {
+    return value === -1 || (value !== undefined && value >= 0);
+  };
+
+  const validationSchema = Yup.object().shape({
+    [config.computeField.name]: Yup.number()
+      .required(t('quotasModal.validation.required', { label: tDynamic(config.computeField.labelKey) }))
+      .test('valid-limit', t('quotasModal.validation.invalidLimit'), validationTest),
+    [config.modelCountField.name]: Yup.number()
+      .required(t('quotasModal.validation.required', { label: tDynamic(config.modelCountField.labelKey) }))
+      .test('valid-limit', t('quotasModal.validation.invalidLimit'), validationTest),
+  });
 
   const {
     control,
@@ -150,17 +153,17 @@ const BaseQuotasModal = ({ isOpen, setIsOpen, config }: BaseQuotasModalProps) =>
       visible={isOpen}
       closeAriaLabel="Close modal"
       size="medium"
-      header={config.modalHeader}
+      header={tDynamic(config.modalHeaderKey)}
     >
       <form onSubmit={handleFormSubmit(handleSubmit)}>
         <Form
           actions={
             <SpaceBetween size="xs" direction="horizontal">
               <Button formAction="none" onClick={handleClose}>
-                Cancel
+                {t('quotasModal.buttons.cancel')}
               </Button>
               <Button formAction="submit" variant="primary">
-                Confirm
+                {t('quotasModal.buttons.confirm')}
               </Button>
             </SpaceBetween>
           }
@@ -170,35 +173,35 @@ const BaseQuotasModal = ({ isOpen, setIsOpen, config }: BaseQuotasModalProps) =>
               <SpaceBetween size="s">
                 <InputField
                   control={control}
-                  label={config.computeField.label}
-                  description={config.computeField.description}
+                  label={tDynamic(config.computeField.labelKey)}
+                  description={tDynamic(config.computeField.descriptionKey)}
                   name={config.computeField.name}
                   type="number"
-                  placeholder="Enter training hours limit"
+                  placeholder={t('quotasModal.computePlaceholder')}
                   disabled={isComputeUnlimited}
                 />
                 <Checkbox
                   checked={isComputeUnlimited}
                   onChange={(event) => handleCheckboxChange(config.computeField.name, event.detail.checked)}
                 >
-                  Unlimited
+                  {t('quotasModal.unlimited')}
                 </Checkbox>
               </SpaceBetween>
               <SpaceBetween size="s">
                 <InputField
                   control={control}
-                  label={config.modelCountField.label}
-                  description={config.modelCountField.description}
+                  label={tDynamic(config.modelCountField.labelKey)}
+                  description={tDynamic(config.modelCountField.descriptionKey)}
                   name={config.modelCountField.name}
                   type="number"
-                  placeholder="Enter model count limit"
+                  placeholder={t('quotasModal.modelCountPlaceholder')}
                   disabled={isModelCountUnlimited}
                 />
                 <Checkbox
                   checked={isModelCountUnlimited}
                   onChange={(event) => handleCheckboxChange(config.modelCountField.name, event.detail.checked)}
                 >
-                  Unlimited
+                  {t('quotasModal.unlimited')}
                 </Checkbox>
               </SpaceBetween>
             </ColumnLayout>

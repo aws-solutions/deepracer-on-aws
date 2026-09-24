@@ -139,17 +139,17 @@ vi.mock('@cloudscape-design/components/space-between', () => ({
 
 describe('BaseQuotasModal', () => {
   const mockConfig: QuotasConfig = {
-    modalHeader: 'Test Quotas Modal',
+    modalHeaderKey: 'quotasModal.instance.header',
     computeField: {
       name: 'computeLimit',
-      label: 'Compute Limit',
-      description: 'Set the compute limit in hours',
+      labelKey: 'quotasModal.instance.computeLabel',
+      descriptionKey: 'quotasModal.instance.computeDescription',
       fieldKey: 'compute.limit',
     },
     modelCountField: {
       name: 'modelLimit',
-      label: 'Model Limit',
-      description: 'Set the model count limit',
+      labelKey: 'quotasModal.instance.modelCountLabel',
+      descriptionKey: 'quotasModal.instance.modelCountDescription',
       fieldKey: 'model.limit',
     },
     keyToUpdate: 'test.quotas',
@@ -178,20 +178,20 @@ describe('BaseQuotasModal', () => {
   it('should render modal with correct header when open', () => {
     render(<BaseQuotasModal isOpen={true} setIsOpen={vi.fn()} config={mockConfig} />);
 
-    expect(screen.getByText('Test Quotas Modal')).toBeInTheDocument();
+    expect(screen.getByText('Instance quotas')).toBeInTheDocument();
   });
 
   it('should not render modal when closed', () => {
     render(<BaseQuotasModal isOpen={false} setIsOpen={vi.fn()} config={mockConfig} />);
 
-    expect(screen.queryByText('Test Quotas Modal')).not.toBeInTheDocument();
+    expect(screen.queryByText('Instance quotas')).not.toBeInTheDocument();
   });
 
   it('should render form fields with correct labels and descriptions', () => {
     render(<BaseQuotasModal isOpen={true} setIsOpen={vi.fn()} config={mockConfig} />);
 
-    expect(screen.getByText('Compute Limit')).toBeInTheDocument();
-    expect(screen.getByText('Model Limit')).toBeInTheDocument();
+    expect(screen.getByText('Global compute usage limit (hours)')).toBeInTheDocument();
+    expect(screen.getByText('Global model count limit')).toBeInTheDocument();
     expect(screen.getByTestId('input-field-computeLimit')).toBeInTheDocument();
     expect(screen.getByTestId('input-field-modelLimit')).toBeInTheDocument();
   });
@@ -375,7 +375,7 @@ describe('BaseQuotasModal', () => {
 
     render(<BaseQuotasModal isOpen={true} setIsOpen={vi.fn()} config={mockConfig} />);
 
-    expect(screen.getByText('Test Quotas Modal')).toBeInTheDocument();
+    expect(screen.getByText('Instance quotas')).toBeInTheDocument();
   });
 
   it('should handle loading state from API queries', () => {
@@ -387,7 +387,7 @@ describe('BaseQuotasModal', () => {
 
     render(<BaseQuotasModal isOpen={true} setIsOpen={vi.fn()} config={mockConfig} />);
 
-    expect(screen.getByText('Test Quotas Modal')).toBeInTheDocument();
+    expect(screen.getByText('Instance quotas')).toBeInTheDocument();
   });
 
   it('should handle API error state gracefully', () => {
@@ -399,7 +399,7 @@ describe('BaseQuotasModal', () => {
 
     render(<BaseQuotasModal isOpen={true} setIsOpen={vi.fn()} config={mockConfig} />);
 
-    expect(screen.getByText('Test Quotas Modal')).toBeInTheDocument();
+    expect(screen.getByText('Instance quotas')).toBeInTheDocument();
   });
 
   it('should convert minutes to hours correctly for display', async () => {

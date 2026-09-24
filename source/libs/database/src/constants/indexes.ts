@@ -8,4 +8,5 @@ export enum LocalSecondaryIndex {
 
 export enum GlobalSecondaryIndex {
   GSI1 = 'gsi1pk-gsi1sk',
+  GSI2 = 'gsi2pk-gsi2sk',
 }

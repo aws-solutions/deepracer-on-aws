@@ -9,6 +9,9 @@ node_modules/
 py_modules/
 .pytest_cache/
 __pycache__/
+.coverage
+.mypy_cache/
+.ruff_cache/
 
 # Derived build assets
 **/deployment/global-s3-assets
@@ -28,3 +31,7 @@ script_*.sh
 *.log
 .e2e-tests/cypress/videos
 .e2e-tests/cypress/screenshots
+
+# vim swap files
+*.swp
+*.swo

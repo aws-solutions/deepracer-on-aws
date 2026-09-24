@@ -42,6 +42,17 @@ export class DynamoDBTable extends Construct {
           },
         },
         {
+          indexName: GlobalSecondaryIndex.GSI2,
+          partitionKey: {
+            name: DynamoDBItemAttribute.GSI2_PK,
+            type: AttributeType.STRING,
+          },
+          sortKey: {
+            name: DynamoDBItemAttribute.GSI2_SK,
+            type: AttributeType.STRING,
+          },
+        },
+        {
           indexName: 'sk-index',
           partitionKey: {
             name: 'sk',
@@ -68,6 +79,10 @@ export class DynamoDBTable extends Construct {
       pointInTimeRecoverySpecification: {
         pointInTimeRecoveryEnabled: true,
       },
+      // Enables automatic expiry/pruning of Race Manager device records:
+      // `ttl` attribute is set by activation (PENDING) and heartbeat updates, and its
+      // expiry drives the DDB-stream TTL-delete that the pruning path consumes.
+      timeToLiveAttribute: DynamoDBItemAttribute.TTL,
       // NEW_AND_OLD_IMAGES required by LiveBroadcastHandler to detect status transitions
       dynamoStream: StreamViewType.NEW_AND_OLD_IMAGES,
     });

@@ -60,19 +60,17 @@ describe('Workflow', () => {
       const template = Template.fromStack(stack);
       expect(template).toBeDefined();
 
-      // Verify SageMaker role
+      // Verify SageMaker role (AssumeRole + TagSession for ABAC)
       template.hasResourceProperties('AWS::IAM::Role', {
-        AssumeRolePolicyDocument: {
-          Statement: [
-            {
+        AssumeRolePolicyDocument: Match.objectLike({
+          Statement: Match.arrayWith([
+            Match.objectLike({
               Action: 'sts:AssumeRole',
               Effect: 'Allow',
-              Principal: {
-                Service: 'sagemaker.amazonaws.com',
-              },
-            },
-          ],
-        },
+              Principal: { Service: 'sagemaker.amazonaws.com' },
+            }),
+          ]),
+        }),
       });
 
       // Verify Lambda functions
@@ -106,6 +104,48 @@ describe('Workflow', () => {
     });
   });
 
+  describe('State Machine Definition', () => {
+    /** The definition is a Fn::Join of literal fragments and resource references. */
+    const getDefinition = () => {
+      new Workflow(stack, 'TestWorkflow', {
+        dynamoDBTable: table,
+        modelStorageBucket: bucket,
+        workflowJobQueue: queue,
+        simAppRepositoryUri: 'test-repo-uri',
+        namespace: TEST_NAMESPACE,
+      });
+
+      const template = Template.fromStack(stack);
+      const [stateMachine] = Object.values(template.findResources('AWS::StepFunctions::StateMachine'));
+      const joined = stateMachine.Properties.DefinitionString['Fn::Join'][1] as unknown[];
+
+      return joined.filter((part): part is string => typeof part === 'string').join('');
+    };
+
+    it('routes a capacity-waiting initialization to cleanup and a successful end state', () => {
+      const definition = getDefinition();
+
+      expect(definition).toContain('Initialization outcome?');
+      expect(definition).toContain('Capacity cleanup');
+      expect(definition).toContain('Job waiting for capacity');
+      // A capacity wait must not reach the Fail state, which would mark the model ERROR.
+      expect(definition).toContain('capacityWaiting');
+    });
+
+    it('guards every Choice against an absent path', () => {
+      const definition = getDefinition();
+      const parsed = JSON.parse(definition);
+
+      // Without these guards, a context missing trainingJob or capacityWaiting raises
+      // States.Runtime instead of following a controlled path.
+      const [jobRunningRule] = parsed.States['Job running?'].Choices;
+      expect(jobRunningRule.And[0]).toEqual({ Variable: '$.trainingJob.status', IsPresent: true });
+
+      const [capacityRule] = parsed.States['Initialization outcome?'].Choices;
+      expect(capacityRule.And[0]).toEqual({ Variable: '$.capacityWaiting', IsPresent: true });
+    });
+  });
+
   describe('SageMaker Role Permissions', () => {
     it('configures SageMaker role with correct permissions', () => {
       new Workflow(stack, 'TestWorkflow', {
@@ -119,19 +159,22 @@ describe('Workflow', () => {
       const template = Template.fromStack(stack);
       expect(template).toBeDefined();
 
-      // Check for SageMaker role with correct assume role policy
+      // Check for SageMaker role with correct assume role policy (AssumeRole + TagSession)
       template.hasResourceProperties('AWS::IAM::Role', {
-        AssumeRolePolicyDocument: {
-          Statement: [
-            {
+        AssumeRolePolicyDocument: Match.objectLike({
+          Statement: Match.arrayWith([
+            Match.objectLike({
               Action: 'sts:AssumeRole',
               Effect: 'Allow',
-              Principal: {
-                Service: 'sagemaker.amazonaws.com',
-              },
-            },
-          ],
-        },
+              Principal: { Service: 'sagemaker.amazonaws.com' },
+            }),
+            Match.objectLike({
+              Action: 'sts:TagSession',
+              Effect: 'Allow',
+              Principal: { Service: 'sagemaker.amazonaws.com' },
+            }),
+          ]),
+        }),
       });
 
       // Check for the resource policy on the SageMaker role
@@ -149,11 +192,6 @@ describe('Workflow', () => {
       template.hasResourceProperties('AWS::IAM::Policy', {
         PolicyDocument: {
           Statement: Match.arrayWith([
-            Match.objectLike({
-              Action: 'sagemaker:*TrainingJob*',
-              Effect: 'Allow',
-              Resource: Match.anyValue(),
-            }),
             Match.objectLike({
               Action: 'ecr:GetAuthorizationToken',
               Effect: 'Allow',
@@ -441,41 +479,8 @@ describe('Workflow', () => {
         },
       });
 
-      // Check for separate policy resources that are attached to the job dispatcher role
-      template.hasResourceProperties('AWS::IAM::Policy', {
-        PolicyDocument: {
-          Statement: Match.arrayWith([
-            Match.objectLike({
-              Action: 'sagemaker:ListTrainingJobs',
-              Effect: 'Allow',
-              Resource: '*',
-            }),
-          ]),
-        },
-        Roles: [
-          {
-            Ref: Match.stringLikeRegexp('.*JobDispatcherFunctionRole.*'),
-          },
-        ],
-      });
-
-      template.hasResourceProperties('AWS::IAM::Policy', {
-        PolicyDocument: {
-          Statement: Match.arrayWith([
-            Match.objectLike({
-              Action: 'servicequotas:GetServiceQuota',
-              Effect: 'Allow',
-              Resource: '*',
-            }),
-          ]),
-        },
-        Roles: [
-          {
-            Ref: Match.stringLikeRegexp('.*JobDispatcherFunctionRole.*'),
-          },
-        ],
-      });
-
+      // The dispatcher no longer performs a capacity check, so its role holds only StartExecution.
+      // CreateModel/RetryTraining gate admission before enqueueing, and JobInitializer rechecks.
       template.hasResourceProperties('AWS::IAM::Policy', {
         PolicyDocument: {
           Statement: Match.arrayWith([
@@ -489,6 +494,51 @@ describe('Workflow', () => {
         Roles: [
           {
             Ref: Match.stringLikeRegexp('.*JobDispatcherFunctionRole.*'),
+          },
+        ],
+      });
+    });
+
+    it('grants the job initializer the permissions its capacity recheck needs', () => {
+      new Workflow(stack, 'TestWorkflow', {
+        dynamoDBTable: table,
+        modelStorageBucket: bucket,
+        workflowJobQueue: queue,
+        simAppRepositoryUri: 'test-repo-uri',
+        namespace: TEST_NAMESPACE,
+      });
+
+      const template = Template.fromStack(stack);
+      expect(template).toBeDefined();
+
+      template.hasResourceProperties('AWS::IAM::Policy', {
+        PolicyDocument: {
+          Statement: Match.arrayWith([
+            // ListTrainingJobs defines no IAM resource type, so '*' is the only option.
+            Match.objectLike({
+              Action: 'sagemaker:ListTrainingJobs',
+              Effect: 'Allow',
+              Resource: '*',
+            }),
+            // Scoped to this account and Region. Not narrowed to deepracerindy-*: the account-wide
+            // instance quota counts training jobs this solution did not create.
+            Match.objectLike({
+              Action: 'sagemaker:DescribeTrainingJob',
+              Effect: 'Allow',
+              Resource: {
+                'Fn::Join': Match.arrayWith([Match.arrayWith([Match.stringLikeRegexp('.*:training-job/\\*')])]),
+              },
+            }),
+            Match.objectLike({
+              Action: 'servicequotas:GetServiceQuota',
+              Effect: 'Allow',
+              Resource: '*',
+            }),
+          ]),
+        },
+        Roles: [
+          {
+            Ref: Match.stringLikeRegexp('.*JobInitializerFunctionServiceRole.*'),
           },
         ],
       });
@@ -724,6 +774,124 @@ describe('Workflow', () => {
             }),
           ]),
         },
+      });
+    });
+  });
+
+  describe('ABAC Session-Tag Chaining', () => {
+    let template: Template;
+
+    beforeEach(() => {
+      new Workflow(stack, 'TestWorkflow', {
+        dynamoDBTable: table,
+        modelStorageBucket: bucket,
+        workflowJobQueue: queue,
+        simAppRepositoryUri: 'test-repo-uri',
+        namespace: TEST_NAMESPACE,
+      });
+      template = Template.fromStack(stack);
+    });
+
+    it('creates a job-creation role with tag-gated trust policy', () => {
+      expect(template).toBeDefined();
+      template.hasResourceProperties('AWS::IAM::Role', {
+        AssumeRolePolicyDocument: Match.objectLike({
+          Statement: Match.arrayWith([
+            Match.objectLike({
+              Action: 'sts:AssumeRole',
+              Effect: 'Allow',
+              Condition: {
+                StringLike: { 'aws:RequestTag/profile-id': '?*' },
+                'ForAllValues:StringEquals': { 'aws:TagKeys': ['profile-id'] },
+              },
+            }),
+            Match.objectLike({
+              Action: 'sts:TagSession',
+              Effect: 'Allow',
+              Condition: {
+                StringLike: { 'aws:RequestTag/profile-id': '?*' },
+                'ForAllValues:StringEquals': { 'aws:TagKeys': ['profile-id'] },
+              },
+            }),
+          ]),
+        }),
+      });
+    });
+
+    it('grants CreateTrainingJob and PassRole to the job-creation role only', () => {
+      expect(template).toBeDefined();
+      template.hasResourceProperties('AWS::IAM::Policy', {
+        PolicyDocument: {
+          Statement: Match.arrayWith([
+            Match.objectLike({
+              Action: 'sagemaker:CreateTrainingJob',
+              Effect: 'Allow',
+            }),
+            Match.objectLike({
+              Action: 'iam:PassRole',
+              Effect: 'Allow',
+              Condition: { StringEquals: { 'iam:PassedToService': 'sagemaker.amazonaws.com' } },
+            }),
+          ]),
+        },
+        Roles: [{ Ref: Match.stringLikeRegexp('.*SageMakerJobCreationRole.*') }],
+      });
+    });
+
+    it('scopes the execution role S3 policy to the ABAC profile-id tag', () => {
+      expect(template).toBeDefined();
+      template.hasResourceProperties('AWS::IAM::Policy', {
+        PolicyDocument: {
+          Statement: Match.arrayWith([
+            Match.objectLike({
+              Action: Match.arrayWith(['s3:GetObject', 's3:PutObject', 's3:DeleteObject']),
+              Effect: 'Allow',
+            }),
+          ]),
+        },
+        Roles: [{ Ref: Match.stringLikeRegexp('.*SageMakerRole.*') }],
+      });
+    });
+
+    it('grants jobInitializer sts:AssumeRole and sts:TagSession on the job-creation role', () => {
+      expect(template).toBeDefined();
+      template.hasResourceProperties('AWS::IAM::Policy', {
+        PolicyDocument: {
+          Statement: Match.arrayWith([
+            Match.objectLike({
+              Action: ['sts:AssumeRole', 'sts:TagSession'],
+              Effect: 'Allow',
+            }),
+          ]),
+        },
+        Roles: [{ Ref: Match.stringLikeRegexp('.*JobInitializerFunction.*') }],
+      });
+    });
+
+    it('sets SAGEMAKER_JOB_CREATION_ROLE_ARN on the jobInitializer environment', () => {
+      expect(template).toBeDefined();
+      template.hasResourceProperties('AWS::Lambda::Function', {
+        FunctionName: `${TEST_NAMESPACE}-DeepRacerIndyWorkflow-JobInitializerFn`,
+        Environment: {
+          Variables: Match.objectLike({
+            SAGEMAKER_JOB_CREATION_ROLE_ARN: Match.anyValue(),
+          }),
+        },
+      });
+    });
+
+    it('restricts sageMakerRole sts:TagSession to sagemaker.amazonaws.com', () => {
+      expect(template).toBeDefined();
+      template.hasResourceProperties('AWS::IAM::Role', {
+        AssumeRolePolicyDocument: Match.objectLike({
+          Statement: Match.arrayWith([
+            Match.objectLike({
+              Action: 'sts:TagSession',
+              Effect: 'Allow',
+              Principal: { Service: 'sagemaker.amazonaws.com' },
+            }),
+          ]),
+        }),
       });
     });
   });

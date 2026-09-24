@@ -78,9 +78,9 @@ export class EcrImageDownloaderWithTrigger extends Construct {
     const projectNamePrefix = `${props.projectNamePrefix ?? 'DeepRacerIndy-ECRImageDownloader'}`;
     const projectNamePrefixNamespaced = `${props.namespace}-${projectNamePrefix}`;
 
-    // Create stack-specific log group name to ensure isolation between deployments
-    // This allows each stack to have its own log group that persists after rollback
-    // const stackSpecificLogGroupName = `/aws/codebuild/${projectNamePrefix}-${stackName}`;
+    // Preserve the namespace-derived log-group name used by deployed customer stacks.
+    // Unlike a nested stack physical name, this name is stable across re-syntheses and
+    // does not force an AWS::Logs::LogGroup replacement during an in-place upgrade.
     const namespacedLogGroupName = `/aws/codebuild/${projectNamePrefixNamespaced}`;
 
     // Create IAM role for CodeBuild
@@ -153,6 +153,11 @@ export class EcrImageDownloaderWithTrigger extends Construct {
       retention: RetentionDays.ONE_WEEK,
       removalPolicy: DefaultLogRemovalPolicy,
       encryptionKey: kmsKey,
+    });
+    const ecrImagesLogGroup = LogGroupsHelper.getOrCreateLogGroup(scope, id, {
+      logGroupCategory: LogGroupCategory.ECR_IMAGES,
+      namespace: props.namespace,
+      useLegacyNamespaceName: true,
     });
 
     // Extract unique account ID and region pairs from publicImageUri
@@ -266,7 +271,7 @@ export class EcrImageDownloaderWithTrigger extends Construct {
     this.triggerFunction = new NodeLambdaFunction(this, 'TriggerFunction', {
       entry: path.join(__dirname, '../../../../../libs/lambda/src/ecr/handlers/triggerImageDownload.ts'),
       functionName: `${projectNamePrefix}-TriggerFunction`,
-      logGroupCategory: LogGroupCategory.ECR_IMAGES,
+      logGroup: ecrImagesLogGroup,
       namespace: props.namespace,
       handler: 'onEventHandler', // Use the specific onEvent handler
       environment: {
@@ -280,7 +285,7 @@ export class EcrImageDownloaderWithTrigger extends Construct {
     const isCompleteFunction = new NodeLambdaFunction(this, 'IsCompleteFunction', {
       entry: path.join(__dirname, '../../../../../libs/lambda/src/ecr/handlers/triggerImageDownload.ts'),
       functionName: `${projectNamePrefix}-IsCompleteFunction`,
-      logGroupCategory: LogGroupCategory.ECR_IMAGES,
+      logGroup: ecrImagesLogGroup,
       namespace: props.namespace,
       handler: 'isCompleteHandler', // Use the specific isComplete handler
       environment: {
@@ -311,12 +316,7 @@ export class EcrImageDownloaderWithTrigger extends Construct {
     this.customResourceProvider = new Provider(this, 'AutoTriggerProvider', {
       onEventHandler: this.triggerFunction,
       isCompleteHandler: isCompleteFunction, // Use separate function for isComplete
-      logGroup: LogGroupsHelper.getOrCreateLogGroup(scope, id, {
-        functionName: `${projectNamePrefix}-AutoTriggerProvider`,
-        logGroupCategory: LogGroupCategory.ECR_IMAGES,
-        namespace: props.namespace,
-        retention: RetentionDays.ONE_WEEK,
-      }),
+      logGroup: ecrImagesLogGroup,
       // Now we can set totalTimeout since we have isCompleteHandler
       totalTimeout: Duration.minutes(60), // 1 hour total timeout for long-running builds
       queryInterval: Duration.seconds(30), // Check every 30 seconds

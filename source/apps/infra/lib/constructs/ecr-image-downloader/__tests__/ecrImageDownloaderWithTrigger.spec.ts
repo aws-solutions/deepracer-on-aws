@@ -7,11 +7,7 @@ import { ComputeType } from 'aws-cdk-lib/aws-codebuild';
 import { Repository } from 'aws-cdk-lib/aws-ecr';
 
 import { TEST_NAMESPACE } from '../../../constants/testConstants.js';
-import {
-  createNodeLambdaFunctionMock,
-  createLogGroupsHelperMock,
-  createKmsHelperMock,
-} from '../../../constants/testMocks.js';
+import { createNodeLambdaFunctionMock, createKmsHelperMock } from '../../../constants/testMocks.js';
 import { EcrImageDownloaderWithTrigger, ImageRepositoryMapping } from '../ecrImageDownloaderWithTrigger.js';
 
 // Mock NodeLambdaFunction to use inline code instead of esbuild bundling.
@@ -19,9 +15,6 @@ vi.mock('../../common/nodeLambdaFunction.js', () => createNodeLambdaFunctionMock
 
 // Mock the KmsHelper to avoid having the single key shared between stacks
 vi.mock('../../common/kmsHelper.js', () => createKmsHelperMock());
-
-// Mock the LogGroupsHelper to avoid having the static log groups shared between stacks
-vi.mock('#constructs/common/logGroupsHelper.js', () => createLogGroupsHelperMock());
 
 describe('EcrImageDownloaderWithTrigger', () => {
   let stack: Stack;
@@ -542,6 +535,23 @@ describe('EcrImageDownloaderWithTrigger', () => {
             GroupName: Match.anyValue(),
           },
         },
+      });
+    });
+
+    it('should preserve the default namespace CodeBuild log group', () => {
+      new EcrImageDownloaderWithTrigger(stack, 'TestEcrImageDownloader', {
+        imageRepositoryMappings: [imageRepositoryMappings[0]],
+        namespace: 'default',
+      });
+
+      const template = Template.fromStack(stack);
+      expect(template).toBeDefined();
+      Template.fromStack(stack).hasResourceProperties('AWS::Logs::LogGroup', {
+        LogGroupName: '/aws/codebuild/default-DeepRacerIndy-ECRImageDownloader',
+        RetentionInDays: 7,
+      });
+      template.hasResourceProperties('AWS::Logs::LogGroup', {
+        LogGroupName: '/aws/lambda/default-DeepRacerEcrImages',
       });
     });
   });

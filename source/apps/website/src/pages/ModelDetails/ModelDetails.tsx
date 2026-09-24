@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Modal } from '@cloudscape-design/components';
+import Alert from '@cloudscape-design/components/alert';
+import Badge from '@cloudscape-design/components/badge';
 import Box from '@cloudscape-design/components/box';
 import Button from '@cloudscape-design/components/button';
 import ButtonDropdown from '@cloudscape-design/components/button-dropdown';
@@ -13,7 +15,7 @@ import SpaceBetween from '@cloudscape-design/components/space-between';
 import Spinner from '@cloudscape-design/components/spinner';
 import StatusIndicator from '@cloudscape-design/components/status-indicator';
 import Tabs from '@cloudscape-design/components/tabs';
-import { Evaluation, ModelStatus, AssetType, Model } from '@deepracer-indy/typescript-client';
+import { Evaluation, ModelSource, ModelStatus, AssetType, Model } from '@deepracer-indy/typescript-client';
 import { skipToken } from '@reduxjs/toolkit/query/react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -28,7 +30,9 @@ import {
   useDeleteModelMutation,
   useGetAssetUrlMutation,
   useGetModelQuery,
+  useRetryTrainingMutation,
 } from '#services/deepRacer/modelsApi';
+import { useGetProfileQuery } from '#services/deepRacer/profileApi.js';
 import {
   displayErrorNotification,
   displayInfoNotification,
@@ -56,6 +60,10 @@ const getStatusIndicatorType = (status: ModelStatus) => {
       return 'error';
     case ModelStatus.QUEUED:
       return 'pending';
+    // Distinct from QUEUED: no workflow message is queued and the job will not start until the user
+    // retries it.
+    case ModelStatus.WAITING_FOR_CAPACITY:
+      return 'warning';
     case ModelStatus.IMPORTING:
       return 'info';
     default:
@@ -76,9 +84,11 @@ const ModelDetails = () => {
     return msg;
   });
   const [showModal, setShowModal] = useState(false);
+  const [showRetryModal, setShowRetryModal] = useState(false);
   const [modelToDelete, setModelToDelete] = useState<Model>();
 
   const { modelId = '' } = useParams();
+  useGetProfileQuery();
   const modelStatusRef = useRef<ModelStatus>();
 
   const { listModelResult } = modelsApi.endpoints.listModels.useQueryState(undefined, {
@@ -97,6 +107,7 @@ const ModelDetails = () => {
   );
 
   const model = getModelResult ?? listModelResult;
+  const isPhysicalModel = model?.modelSource === ModelSource.IMPORTED_PHYSICAL;
 
   const { data: evaluations = [], isLoading: isListEvaluationsLoading } = useListEvaluationsQuery({ modelId });
 
@@ -110,7 +121,36 @@ const ModelDetails = () => {
   });
 
   const [deleteModel, { isLoading: isDeleteModelLoading }] = useDeleteModelMutation();
+  const [retryTraining, { isLoading: isRetryTrainingLoading }] = useRetryTrainingMutation();
   useModelDetailsNotifications(model, latestEvaluation);
+
+  const isWaitingForCapacity = model?.status === ModelStatus.WAITING_FOR_CAPACITY;
+
+  const onRetryTraining = async () => {
+    try {
+      const response = await retryTraining({ modelId }).unwrap();
+
+      if (response.status === ModelStatus.QUEUED) {
+        dispatch(
+          displaySuccessNotification({
+            content: response.message ?? t('notifications.retryTrainingQueued', { modelName: model?.name }),
+          }),
+        );
+      } else {
+        // Capacity is still unavailable (or could not be verified). The model stays
+        // WAITING_FOR_CAPACITY and the user can retry again later.
+        dispatch(
+          displayInfoNotification({
+            content: response.message ?? t('notifications.retryTrainingStillWaiting'),
+          }),
+        );
+      }
+    } catch {
+      dispatch(displayErrorNotification({ content: t('notifications.retryTrainingError') }));
+    } finally {
+      setShowRetryModal(false);
+    }
+  };
 
   useEffect(() => {
     modelStatusRef.current = model?.status;
@@ -120,10 +160,10 @@ const ModelDetails = () => {
   const [isPollingVirtualModel, setIsPollingVirtualModel] = useState(false);
 
   useEffect(() => {
-    let pollingInterval: number;
+    let downloadPollTimer: ReturnType<typeof setInterval>;
 
     if (isPollingVirtualModel) {
-      pollingInterval = window.setInterval(async () => {
+      downloadPollTimer = globalThis.setInterval(async () => {
         try {
           const response = await getAssetUrl({
             modelId,
@@ -138,18 +178,18 @@ const ModelDetails = () => {
                 content: t('notifications.virtualDownloadModelSuccess', { modelName: model?.name }),
               }),
             );
-            window.clearInterval(pollingInterval);
+            globalThis.clearInterval(downloadPollTimer);
           }
         } catch (error) {
           setIsPollingVirtualModel(false);
-          window.clearInterval(pollingInterval);
+          globalThis.clearInterval(downloadPollTimer);
         }
       }, POLLING_INTERVAL_TIME * 2); // 20 seconds
     }
 
     return () => {
-      if (pollingInterval) {
-        window.clearInterval(pollingInterval);
+      if (downloadPollTimer) {
+        globalThis.clearInterval(downloadPollTimer);
       }
     };
   }, [isPollingVirtualModel, modelId, getAssetUrl, dispatch, t, model?.name]);
@@ -244,7 +284,7 @@ const ModelDetails = () => {
                   {
                     id: ActionButtonId.CLONE,
                     text: t('buttons.cloneModel'),
-                    disabled: model.status !== ModelStatus.READY,
+                    disabled: model.status !== ModelStatus.READY || isPhysicalModel,
                   },
                   {
                     id: ActionButtonId.DELETE,
@@ -256,26 +296,38 @@ const ModelDetails = () => {
                     text: t('buttons.downloadModel'),
                     disabled: model.status !== ModelStatus.READY,
                   },
-                  {
-                    id: ActionButtonId.VIRTUALDOWNLOAD,
-                    text: t('buttons.downloadVirtualModel'),
-                    disabled: model.status !== ModelStatus.READY || isPollingVirtualModel,
-                  },
+                  ...(isPhysicalModel
+                    ? []
+                    : [
+                        {
+                          id: ActionButtonId.VIRTUALDOWNLOAD,
+                          text: t('buttons.downloadVirtualModel'),
+                          disabled: model.status !== ModelStatus.READY || isPollingVirtualModel,
+                        },
+                      ]),
                 ]}
               >
                 {t('buttons.actions')}
               </ButtonDropdown>
-              <Button
-                disabled={model.status !== ModelStatus.READY}
-                onClick={() => navigate(getPath(PageId.SUBMIT_MODEL_TO_RACE, { modelId }))}
-              >
-                {t('buttons.submitModel')}
-              </Button>
+              {!isPhysicalModel && (
+                <Button
+                  disabled={model.status !== ModelStatus.READY}
+                  onClick={() => navigate(getPath(PageId.SUBMIT_MODEL_TO_RACE, { modelId }))}
+                >
+                  {t('buttons.submitModel')}
+                </Button>
+              )}
+              {isWaitingForCapacity && (
+                <Button variant="primary" loading={isRetryTrainingLoading} onClick={() => setShowRetryModal(true)}>
+                  {t('buttons.retryTraining')}
+                </Button>
+              )}
             </SpaceBetween>
           }
         >
           <SpaceBetween direction="horizontal" size="s" alignItems="center">
             {model.name}
+            {isPhysicalModel && <Badge color="grey">Physical</Badge>}
             <StatusIndicator type={getStatusIndicatorType(model.status)}>
               {model.status === ModelStatus.ERROR && model.importErrorMessage ? (
                 <Popover header="Import Error" size="large" dismissButton={false} content={model.importErrorMessage}>
@@ -293,6 +345,11 @@ const ModelDetails = () => {
         </Header>
       }
     >
+      {isWaitingForCapacity && (
+        <Alert type="warning" header={t('capacityWaiting.header')}>
+          {model.statusMessage ?? t('capacityWaiting.content')}
+        </Alert>
+      )}
       {successMessage && (
         <Flashbar
           items={[
@@ -317,13 +374,21 @@ const ModelDetails = () => {
             label: t('tabs.training'),
             content: <TrainingTab model={model} />,
           },
-          {
-            id: 'evaluation',
-            label: t('tabs.evaluation'),
-            content: (
-              <EvaluationTab evaluations={evaluations} isEvaluationsLoading={isListEvaluationsLoading} model={model} />
-            ),
-          },
+          ...(isPhysicalModel
+            ? []
+            : [
+                {
+                  id: 'evaluation',
+                  label: t('tabs.evaluation'),
+                  content: (
+                    <EvaluationTab
+                      evaluations={evaluations}
+                      isEvaluationsLoading={isListEvaluationsLoading}
+                      model={model}
+                    />
+                  ),
+                },
+              ]),
         ]}
       />
       <Modal
@@ -365,6 +430,25 @@ const ModelDetails = () => {
         header={t('deleteModal.header')}
       >
         {t('deleteModal.content', { modelName: modelToDelete?.name })}
+      </Modal>
+      <Modal
+        onDismiss={() => setShowRetryModal(false)}
+        visible={showRetryModal}
+        footer={
+          <Box float="right">
+            <SpaceBetween direction="horizontal" size="xs">
+              <Button variant="link" onClick={() => setShowRetryModal(false)}>
+                {t('retryTrainingModal.cancelButton')}
+              </Button>
+              <Button variant="primary" loading={isRetryTrainingLoading} onClick={onRetryTraining}>
+                {t('retryTrainingModal.confirmButton')}
+              </Button>
+            </SpaceBetween>
+          </Box>
+        }
+        header={t('retryTrainingModal.header')}
+      >
+        {t('retryTrainingModal.content', { modelName: model.name })}
       </Modal>
     </ContentLayout>
   );

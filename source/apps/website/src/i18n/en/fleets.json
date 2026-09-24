@@ -1,0 +1,48 @@
+{
+  "list": {
+    "header": "Fleets",
+    "loadingText": "Loading fleets",
+    "refreshButtonLabel": "Refresh fleets",
+    "createButton": "Create fleet",
+    "editButton": "Edit fleet",
+    "deleteButton": "Delete fleet",
+    "emptyTitle": "No fleets",
+    "emptySubtitle": "Create a fleet to group devices for an event.",
+    "columnHeaders": {
+      "name": "Name",
+      "deviceCount": "Devices",
+      "createdAt": "Created"
+    },
+    "filters": {
+      "filteringAriaLabel": "Filter fleets",
+      "searchFilterPlaceholder": "Find fleets",
+      "matchCount": "{{count}} match",
+      "matchCount_other": "{{count}} matches"
+    },
+    "pagination": {
+      "nextPageLabel": "Next page",
+      "previousPageLabel": "Previous page",
+      "pageLabel": "Page {{pageNumber}} of all pages"
+    },
+    "deleteConfirmTitle": "Delete fleet",
+    "deleteConfirmMessage": "Delete fleet {{name}}? This cannot be undone.",
+    "deleteSuccessMessage": "Fleet {{name}} deleted.",
+    "deleteErrorMessage": "Failed to delete fleet {{name}}. It may be assigned to an event.",
+    "createSuccessMessage": "Fleet {{name}} created.",
+    "createErrorMessage": "Failed to create the fleet.",
+    "updateSuccessMessage": "Fleet {{name}} updated.",
+    "updateErrorMessage": "Failed to update the fleet."
+  },
+  "unauthorized": {
+    "header": "Access denied",
+    "message": "You do not have permission to manage fleets."
+  },
+  "form": {
+    "createTitle": "Create fleet",
+    "editTitle": "Edit fleet",
+    "nameLabel": "Fleet name",
+    "namePlaceholder": "e.g. London track A",
+    "saveButton": "Save",
+    "cancelButton": "Cancel"
+  }
+}
