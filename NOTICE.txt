@@ -17,22 +17,26 @@ This software includes third party software subject to the following copyrights:
 @ampproject/remapping under the Apache-2.0 license.
 @asamuzakjp/css-color under the MIT license.
 @aws-amplify/analytics under the Apache-2.0 license.
+@aws-amplify/api under the Apache-2.0 license.
 @aws-amplify/api-graphql under the Apache-2.0 license.
 @aws-amplify/api-rest under the Apache-2.0 license.
-@aws-amplify/api under the Apache-2.0 license.
 @aws-amplify/auth under the Apache-2.0 license.
 @aws-amplify/core under the Apache-2.0 license.
-@aws-amplify/data-schema-types under the Apache-2.0 license.
 @aws-amplify/data-schema under the Apache-2.0 license.
+@aws-amplify/data-schema-types under the Apache-2.0 license.
 @aws-amplify/datastore under the Apache-2.0 license.
 @aws-amplify/notifications under the Apache-2.0 license.
 @aws-amplify/storage under the Apache-2.0 license.
-@aws-amplify/ui-react-core under the Apache-2.0 license.
-@aws-amplify/ui-react under the Apache-2.0 license.
 @aws-amplify/ui under the Apache-2.0 license.
+@aws-amplify/ui-react under the Apache-2.0 license.
+@aws-amplify/ui-react-core under the Apache-2.0 license.
 @aws-cdk/asset-awscli-v1 under the Apache-2.0 license.
 @aws-cdk/asset-node-proxy-agent-v6 under the Apache-2.0 license.
+@aws-cdk/aws-service-spec under the Apache-2.0 license.
 @aws-cdk/cloud-assembly-schema under the Apache-2.0 license.
+@aws-cdk/cloudformation-diff under the Apache-2.0 license.
+@aws-cdk/cx-api under the Apache-2.0 license.
+@aws-cdk/service-spec-types under the Apache-2.0 license.
 @aws-crypto/crc32 under the Apache-2.0 license.
 @aws-crypto/crc32c under the Apache-2.0 license.
 @aws-crypto/sha1-browser under the Apache-2.0 license.
@@ -51,17 +55,18 @@ This software includes third party software subject to the following copyrights:
 @aws-sdk/client-cloudfront under the Apache-2.0 license.
 @aws-sdk/client-cloudwatch under the Apache-2.0 license.
 @aws-sdk/client-cloudwatch-logs under the Apache-2.0 license.
+@aws-sdk/client-eventbridge under the Apache-2.0 license.
 @aws-sdk/client-codebuild under the Apache-2.0 license.
-@aws-sdk/client-cognito-identity-provider under the Apache-2.0 license.
 @aws-sdk/client-cognito-identity under the Apache-2.0 license.
+@aws-sdk/client-cognito-identity-provider under the Apache-2.0 license.
 @aws-sdk/client-dynamodb under the Apache-2.0 license.
 @aws-sdk/client-firehose under the Apache-2.0 license.
 @aws-sdk/client-iot under the Apache-2.0 license.
 @aws-sdk/client-iot-data-plane under the Apache-2.0 license.
+@aws-sdk/client-kinesis under the Apache-2.0 license.
+@aws-sdk/client-kinesis-video under the Apache-2.0 license.
 @aws-sdk/client-kinesis-video-archived-media under the Apache-2.0 license.
 @aws-sdk/client-kinesis-video-media under the Apache-2.0 license.
-@aws-sdk/client-kinesis-video under the Apache-2.0 license.
-@aws-sdk/client-kinesis under the Apache-2.0 license.
 @aws-sdk/client-lambda under the Apache-2.0 license.
 @aws-sdk/client-personalize-events under the Apache-2.0 license.
 @aws-sdk/client-s3 under the Apache-2.0 license.
@@ -70,17 +75,21 @@ This software includes third party software subject to the following copyrights:
 @aws-sdk/client-sesv2 under the Apache-2.0 license.
 @aws-sdk/client-sfn under the Apache-2.0 license.
 @aws-sdk/client-sqs under the Apache-2.0 license.
-@aws-sdk/client-sso-oidc under the Apache-2.0 license.
+@aws-sdk/client-ssm under the Apache-2.0 license.
 @aws-sdk/client-sso under the Apache-2.0 license.
+@aws-sdk/client-sso-oidc under the Apache-2.0 license.
 @aws-sdk/client-sts under the Apache-2.0 license.
 @aws-sdk/core under the Apache-2.0 license.
+@aws-sdk/credential-provider-cognito-identity under the Apache-2.0 license.
 @aws-sdk/credential-provider-env under the Apache-2.0 license.
 @aws-sdk/credential-provider-http under the Apache-2.0 license.
 @aws-sdk/credential-provider-ini under the Apache-2.0 license.
+@aws-sdk/credential-provider-login under the Apache-2.0 license.
 @aws-sdk/credential-provider-node under the Apache-2.0 license.
 @aws-sdk/credential-provider-process under the Apache-2.0 license.
 @aws-sdk/credential-provider-sso under the Apache-2.0 license.
 @aws-sdk/credential-provider-web-identity under the Apache-2.0 license.
+@aws-sdk/credential-providers under the Apache-2.0 license.
 @aws-sdk/endpoint-cache under the Apache-2.0 license.
 @aws-sdk/lib-dynamodb under the Apache-2.0 license.
 @aws-sdk/lib-storage under the Apache-2.0 license.
@@ -98,11 +107,12 @@ This software includes third party software subject to the following copyrights:
 @aws-sdk/middleware-ssec under the Apache-2.0 license.
 @aws-sdk/middleware-user-agent under the Apache-2.0 license.
 @aws-sdk/nested-clients under the Apache-2.0 license.
+@aws-sdk/property-provider under the Apache-2.0 license.
 @aws-sdk/protocol-http under the Apache-2.0 license.
 @aws-sdk/region-config-resolver under the Apache-2.0 license.
 @aws-sdk/s3-request-presigner under the Apache-2.0 license.
-@aws-sdk/signature-v4-multi-region under the Apache-2.0 license.
 @aws-sdk/signature-v4 under the Apache-2.0 license.
+@aws-sdk/signature-v4-multi-region under the Apache-2.0 license.
 @aws-sdk/token-providers under the Apache-2.0 license.
 @aws-sdk/types under the Apache-2.0 license.
 @aws-sdk/util-arn-parser under the Apache-2.0 license.
@@ -148,6 +158,7 @@ This software includes third party software subject to the following copyrights:
 @babel/plugin-bugfix-firefox-class-in-computed-class-key under the MIT license.
 @babel/plugin-bugfix-safari-class-field-initializer-scope under the MIT license.
 @babel/plugin-bugfix-safari-id-destructuring-collision-in-function-expression under the MIT license.
+@babel/plugin-bugfix-safari-rest-destructuring-rhs-array under the MIT license.
 @babel/plugin-bugfix-v8-spread-parameters-in-optional-chaining under the MIT license.
 @babel/plugin-bugfix-v8-static-class-fields-redefine-readonly under the MIT license.
 @babel/plugin-proposal-decorators under the MIT license.
@@ -213,8 +224,8 @@ This software includes third party software subject to the following copyrights:
 @babel/plugin-transform-property-literals under the MIT license.
 @babel/plugin-transform-react-constant-elements under the MIT license.
 @babel/plugin-transform-react-display-name under the MIT license.
-@babel/plugin-transform-react-jsx-development under the MIT license.
 @babel/plugin-transform-react-jsx under the MIT license.
+@babel/plugin-transform-react-jsx-development under the MIT license.
 @babel/plugin-transform-react-pure-annotations under the MIT license.
 @babel/plugin-transform-regenerator under the MIT license.
 @babel/plugin-transform-regexp-modifiers under the MIT license.
@@ -230,7 +241,6 @@ This software includes third party software subject to the following copyrights:
 @babel/plugin-transform-unicode-property-regex under the MIT license.
 @babel/plugin-transform-unicode-regex under the MIT license.
 @babel/plugin-transform-unicode-sets-regex under the MIT license.
-@babel/plugin-bugfix-safari-rest-destructuring-rhs-array under the MIT license.
 @babel/preset-env under the MIT license.
 @babel/preset-modules under the MIT license.
 @babel/preset-react under the MIT license.
@@ -244,6 +254,7 @@ This software includes third party software subject to the following copyrights:
 @bundled-es-modules/cookie under the ISC license.
 @bundled-es-modules/statuses under the ISC license.
 @bundled-es-modules/tough-cookie under the ISC license.
+@cdklabs/tskb under the Apache-2.0 license.
 @cloudscape-design/board-components under the Apache-2.0 license.
 @cloudscape-design/code-view under the Apache-2.0 license.
 @cloudscape-design/collection-hooks under the Apache-2.0 license.
@@ -280,15 +291,15 @@ This software includes third party software subject to the following copyrights:
 @emotion/utils under the MIT license.
 @emotion/weak-memoize under the MIT license.
 @esbuild/aix-ppc64 under the MIT license.
-@esbuild/android-arm64 under the MIT license.
 @esbuild/android-arm under the MIT license.
+@esbuild/android-arm64 under the MIT license.
 @esbuild/android-x64 under the MIT license.
 @esbuild/darwin-arm64 under the MIT license.
 @esbuild/darwin-x64 under the MIT license.
 @esbuild/freebsd-arm64 under the MIT license.
 @esbuild/freebsd-x64 under the MIT license.
-@esbuild/linux-arm64 under the MIT license.
 @esbuild/linux-arm under the MIT license.
+@esbuild/linux-arm64 under the MIT license.
 @esbuild/linux-ia32 under the MIT license.
 @esbuild/linux-loong64 under the MIT license.
 @esbuild/linux-mips64el under the MIT license.
@@ -322,10 +333,10 @@ This software includes third party software subject to the following copyrights:
 @hapi/topo under the BSD-3-Clause license.
 @hookform/devtools under the MIT license.
 @hookform/resolvers under the MIT license.
+@httptoolkit/websocket-stream under the BSD-2-Clause license.
 @humanwhocodes/config-array under the Apache-2.0 license.
 @humanwhocodes/module-importer under the Apache-2.0 license.
 @humanwhocodes/object-schema under the BSD-3-Clause license.
-@httptoolkit/websocket-stream under the BSD-2-Clause license.
 @inquirer/ansi under the MIT license.
 @inquirer/confirm under the MIT license.
 @inquirer/core under the MIT license.
@@ -340,8 +351,8 @@ This software includes third party software subject to the following copyrights:
 @jest/core under the MIT license.
 @jest/create-cache-key-function under the MIT license.
 @jest/environment under the MIT license.
-@jest/expect-utils under the MIT license.
 @jest/expect under the MIT license.
+@jest/expect-utils under the MIT license.
 @jest/fake-timers under the MIT license.
 @jest/globals under the MIT license.
 @jest/pattern under the MIT license.
@@ -356,6 +367,7 @@ This software includes third party software subject to the following copyrights:
 @jridgewell/gen-mapping under the MIT license.
 @jridgewell/remapping under the MIT license.
 @jridgewell/resolve-uri under the MIT license.
+@jridgewell/set-array under the MIT license.
 @jridgewell/source-map under the MIT license.
 @jridgewell/sourcemap-codec under the MIT license.
 @jridgewell/trace-mapping under the MIT license.
@@ -366,6 +378,7 @@ This software includes third party software subject to the following copyrights:
 @middy/core under the MIT license.
 @monogrid/gainmap-js under the MIT license.
 @mswjs/interceptors under the MIT license.
+@napi-rs/nice under the MIT license.
 @napi-rs/nice-android-arm-eabi under the MIT license.
 @napi-rs/nice-android-arm64 under the MIT license.
 @napi-rs/nice-darwin-arm64 under the MIT license.
@@ -383,7 +396,6 @@ This software includes third party software subject to the following copyrights:
 @napi-rs/nice-win32-arm64-msvc under the MIT license.
 @napi-rs/nice-win32-ia32-msvc under the MIT license.
 @napi-rs/nice-win32-x64-msvc under the MIT license.
-@napi-rs/nice under the MIT license.
 @napi-rs/wasm-runtime under the MIT license.
 @nodable/entities under the MIT license.
 @nodelib/fs.scandir under the MIT license.
@@ -402,8 +414,8 @@ This software includes third party software subject to the following copyrights:
 @nrwl/workspace under the MIT license.
 @nx/cypress under the MIT license.
 @nx/devkit under the MIT license.
-@nx/eslint-plugin under the MIT license.
 @nx/eslint under the MIT license.
+@nx/eslint-plugin under the MIT license.
 @nx/js under the MIT license.
 @nx/linter under the MIT license.
 @nx/nx-darwin-arm64 under the MIT license.
@@ -421,6 +433,10 @@ This software includes third party software subject to the following copyrights:
 @nx/vite under the MIT license.
 @nx/web under the MIT license.
 @nx/workspace under the MIT license.
+@oclif/core under the MIT license.
+@oclif/linewrap under the ISC license.
+@oclif/plugin-help under the MIT license.
+@oclif/screen under the MIT license.
 @open-draft/deferred-promise under the MIT license.
 @open-draft/logger under the MIT license.
 @open-draft/until under the MIT license.
@@ -465,12 +481,12 @@ This software includes third party software subject to the following copyrights:
 @radix-ui/react-use-controllable-state under the MIT license.
 @radix-ui/react-use-effect-event under the MIT license.
 @radix-ui/react-use-escape-keydown under the MIT license.
+@radix-ui/react-use-is-hydrated under the MIT license.
 @radix-ui/react-use-layout-effect under the MIT license.
 @radix-ui/react-use-previous under the MIT license.
 @radix-ui/react-use-rect under the MIT license.
 @radix-ui/react-use-size under the MIT license.
 @radix-ui/rect under the MIT license.
-@radix-ui/react-use-is-hydrated under the MIT license.
 @react-spring/animated under the MIT license.
 @react-spring/core under the MIT license.
 @react-spring/rafz under the MIT license.
@@ -508,6 +524,7 @@ This software includes third party software subject to the following copyrights:
 @rollup/rollup-win32-ia32-msvc under the MIT license.
 @rollup/rollup-win32-x64-gnu under the MIT license.
 @rollup/rollup-win32-x64-msvc under the MIT license.
+@rtsao/scc under the MIT license.
 @sideway/address under the BSD-3-Clause license.
 @sideway/formula under the BSD-3-Clause license.
 @sideway/pinpoint under the BSD-3-Clause license.
@@ -518,8 +535,8 @@ This software includes third party software subject to the following copyrights:
 @sinonjs/samsam under the BSD-3-Clause license.
 @sinonjs/text-encoding under the Apache-2.0 license.
 @smithy/abort-controller under the Apache-2.0 license.
-@smithy/chunked-blob-reader-native under the Apache-2.0 license.
 @smithy/chunked-blob-reader under the Apache-2.0 license.
+@smithy/chunked-blob-reader-native under the Apache-2.0 license.
 @smithy/config-resolver under the Apache-2.0 license.
 @smithy/core under the Apache-2.0 license.
 @smithy/credential-provider-imds under the Apache-2.0 license.
@@ -569,8 +586,8 @@ This software includes third party software subject to the following copyrights:
 @smithy/util-utf8 under the Apache-2.0 license.
 @smithy/util-waiter under the Apache-2.0 license.
 @smithy/uuid under the Apache-2.0 license.
-@standard-schema/utils under the MIT license.
 @standard-schema/spec under the MIT license.
+@standard-schema/utils under the MIT license.
 @storybook/addon-actions under the MIT license.
 @storybook/addon-backgrounds under the MIT license.
 @storybook/addon-console under the MIT license.
@@ -587,22 +604,22 @@ This software includes third party software subject to the following copyrights:
 @storybook/blocks under the MIT license.
 @storybook/builder-vite under the MIT license.
 @storybook/components under the MIT license.
+@storybook/core under the MIT license.
 @storybook/core-common under the MIT license.
 @storybook/core-server under the MIT license.
-@storybook/core under the MIT license.
+@storybook/csf under the MIT license.
 @storybook/csf-plugin under the MIT license.
 @storybook/csf-tools under the MIT license.
-@storybook/csf under the MIT license.
 @storybook/global under the MIT license.
 @storybook/icons under the MIT license.
 @storybook/instrumenter under the MIT license.
 @storybook/manager-api under the MIT license.
 @storybook/preview-api under the MIT license.
+@storybook/react under the MIT license.
 @storybook/react-dom-shim under the MIT license.
 @storybook/react-vite under the MIT license.
-@storybook/react under the MIT license.
-@storybook/test-runner under the MIT license.
 @storybook/test under the MIT license.
+@storybook/test-runner under the MIT license.
 @storybook/theming under the MIT license.
 @stylistic/eslint-plugin under the MIT license.
 @svgr/babel-plugin-add-jsx-attribute under the MIT license.
@@ -623,19 +640,19 @@ This software includes third party software subject to the following copyrights:
 @swc-node/register under the MIT license.
 @swc-node/sourcemap-support under the MIT license.
 @swc/cli under the MIT license.
+@swc/core under the Apache-2.0 license.
 @swc/core-darwin-arm64 under the Apache-2.0 AND MIT licenses.
 @swc/core-darwin-x64 under the Apache-2.0 AND MIT licenses.
 @swc/core-linux-arm-gnueabihf under the Apache-2.0 license.
 @swc/core-linux-arm64-gnu under the Apache-2.0 AND MIT licenses.
 @swc/core-linux-arm64-musl under the Apache-2.0 AND MIT licenses.
+@swc/core-linux-ppc64-gnu under the Apache-2.0 license AND MIT licenses.
+@swc/core-linux-s390x-gnu under the Apache-2.0 license AND MIT licenses.
 @swc/core-linux-x64-gnu under the Apache-2.0 AND MIT licenses.
 @swc/core-linux-x64-musl under the Apache-2.0 AND MIT licenses.
 @swc/core-win32-arm64-msvc under the Apache-2.0 AND MIT licenses.
 @swc/core-win32-ia32-msvc under the Apache-2.0 AND MIT licenses.
 @swc/core-win32-x64-msvc under the Apache-2.0 AND MIT licenses.
-@swc/core-linux-ppc64-gnu under the Apache-2.0 license AND MIT licenses.
-@swc/core-linux-s390x-gnu under the Apache-2.0 license AND MIT licenses.
-@swc/core under the Apache-2.0 license.
 @swc/counter under the Apache-2.0 license.
 @swc/helpers under the Apache-2.0 license.
 @swc/jest under the MIT license.
@@ -657,18 +674,21 @@ This software includes third party software subject to the following copyrights:
 @types/archiver under the MIT license.
 @types/aria-query under the MIT license.
 @types/aws-lambda under the MIT license.
+@types/aws4 under the MIT license.
 @types/babel__core under the MIT license.
 @types/babel__generator under the MIT license.
 @types/babel__template under the MIT license.
 @types/babel__traverse under the MIT license.
+@types/cacheable-request under the MIT license.
 @types/chai under the MIT license.
+@types/cli-progress under the MIT license.
 @types/cls-hooked under the MIT license.
 @types/cookie under the MIT license.
 @types/deep-eql under the MIT license.
 @types/doctrine under the MIT license.
 @types/draco3d under the MIT license.
-@types/eslint-scope under the MIT license.
 @types/eslint under the MIT license.
+@types/eslint-scope under the MIT license.
 @types/estree under the MIT license.
 @types/graceful-fs under the MIT license.
 @types/http-cache-semantics under the MIT license.
@@ -679,18 +699,21 @@ This software includes third party software subject to the following copyrights:
 @types/js-yaml under the MIT license.
 @types/json-schema under the MIT license.
 @types/json5 under the MIT license.
+@types/keyv under the MIT license.
 @types/lodash under the MIT license.
 @types/mdx under the MIT license.
 @types/node under the MIT license.
 @types/offscreencanvas under the MIT license.
 @types/parse-json under the MIT license.
 @types/prop-types under the MIT license.
+@types/react under the MIT license.
 @types/react-dom under the MIT license.
 @types/react-reconciler under the MIT license.
-@types/react under the MIT license.
 @types/readdir-glob under the MIT license.
 @types/resolve under the MIT license.
+@types/responselike under the MIT license.
 @types/semver under the MIT license.
+@types/set-cookie-parser under the MIT license.
 @types/sinon under the MIT license.
 @types/sinonjs__fake-timers under the MIT license.
 @types/stack-utils under the MIT license.
@@ -703,8 +726,8 @@ This software includes third party software subject to the following copyrights:
 @types/wait-on under the MIT license.
 @types/webxr under the MIT license.
 @types/ws under the MIT license.
-@types/yargs-parser under the MIT license.
 @types/yargs under the MIT license.
+@types/yargs-parser under the MIT license.
 @typescript-eslint/eslint-plugin under the MIT license.
 @typescript-eslint/parser under the BSD-2-Clause license.
 @typescript-eslint/project-service under the MIT license.
@@ -715,7 +738,6 @@ This software includes third party software subject to the following copyrights:
 @typescript-eslint/typescript-estree under the MIT license.
 @typescript-eslint/utils under the MIT license.
 @typescript-eslint/visitor-keys under the MIT license.
-@types/set-cookie-parser under the MIT license.
 @ungap/structured-clone under the ISC license.
 @unrs/resolver-binding-android-arm-eabi under the MIT license.
 @unrs/resolver-binding-android-arm64 under the MIT license.
@@ -726,19 +748,19 @@ This software includes third party software subject to the following copyrights:
 @unrs/resolver-binding-linux-arm-musleabihf under the MIT license.
 @unrs/resolver-binding-linux-arm64-gnu under the MIT license.
 @unrs/resolver-binding-linux-arm64-musl under the MIT license.
+@unrs/resolver-binding-linux-loong64-gnu under the MIT license.
+@unrs/resolver-binding-linux-loong64-musl under the MIT license.
 @unrs/resolver-binding-linux-ppc64-gnu under the MIT license.
 @unrs/resolver-binding-linux-riscv64-gnu under the MIT license.
 @unrs/resolver-binding-linux-riscv64-musl under the MIT license.
 @unrs/resolver-binding-linux-s390x-gnu under the MIT license.
 @unrs/resolver-binding-linux-x64-gnu under the MIT license.
 @unrs/resolver-binding-linux-x64-musl under the MIT license.
+@unrs/resolver-binding-openharmony-arm64 under the MIT license.
 @unrs/resolver-binding-wasm32-wasi under the MIT license.
 @unrs/resolver-binding-win32-arm64-msvc under the MIT license.
 @unrs/resolver-binding-win32-ia32-msvc under the MIT license.
 @unrs/resolver-binding-win32-x64-msvc under the MIT license.
-@unrs/resolver-binding-linux-loong64-gnu under the MIT license.
-@unrs/resolver-binding-linux-loong64-musl under the MIT license.
-@unrs/resolver-binding-openharmony-arm64 under the MIT license.
 @use-gesture/core under the MIT license.
 @use-gesture/react under the MIT license.
 @vitejs/plugin-react-swc under the MIT license.
@@ -770,11 +792,11 @@ This software includes third party software subject to the following copyrights:
 @xhmikosr/archive-type under the MIT license.
 @xhmikosr/bin-check under the MIT license.
 @xhmikosr/bin-wrapper under the MIT license.
+@xhmikosr/decompress under the MIT license.
 @xhmikosr/decompress-tar under the MIT license.
 @xhmikosr/decompress-tarbz2 under the MIT license.
 @xhmikosr/decompress-targz under the MIT license.
 @xhmikosr/decompress-unzip under the MIT license.
-@xhmikosr/decompress under the MIT license.
 @xhmikosr/downloader under the MIT license.
 @xhmikosr/os-filter-obj under the MIT license.
 @xstate/react under the MIT license.
@@ -783,92 +805,82 @@ This software includes third party software subject to the following copyrights:
 @yarnpkg/lockfile under the BSD-2-Clause license.
 @yarnpkg/parsers under the BSD-2-Clause license.
 @zkochan/js-yaml under the MIT license.
-@aws-cdk/aws-service-spec under the Apache-2.0 license.
-@aws-cdk/cloudformation-diff under the Apache-2.0 license.
-@aws-cdk/cx-api under the Apache-2.0 license.
-@aws-cdk/service-spec-types under the Apache-2.0 license.
-@aws-sdk/credential-provider-cognito-identity under the Apache-2.0 license.
-@aws-sdk/credential-provider-login under the Apache-2.0 license.
-@aws-sdk/credential-providers under the Apache-2.0 license.
-@aws-sdk/property-provider under the Apache-2.0 license.
-@cdklabs/tskb under the Apache-2.0 license.
-@jridgewell/set-array under the MIT license.
-@oclif/core under the MIT license.
-@oclif/linewrap under the ISC license.
-@oclif/plugin-help under the MIT license.
-@oclif/screen under the MIT license.
-@rtsao/scc under the MIT license.
-@types/aws4 under the MIT license.
-@types/cacheable-request under the MIT license.
-@types/cli-progress under the MIT license.
-@types/keyv under the MIT license.
-@types/responselike under the MIT license.
-numpy under the BSD-3-Clause license. 
-scipy under the 0BSD license.
-shapely under the 0BSD license.
+ale-py under the GPL-2.0-only license.
+ament_cmake license under the Apache-2.0 license.
+ament_cmake_gmock under the Apache-2.0 license.
+ament_cmake_gtest under the Apache-2.0 license.
+ament_cmake_pytest under the Apache-2.0 license.
+ament_cmake_python under the Apache-2.0 license.
+ament_lint_auto under the Apache-2.0 license.
+annoy under the Apache-2.0 license.
+aws-lambda-powertools under the MIT-0 license.
+AWSSDK under the Apache-2.0 license.
+aws_common under the Apache-2.0 license.
+aws_ros2_common under the Apache-2.0 license.
+bokeh under the BSD 3-Clause.
+boto3 under the Apache-2.0 license.
+boto3-stubs under the MIT license.
+botocore under the Apache-2.0 license.
+catkin license under the Apache-2.0 license.
+coach-base under the Apache-2.0 license.
+CURL under the curl license.
+cv_bridge under the Apache-2.0 license.
+deepracer_gazebo_system_plugin under the Apache-2.0 license.
+deepracer_msgs under the Apache-2.0 license.
+deepracer_simulation_environment under the Apache-2.0 license.
+diagnostic_msgs under the Apache-2.0 license.
 flake8 under the MIT license.
+fractional-indexing under the CC0-1.0 license
+geometry_msgs under the Apache-2.0 license.
+gymnasium under the MIT license.
+gz-plugin2 under the Apache-2.0 license.
+gz-sim8 license under the Apache-2.0 license.
+h264_encoder_core under the Apache-2.0 license.
+h264_video_encoder under the Apache-2.0 license.
+i18n-iso-countries under the MIT license.
+image_transport under the BSD license.
+keras under the Apache-2.0 license.
+kinesis_manager under the Apache-2.0 license.
+kinesis_video_msgs under the Apache-2.0 license.
+kinesis_video_streamer under the Apache-2.0 license.
+kinesis_webrtc_manager under the Apache-2.0 license.
+kinesis_webrtc_streamer under the Apache-2.0 license.
+kubernetes under the Apache-2.0 license.
+KVSSDK under the Apache-2.0 license.
+libproducer under the Apache-2.0 license.
+matplotlib under the Apache-2.0 license.
+minio under the Apache-2.0 license.
+moto under the Apache-2.0 license.
+mypy under the MIT license.
+numpy under the BSD-3-Clause license. 
+openvino under the Apache-2.0 license.
+pandas under the Apache-2.0 license.
+pillow under the MIT-CMU License.
+PkgConfig under the MIT license.
+producer under the Apache-2.0 license.
+protobuf under the BSD-3-Clause license.
+psutil under the BSD-3-Clause license.
+pygame under the LGPL license(s).
+PyOpenGL under the 0BSD license.
+pytest under the MIT license.
+pytest-cov under the MIT license.
+rclcpp license under the Apache-2.0 license.
+redis under the MIT license.
+rmw under the Apache-2.0 license.
+rmw_implementation under the Apache-2.0 license.
+rosidl_default_generators under the Apache-2.0 license.
+rosidl_generator_c under the Apache-2.0 license.
+ruff under the MIT license.
+scikit-image under the 0BSD license.
+scikit-learn under the BSD 3-Clause License.
+scipy under the 0BSD license.
+sensor_msgs under the Apache-2.0 license.
+shapely under the 0BSD license.
+std_msgs under the Apache-2.0 license.
+std_srvs license under the Apache-2.0 license.
 tensorflow under the Apache-2.0 license.
 tensorflow-probability under the Apache-2.0 license.
 tf_keras under the Apache-2.0 license.
-keras under the Apache-2.0 license.
-pandas under the Apache-2.0 license.
-matplotlib under the Apache-2.0 license.
-gymnasium under the MIT license.
-PyOpenGL under the 0BSD license.
-annoy under the Apache-2.0 license.
-redis under the MIT license.
-psutil under the BSD-3-Clause license.
-kubernetes under the Apache-2.0 license.
-minio under the Apache-2.0 license.
-pytest-cov under the MIT license.
-coach-base under the Apache-2.0 license.
-scikit-learn under the BSD 3-Clause License.
-scikit-image under the 0BSD license.
-pillow under the MIT-CMU License.
-ale-py under the GPL-2.0-only license.
-pygame under the LGPL license(s).
-bokeh under the BSD 3-Clause.
-pytest under the MIT license.
-ament_cmake license under the Apache-2.0 license.
-rclcpp license under the Apache-2.0 license.
-rmw under the Apache-2.0 license.
-rosidl_generator_c under the Apache-2.0 license.
-aws_common under the Apache-2.0 license.
-ament_cmake_gtest under the Apache-2.0 license.
-aws_ros2_common under the Apache-2.0 license.
-AWSSDK under the Apache-2.0 license.
-ament_cmake_gmock under the Apache-2.0 license.
-geometry_msgs under the Apache-2.0 license.
-kinesis_video_msgs under the Apache-2.0 license.
-kinesis_webrtc_manager under the Apache-2.0 license.
-std_msgs under the Apache-2.0 license.
-kinesis_webrtc_streamer under the Apache-2.0 license.
-kinesis_manager under the Apache-2.0 license.
-image_transport under the BSD license.
-rmw_implementation under the Apache-2.0 license.
-kinesis_video_streamer under the Apache-2.0 license.
-rosidl_default_generators under the Apache-2.0 license.
-diagnostic_msgs under the Apache-2.0 license.
-h264_encoder_core under the Apache-2.0 license.
-sensor_msgs under the Apache-2.0 license.
-h264_video_encoder under the Apache-2.0 license.
-PkgConfig under the MIT license.
-CURL under the curl license.
-KVSSDK under the Apache-2.0 license.
-ament_cmake_python under the Apache-2.0 license.
-cv_bridge under the Apache-2.0 license.
-ament_lint_auto under the Apache-2.0 license.
-ament_cmake_pytest under the Apache-2.0 license.
-deepracer_simulation_environment under the Apache-2.0 license.
-std_srvs license under the Apache-2.0 license.
-deepracer_msgs under the Apache-2.0 license.
-gz-sim8 license under the Apache-2.0 license.
-gz-plugin2 under the Apache-2.0 license.
-deepracer_gazebo_system_plugin under the Apache-2.0 license.
-catkin license under the Apache-2.0 license.
-libproducer under the Apache-2.0 license.
-producer under the Apache-2.0 license.
-fractional-indexing under the CC0-1.0 license
 
 ********************
 OPEN SOURCE LICENSES

@@ -2,13 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { useCollection } from '@cloudscape-design/collection-hooks';
+import Badge from '@cloudscape-design/components/badge';
 import Button from '@cloudscape-design/components/button';
 import CollectionPreferences, {
   CollectionPreferencesProps,
 } from '@cloudscape-design/components/collection-preferences';
 import Link from '@cloudscape-design/components/link';
 import { TableProps } from '@cloudscape-design/components/table';
-import { CameraSensor, LidarSensor, Model } from '@deepracer-indy/typescript-client';
+import { CameraSensor, LidarSensor, Model, ModelSource } from '@deepracer-indy/typescript-client';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -23,6 +24,7 @@ import ModelStatusIndicator from './ModelStatusIndicator';
 enum ModelsTableColumn {
   MODEL_NAME = 'ModelName',
   MODEL_DESCRIPTION = 'ModelDescription',
+  SOURCE = 'Type',
   STATUS = 'Status',
   AGENT_ALGORITHM = 'AgentAlgorithm',
   CREATION_TIME = 'CreationTime',
@@ -57,6 +59,7 @@ export const useModelsTableConfig = (models: Model[]) => {
     visibleContent: [
       ModelsTableColumn.MODEL_NAME,
       ModelsTableColumn.MODEL_DESCRIPTION,
+      ModelsTableColumn.SOURCE,
       ModelsTableColumn.AGENT_ALGORITHM,
       ModelsTableColumn.STATUS,
       ModelsTableColumn.CREATION_TIME,
@@ -123,22 +126,42 @@ export const useModelsTableConfig = (models: Model[]) => {
       {
         id: ModelsTableColumn.STATUS,
         header: t('table.columnHeader.status'),
-        cell: (e) => <ModelStatusIndicator modelStatus={e.status} importErrorMessage={e.importErrorMessage} />,
+        cell: (e) => (
+          <ModelStatusIndicator
+            modelStatus={e.status}
+            importErrorMessage={e.importErrorMessage}
+            statusMessage={e.statusMessage}
+          />
+        ),
         sortingField: 'status',
+      },
+      {
+        id: ModelsTableColumn.SOURCE,
+        header: t('table.columnHeader.type'),
+        cell: (e) =>
+          e.modelSource === ModelSource.IMPORTED_PHYSICAL ? (
+            <Badge color="grey">{t('table.modelType.physical')}</Badge>
+          ) : (
+            <Badge color="blue">{t('table.modelType.virtual')}</Badge>
+          ),
+        sortingField: 'modelSource',
       },
       {
         id: ModelsTableColumn.AGENT_ALGORITHM,
         header: t('table.columnHeader.agentAlgorithm'),
-        cell: (e) => e.metadata.agentAlgorithm,
-        sortingComparator: (item1, item2) => item1.metadata.agentAlgorithm.localeCompare(item2.metadata.agentAlgorithm),
+        cell: (e) => e.metadata?.agentAlgorithm ?? '-',
+        sortingComparator: (item1, item2) =>
+          (item1.metadata?.agentAlgorithm ?? '').localeCompare(item2.metadata?.agentAlgorithm ?? ''),
       },
       {
         id: ModelsTableColumn.SENSORS,
         header: t('table.columnHeader.sensors'),
         cell: (e) =>
-          Object.values(e.metadata.sensors)
-            .map((sensor) => convertSensorToString(sensor))
-            .join(', '),
+          e.metadata?.sensors
+            ? Object.values(e.metadata.sensors)
+                .map((sensor) => convertSensorToString(sensor))
+                .join(', ')
+            : '-',
       },
       {
         id: ModelsTableColumn.CREATION_TIME,
@@ -173,6 +196,10 @@ export const useModelsTableConfig = (models: Model[]) => {
           {
             id: ModelsTableColumn.MODEL_DESCRIPTION,
             label: t('table.columnHeader.modelDescription'),
+          },
+          {
+            id: ModelsTableColumn.SOURCE,
+            label: t('table.columnHeader.type'),
           },
           {
             id: ModelsTableColumn.AGENT_ALGORITHM,

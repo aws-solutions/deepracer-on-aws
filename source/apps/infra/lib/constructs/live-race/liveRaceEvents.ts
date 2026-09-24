@@ -8,13 +8,19 @@ import { Alarm, CfnAlarm, ComparisonOperator, Metric, TreatMissingData } from 'a
 import { TableV2 } from 'aws-cdk-lib/aws-dynamodb';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { CfnPolicy } from 'aws-cdk-lib/aws-iot';
-import { EventSourceMapping, FilterCriteria, FilterRule, StartingPosition } from 'aws-cdk-lib/aws-lambda';
+import { EventSourceMapping, FilterCriteria, FilterRule, IFunction, StartingPosition } from 'aws-cdk-lib/aws-lambda';
 import { SqsDlq } from 'aws-cdk-lib/aws-lambda-event-sources';
 import { Queue, QueueEncryption } from 'aws-cdk-lib/aws-sqs';
 import { AwsCustomResource, AwsCustomResourcePolicy, PhysicalResourceId, Provider } from 'aws-cdk-lib/custom-resources';
 import { Construct } from 'constructs';
 
-import { iotTopicPrefix } from '../../constants/iotTopics.js';
+import {
+  iotCountdownTopicFilter,
+  iotDeviceTopicPrefix,
+  iotRaceTopicPrefix,
+  iotTopicPrefix,
+  iotTopicRoot,
+} from '../../constants/iotTopics.js';
 import { addCfnGuardSuppressionForAutoCreatedLambdas } from '../common/cfnGuardHelper.js';
 import { LogGroupCategory } from '../common/logGroupsHelper.js';
 import { NodeLambdaFunction } from '../common/nodeLambdaFunction.js';
@@ -24,6 +30,10 @@ export interface LiveRaceEventsProps {
   dynamoDBTable: TableV2;
   /** Function name of the AttachPolicy Lambda, used to create an error alarm. */
   attachPolicyFunctionName: string;
+  /** Device Pruning Lambda (Epic 2) fanned out to on device# TTL-delete stream events (Task 11). */
+  devicePrunerFunction: IFunction;
+  /** EventBridge bus name for emitting race-submitted events (D5). Optional — stats rebuild is skipped if absent. */
+  raceEventBusName?: string;
 }
 
 /**
@@ -36,6 +46,9 @@ export class LiveRaceEvents extends Construct {
   readonly iotEndpoint: string;
   readonly spectatorPolicyName: string;
   readonly spectatorPolicyArn: string;
+  /** Publish-capable IoT policy attached to admins / race facilitators. */
+  readonly facilitatorPolicyName: string;
+  readonly facilitatorPolicyArn: string;
 
   constructor(scope: Construct, id: string, props: LiveRaceEventsProps) {
     super(scope, id);
@@ -44,39 +57,73 @@ export class LiveRaceEvents extends Construct {
     const { region, account, partition } = Stack.of(this);
 
     // --- IoT Core ---
+    // The race tree is a sibling of the leaderboard tree under a shared root:
+    // deepracer/{ns}/leaderboard/* (virtual) and deepracer/{ns}/race/* (physical).
     const policyName = `${namespace}-SpectatorIoTPolicy`;
+    const facilitatorPolicyName = `${namespace}-FacilitatorIoTPolicy`;
+    const topicRoot = iotTopicRoot(namespace);
     const topicPrefix = iotTopicPrefix(namespace);
+    const raceTopicPrefix = iotRaceTopicPrefix(namespace);
+    const deviceTopicPrefix = iotDeviceTopicPrefix(namespace);
     this.spectatorPolicyName = policyName;
+    this.facilitatorPolicyName = facilitatorPolicyName;
 
+    // Connect + subscribe/receive across both topic trees (root scope), shared by both policies.
+    const connectStatement = {
+      Effect: 'Allow',
+      Action: 'iot:Connect',
+      Resource: `arn:${partition}:iot:${region}:${account}:client/*`,
+    };
+    const subscribeStatement = {
+      Effect: 'Allow',
+      Action: 'iot:Subscribe',
+      Resource: `arn:${partition}:iot:${region}:${account}:topicfilter/${topicRoot}/*`,
+    };
+    const receiveStatement = {
+      Effect: 'Allow',
+      Action: 'iot:Receive',
+      Resource: `arn:${partition}:iot:${region}:${account}:topic/${topicRoot}/*`,
+    };
+
+    // Base policy (spectator/commentator/racer): subscribe-only. No explicit Deny on publish —
+    // AttachPolicy is additive, so a Deny here could override the facilitator policy's publish Allow.
     const cfnPolicy = new CfnPolicy(this, 'SpectatorIoTPolicy', {
       policyName,
       policyDocument: {
         Version: '2012-10-17',
+        Statement: [connectStatement, subscribeStatement, receiveStatement],
+      },
+    });
+    this.spectatorPolicyArn = cfnPolicy.attrArn;
+
+    // Facilitator policy (admin / race facilitator): base access plus publish on the race
+    // topic tree for facilitator-driven overlay / lap events (client-side Path B). Publish scope
+    // is namespace-wide on the race tree — IoT policy variables cannot scope to event/track.
+    const cfnFacilitatorPolicy = new CfnPolicy(this, 'FacilitatorIoTPolicy', {
+      policyName: facilitatorPolicyName,
+      policyDocument: {
+        Version: '2012-10-17',
         Statement: [
+          connectStatement,
+          subscribeStatement,
+          receiveStatement,
           {
             Effect: 'Allow',
-            Action: 'iot:Connect',
-            Resource: `arn:${partition}:iot:${region}:${account}:client/*`,
-          },
-          {
-            Effect: 'Allow',
-            Action: 'iot:Subscribe',
-            Resource: `arn:${partition}:iot:${region}:${account}:topicfilter/${topicPrefix}/*`,
-          },
-          {
-            Effect: 'Allow',
-            Action: 'iot:Receive',
-            Resource: `arn:${partition}:iot:${region}:${account}:topic/${topicPrefix}/*`,
-          },
-          {
-            Effect: 'Deny',
             Action: 'iot:Publish',
-            Resource: `arn:${partition}:iot:${region}:${account}:topic/${topicPrefix}/*`,
+            Resource: `arn:${partition}:iot:${region}:${account}:topic/${raceTopicPrefix}/*`,
+          },
+          // Countdown/pause/resume topic: the browser publishes directly here (bypassing
+          // Lambda) during Timekeeping, so the named IoT policy needs its own Publish grant —
+          // the IAM role's iotCountdownPublishPolicy alone isn't sufficient (AWS IoT requires both).
+          {
+            Effect: 'Allow',
+            Action: 'iot:Publish',
+            Resource: `arn:${partition}:iot:${region}:${account}:topic/${iotCountdownTopicFilter(namespace)}`,
           },
         ],
       },
     });
-    this.spectatorPolicyArn = cfnPolicy.attrArn;
+    this.facilitatorPolicyArn = cfnFacilitatorPolicy.attrArn;
     // Custom resource that detaches all principals and deletes the IoT policy on stack teardown.
     // iot:DeletePolicy fails with DeleteConflictException if principals are still attached,
     // so we paginate ListTargetsForPolicy → DetachPolicy before deleting.
@@ -90,8 +137,8 @@ export class LiveRaceEvents extends Construct {
     deletePolicyEventHandlerFn.addToRolePolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
-        actions: ['iot:ListTargetsForPolicy'],
-        resources: [this.spectatorPolicyArn],
+        actions: ['iot:ListTargetsForPolicy', 'iot:ListPolicyVersions', 'iot:DeletePolicyVersion'],
+        resources: [this.spectatorPolicyArn, this.facilitatorPolicyArn],
       }),
     );
     // iot:DetachPolicy evaluates against the target (a Cognito Identity ID, not ARN-able),
@@ -114,7 +161,7 @@ export class LiveRaceEvents extends Construct {
       new PolicyStatement({
         effect: Effect.ALLOW,
         actions: ['iot:DeletePolicy'],
-        resources: [this.spectatorPolicyArn],
+        resources: [this.spectatorPolicyArn, this.facilitatorPolicyArn],
       }),
     );
     const deleteIoTPolicyProviderName = 'DeleteIoTPolicyProvider';
@@ -127,6 +174,11 @@ export class LiveRaceEvents extends Construct {
     new CustomResource(this, 'DeleteIoTPolicyResource', {
       serviceToken: deletePolicyProvider.serviceToken,
       properties: { policyName },
+    });
+    // Same detach-then-delete teardown for the facilitator policy (reuses the provider).
+    new CustomResource(this, 'DeleteFacilitatorIoTPolicyResource', {
+      serviceToken: deletePolicyProvider.serviceToken,
+      properties: { policyName: facilitatorPolicyName },
     });
     addCfnGuardSuppressionForAutoCreatedLambdas(this, deleteIoTPolicyProviderName);
 
@@ -185,6 +237,10 @@ export class LiveRaceEvents extends Construct {
       environment: {
         IOT_ENDPOINT: this.iotEndpoint,
         TOPIC_PREFIX: topicPrefix,
+        RACE_TOPIC_PREFIX: iotRaceTopicPrefix(namespace),
+        DEVICE_TOPIC_PREFIX: deviceTopicPrefix,
+        PRUNER_FUNCTION_NAME: props.devicePrunerFunction.functionName,
+        ...(props.raceEventBusName ? { RACE_EVENT_BUS_NAME: props.raceEventBusName } : {}),
       },
     });
 
@@ -195,6 +251,28 @@ export class LiveRaceEvents extends Construct {
         resources: [`arn:${partition}:iot:${region}:${account}:topic/${topicPrefix}/*`],
       }),
     );
+
+    // Device status/command routing (Task 11): publish to the device topic tree and fan out
+    // device# TTL-deletes to the Pruning Lambda (async invoke — the handler is not a stream
+    // consumer for pruning).
+    this.liveBroadcastHandler.addToRolePolicy(
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        actions: ['iot:Publish'],
+        resources: [`arn:${partition}:iot:${region}:${account}:topic/${deviceTopicPrefix}/*`],
+      }),
+    );
+
+    // Physical race topic tree (Task 16.5): the handler publishes run/lap broadcast events on
+    // the race tree for physical events, alongside the virtual-leaderboard tree above.
+    this.liveBroadcastHandler.addToRolePolicy(
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        actions: ['iot:Publish'],
+        resources: [`arn:${partition}:iot:${region}:${account}:topic/${raceTopicPrefix}/*`],
+      }),
+    );
+    props.devicePrunerFunction.grantInvoke(this.liveBroadcastHandler);
 
     const publishFailureMetric = new Metric({
       namespace: 'DeepRacerIndy',
@@ -222,11 +300,11 @@ export class LiveRaceEvents extends Construct {
 
     const publishLatencyAlarm = new Alarm(this, 'IoTPublishLatencyAlarm', {
       metric: publishLatencyMetric,
-      threshold: 1000,
+      threshold: 2000,
       comparisonOperator: ComparisonOperator.GREATER_THAN_THRESHOLD,
       evaluationPeriods: 3,
       treatMissingData: TreatMissingData.NOT_BREACHING,
-      alarmDescription: 'Alert when IoT Core publish P99 latency exceeds 1000ms',
+      alarmDescription: 'Alert when IoT Core publish P99 latency exceeds 2000ms',
     });
     // CDK's L2 Alarm/Metric API accepts `statistic` (simple stats like Sum/Average) but does not
     // expose `extendedStatistic` (percentile stats like p99) — the field is silently dropped when
@@ -244,15 +322,29 @@ export class LiveRaceEvents extends Construct {
         period: Duration.minutes(1),
         statistic: 'Sum',
       }),
-      threshold: 10,
+      threshold: 50,
       comparisonOperator: ComparisonOperator.GREATER_THAN_THRESHOLD,
-      evaluationPeriods: 3,
+      evaluationPeriods: 1,
       treatMissingData: TreatMissingData.NOT_BREACHING,
-      alarmDescription: 'Alert when AttachPolicy Lambda errors exceed 10 per minute',
+      alarmDescription: 'Alert when AttachPolicy Lambda errors exceed 50 per minute',
     });
 
-    dynamoDBTable.grantReadData(this.liveBroadcastHandler);
+    // grantReadWriteData (not grantReadData): the combined-leaderboard recompute path
+    // (Task 4.3, physical events) performs Ranking create/update/delete calls from within this
+    // handler — see recomputeCombinedLeaderboard in combinedLeaderboard.ts (Task 16.5).
+    dynamoDBTable.grantReadWriteData(this.liveBroadcastHandler);
     dynamoDBTable.grantStreamRead(this.liveBroadcastHandler);
+
+    // Grant PutEvents to the race event bus so the broadcast handler can emit race-submitted (D5).
+    if (props.raceEventBusName) {
+      this.liveBroadcastHandler.addToRolePolicy(
+        new PolicyStatement({
+          effect: Effect.ALLOW,
+          actions: ['events:PutEvents'],
+          resources: [`arn:${partition}:events:${region}:${account}:event-bus/${props.raceEventBusName}`],
+        }),
+      );
+    }
 
     new EventSourceMapping(this, 'BroadcastStreamEventSource', {
       target: this.liveBroadcastHandler,
@@ -267,6 +359,13 @@ export class LiveRaceEvents extends Construct {
       filters: [
         FilterCriteria.filter({
           eventName: FilterRule.or('INSERT', 'MODIFY'),
+        }),
+        // Device TTL-deletes: REMOVE on a device# row. Delivered so the handler can fan the
+        // expired instance out to the Pruning Lambda. Other REMOVE events are
+        // not delivered, keeping the handler's invocation volume unchanged for non-device rows.
+        FilterCriteria.filter({
+          eventName: FilterRule.isEqual('REMOVE'),
+          dynamodb: { OldImage: { pk: { S: FilterRule.beginsWith('device#') } } },
         }),
       ],
     });

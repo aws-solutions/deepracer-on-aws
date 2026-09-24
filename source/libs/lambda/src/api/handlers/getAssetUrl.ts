@@ -20,6 +20,7 @@ import {
   GetAssetUrlServerInput,
   GetAssetUrlServerOutput,
   getGetAssetUrlHandler,
+  InternalFailureError,
   JobStatus,
   ModelStatus,
   NotFoundError,
@@ -173,19 +174,36 @@ export class GetAssetUrlOperation {
   }
 
   async getPhysicalModelAssetUrl(modelItem: ModelItem) {
-    if (!modelItem.assetS3Locations.modelArtifactS3Location) {
-      throw new NotFoundError({ message: 'Unable to find physical model artifact.' });
+    // Trained models have modelArtifactS3Location set by SageMaker
+    if (modelItem.assetS3Locations.modelArtifactS3Location) {
+      logger.info('Generating presigned URL for physical model artifact.');
+
+      return s3Helper.getPresignedUrl(
+        modelItem.assetS3Locations.modelArtifactS3Location,
+        300,
+        `physicalmodel-${modelItem.name}.tar.gz`,
+      );
     }
 
-    logger.info('Generating presigned URL for physical model artifact.');
+    // Imported physical models: serve the preserved original archive
+    const optimizedPrefix = modelItem.optimizedArtifactsS3Prefix;
+    if (optimizedPrefix) {
+      const bucket = process.env.MODEL_DATA_BUCKET_NAME;
+      if (!bucket) {
+        logger.error('Missing required environment variable', { variable: 'MODEL_DATA_BUCKET_NAME' });
+        throw new InternalFailureError({ message: 'Service configuration error.' });
+      }
 
-    const physicalModelAssetUrl = await s3Helper.getPresignedUrl(
-      modelItem.assetS3Locations.modelArtifactS3Location,
-      300,
-      `physicalmodel-${modelItem.name}.tar.gz`,
-    );
+      logger.info('Generating presigned URL for imported physical model.');
 
-    return physicalModelAssetUrl;
+      return s3Helper.getPresignedUrl(
+        `s3://${bucket}/${optimizedPrefix}original-model.tar.gz`,
+        300,
+        `physicalmodel-${modelItem.name}.tar.gz`,
+      );
+    }
+
+    throw new NotFoundError({ message: 'Unable to find physical model artifact.' });
   }
 
   async getVirtualModelAssetUrl(modelItem: ModelItem) {

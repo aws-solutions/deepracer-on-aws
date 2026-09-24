@@ -12,5 +12,5 @@ const namespace = (typeof process !== 'undefined' && process.env?.NAMESPACE) || 
 export const userPoolDefaults = {
   userPoolName: `${namespace}-${BASE_USER_POOL_NAME}`,
   enableMFA: false,
-  enableSignups: false,
+  enableSignups: true,
 } as const satisfies DeepRacerIndyUserPoolConfig;

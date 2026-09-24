@@ -14,6 +14,7 @@ export const configureAuth = () => {
         userPoolId: environmentConfig.userPoolId,
         userPoolClientId: environmentConfig.userPoolClientId,
         identityPoolId: environmentConfig.identityPoolId,
+        allowGuestAccess: true,
       },
     },
   });

@@ -1,11 +1,9 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { SendMessageCommand, SendMessageCommandInput } from '@aws-sdk/client-sqs';
 import type { Operation } from '@aws-smithy/server-common';
 import {
   generateResourceId,
-  JobType,
   modelDao,
   ResourceId,
   trainingDao,
@@ -22,16 +20,14 @@ import {
   JobStatus,
   RaceType,
 } from '@deepracer-indy/typescript-server-client';
-import { logger, metricsLogger, waitForAll } from '@deepracer-indy/utils';
+import { metricsLogger, waitForAll } from '@deepracer-indy/utils';
 
-import { sqsClient } from '../../utils/clients/sqsClient.js';
 import { usageQuotaHelper } from '../../utils/UsageQuotaHelper.js';
-import type { WorkflowContext } from '../../workflow/types/workflowContext.js';
-import { DEFAULT_GROUP_MESSAGE_ID } from '../constants/sqs.js';
 import type { HandlerContext } from '../types/apiGatewayHandlerContext.js';
 import { getApiGatewayHandler } from '../utils/apiGateway.js';
 import { instrumentOperation } from '../utils/instrumentation/instrumentOperation.js';
 import { rewardFunctionValidator } from '../utils/RewardFunctionValidator.js';
+import { trainingDispatchHelper } from '../utils/TrainingDispatchHelper.js';
 import {
   validateCarCustomization,
   validateContinuousActionSpace,
@@ -103,7 +99,9 @@ export const CreateModelOperation: Operation<CreateModelServerInput, CreateModel
       description: modelDefinition.description,
       metadata: modelMetadata,
       name: modelName,
-      status: ModelStatus.QUEUED,
+      // The model is persisted before the capacity decision so the user never loses a submitted
+      // definition. It becomes QUEUED only once a workflow message is actually dispatched.
+      status: ModelStatus.WAITING_FOR_CAPACITY,
     }),
     trainingDao.create({
       modelId,
@@ -111,7 +109,7 @@ export const CreateModelOperation: Operation<CreateModelServerInput, CreateModel
       minEvalTrials: trainingConfig.minEvalTrials,
       objectAvoidanceConfig: trainingConfig.objectAvoidanceConfig,
       raceType: trainingConfig.raceType,
-      status: JobStatus.QUEUED,
+      status: JobStatus.WAITING_FOR_CAPACITY,
       terminationConditions: {
         maxTimeInMinutes: trainingConfig.maxTimeInMinutes,
       },
@@ -130,27 +128,15 @@ export const CreateModelOperation: Operation<CreateModelServerInput, CreateModel
     ),
   ]);
 
-  const workflowInput: WorkflowContext<JobType.TRAINING> = {
+  // Usage counters were incremented exactly once above. Moving between WAITING_FOR_CAPACITY and
+  // QUEUED must never touch them again.
+  await trainingDispatchHelper.dispatchIfCapacityAvailable({
     modelId,
     profileId,
     jobName: trainingItem.name,
-  };
-
-  const sendMessageCommandInput: SendMessageCommandInput = {
-    QueueUrl: process.env.WORKFLOW_JOB_QUEUE_URL,
-    MessageBody: JSON.stringify(workflowInput),
-    MessageGroupId: DEFAULT_GROUP_MESSAGE_ID,
-    MessageDeduplicationId: trainingItem.name,
-  };
-
-  logger.info('Sending workflow SQS message', { workflowInput, sendMessageCommandInput });
-
-  const sendMessageResponse = await sqsClient.send(new SendMessageCommand(sendMessageCommandInput));
-
-  logger.info('Successfully added message to queue', { sendMessageResponse });
+  });
 
   metricsLogger.logCreateModel();
-
   return {
     modelId: modelItem.modelId,
   } satisfies CreateModelServerOutput;

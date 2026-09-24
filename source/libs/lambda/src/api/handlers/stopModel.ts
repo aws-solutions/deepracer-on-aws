@@ -57,8 +57,9 @@ export const StopModelOperation: Operation<StopModelServerInput, StopModelServer
       });
       break;
     }
+    case ModelStatus.WAITING_FOR_CAPACITY:
     case ModelStatus.TRAINING:
-      logger.debug('Model is TRAINING, fetching stoppable training');
+      logger.debug('Model has a training job, fetching stoppable training', { modelStatus: modelItem.status });
       stoppableJob = await trainingDao.getStoppableTraining(modelId);
       break;
     default:
@@ -94,6 +95,15 @@ export const StopModelOperation: Operation<StopModelServerInput, StopModelServer
       modelStatus = ModelStatus.STOPPING;
       await sageMakerHelper.stopTrainingJob(stoppableJob.name);
       logger.debug('SageMaker job stop command sent', { jobName: stoppableJob.name });
+      break;
+    case JobStatus.WAITING_FOR_CAPACITY:
+      logger.debug('Job is WAITING_FOR_CAPACITY, canceling job', { jobName: stoppableJob.name });
+      /**
+       * A waiting job has no SQS message and no SageMaker job, so there is nothing to stop —
+       * setting the final statuses is the whole cancellation.
+       */
+      jobStatus = JobStatus.CANCELED;
+      modelStatus = workflowHelper.isTraining(stoppableJob) ? ModelStatus.ERROR : ModelStatus.READY;
       break;
     case JobStatus.QUEUED:
       logger.debug('Job is QUEUED, canceling job', { jobName: stoppableJob.name });

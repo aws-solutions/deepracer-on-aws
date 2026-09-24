@@ -1,0 +1,68 @@
+{
+  "header": "Uploads to car status",
+  "actions": {
+    "refresh": "Refresh"
+  },
+  "eventSelector": {
+    "placeholder": "Select an event",
+    "empty": "No events available",
+    "hint": "Select an event to view deployment history."
+  },
+  "charts": {
+    "summary": {
+      "header": "Summary",
+      "subtitle": "Type"
+    },
+    "duration": {
+      "header": "Upload times",
+      "subtitle": "Seconds",
+      "seriesTitle": "Duration (s)",
+      "xTitle": "Time"
+    },
+    "empty": "No data available"
+  },
+  "table": {
+    "header": "Uploads to car status",
+    "loading": "Loading deployments...",
+    "matches": "matches",
+    "columns": {
+      "status": "Status",
+      "modelName": "Model name",
+      "carName": "Car name",
+      "startTime": "Start time",
+      "uploadStartTime": "Upload start time",
+      "endTime": "End time",
+      "duration": "Duration",
+      "jobId": "Job ID"
+    },
+    "empty": {
+      "title": "No deployments",
+      "description": "No model deployments found for this event."
+    },
+    "noMatch": {
+      "title": "No matches",
+      "description": "No deployments match the current filter."
+    },
+    "status": {
+      "completed": "Completed",
+      "inProgress": "In progress",
+      "failed": "Failed",
+      "pending": "Pending"
+    }
+  },
+  "preferences": {
+    "title": "Preferences",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "pageSizeTitle": "Select page size",
+    "pageSize": "{{count}} items",
+    "wrapLines": "Wrap lines",
+    "wrapLinesDescription": "Check to see all the text and wrap the lines",
+    "stripedRows": "Striped rows",
+    "stripedRowsDescription": "Select to add alternating shaded rows",
+    "compactMode": "Compact mode",
+    "compactModeDescription": "Select to display content in a denser, more compact mode",
+    "visibleColumns": "Select visible columns",
+    "visibleColumnsLabel": "Deployment information"
+  }
+}

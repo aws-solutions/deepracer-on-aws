@@ -7,6 +7,13 @@ import { cognitoClient } from '../../../utils/clients/cognitoClient.js';
 import { TEST_OPERATION_CONTEXT } from '../../constants/testConstants.js';
 import { UpdateGroupMembershipOperation } from '../updateGroupMembership.js';
 
+vi.mock('../../utils/apiGateway.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../utils/apiGateway.js')>();
+  return { ...actual, isUserAdmin: (...args: unknown[]) => mockIsUserAdmin(...args) };
+});
+
+const mockIsUserAdmin = vi.fn().mockResolvedValue(true);
+
 interface TestInput {
   profileId: string;
   targetUserPoolGroup: UserGroups;
@@ -15,6 +22,7 @@ interface TestInput {
 describe('UpdateGroupMembership', () => {
   beforeEach(() => {
     process.env.USER_POOL_ID = 'us-east-1_testpool';
+    mockIsUserAdmin.mockResolvedValue(true);
   });
 
   afterEach(() => {

@@ -1,6 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import Alert from '@cloudscape-design/components/alert';
 import Box from '@cloudscape-design/components/box';
 import Button from '@cloudscape-design/components/button';
 import ContentLayout from '@cloudscape-design/components/content-layout';
@@ -11,6 +12,7 @@ import SpaceBetween from '@cloudscape-design/components/space-between';
 import Spinner from '@cloudscape-design/components/spinner';
 import Tabs from '@cloudscape-design/components/tabs';
 import { UserGroups } from '@deepracer-indy/typescript-client';
+import { skipToken } from '@reduxjs/toolkit/query/react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -39,29 +41,57 @@ const RaceDetails = () => {
   const { leaderboardId = '' } = useParams();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { data: rankings = [] } = useListRankingsQuery({ leaderboardId }, { refetchOnMountOrArgChange: true });
-  const { data: personalRanking } = useGetRankingQuery({ leaderboardId }, { refetchOnMountOrArgChange: true });
-  const { data: submissions = [] } = useListSubmissionsQuery({ leaderboardId }, { refetchOnMountOrArgChange: true });
+  const {
+    data: rankings = [],
+    refetch: refetchRankings,
+    isFetching: isRankingsFetching,
+  } = useListRankingsQuery(leaderboardId ? { leaderboardId } : skipToken, { refetchOnMountOrArgChange: true });
+  const { data: personalRanking } = useGetRankingQuery(leaderboardId ? { leaderboardId } : skipToken, {
+    refetchOnMountOrArgChange: true,
+  });
+  const {
+    data: submissions = [],
+    refetch: refetchSubmissions,
+    isFetching: isSubmissionsFetching,
+  } = useListSubmissionsQuery(leaderboardId ? { leaderboardId } : skipToken, { refetchOnMountOrArgChange: true });
   const [deleteLeaderboard] = useDeleteLeaderboardMutation();
   const {
     data: leaderboard,
     isLoading: isLeaderboardLoading,
     isUninitialized: isGetLeaderboardUninitialized,
-  } = useGetLeaderboardQuery({ leaderboardId });
+  } = useGetLeaderboardQuery(leaderboardId ? { leaderboardId } : skipToken);
   const { data: liveRaceState, isLoading: isLiveRaceStateLoading } = useGetLiveRaceStateQuery(
     { leaderboardId },
     { skip: !leaderboard?.isLive, pollingInterval: 5000 },
   );
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [editActiveRaceModalVisible, setEditActiveRaceModalVisible] = useState(false);
   const [canManageRaces, setCanManageRaces] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    const checkRaceManagementPermissions = async () => {
-      setCanManageRaces(await checkUserGroupMembership([UserGroups.RACE_FACILITATORS, UserGroups.ADMIN]));
+    const checkPermissions = async () => {
+      const [canManage, admin] = await Promise.all([
+        checkUserGroupMembership([UserGroups.RACE_FACILITATORS, UserGroups.ADMIN]),
+        checkUserGroupMembership([UserGroups.ADMIN]),
+      ]);
+      setCanManageRaces(canManage);
+      setIsAdmin(admin);
     };
 
-    void checkRaceManagementPermissions();
+    void checkPermissions();
   }, []);
+
+  const isActiveRace =
+    leaderboard && !leaderboard.isLive && new Date() >= leaderboard.openTime && new Date() < leaderboard.closeTime;
+
+  const handleEditClick = () => {
+    if (isActiveRace && isAdmin) {
+      setEditActiveRaceModalVisible(true);
+    } else {
+      navigate(getPath(PageId.EDIT_RACE, { leaderboardId }));
+    }
+  };
 
   if (isGetLeaderboardUninitialized || isLeaderboardLoading) {
     return <Spinner />;
@@ -86,7 +116,7 @@ const RaceDetails = () => {
                 <>
                   <Button
                     variant="normal"
-                    disabled={isDeleteDisabled(leaderboard)}
+                    disabled={isDeleteDisabled(leaderboard, isAdmin)}
                     onClick={() => setDeleteModalVisible(true)}
                     data-testid="btn-delete-race"
                   >
@@ -94,8 +124,9 @@ const RaceDetails = () => {
                   </Button>
                   <Button
                     variant="normal"
-                    disabled={isEditDisabled(leaderboard)}
-                    onClick={() => navigate(getPath(PageId.EDIT_RACE, { leaderboardId }))}
+                    disabled={isEditDisabled(leaderboard, isAdmin)}
+                    onClick={handleEditClick}
+                    data-testid="btn-edit-race"
                   >
                     {t('editRace')}
                   </Button>
@@ -145,6 +176,8 @@ const RaceDetails = () => {
                     rankings={rankings}
                     leaderboard={leaderboard}
                     submissionPeriodOpen={liveRaceState?.race?.submissionPeriodOpen}
+                    onRefresh={refetchRankings}
+                    isRefreshing={isRankingsFetching}
                   />
                 ),
                 id: 'leaderboard',
@@ -156,6 +189,8 @@ const RaceDetails = () => {
                     submissions={submissions}
                     leaderboard={leaderboard}
                     submissionPeriodOpen={liveRaceState?.race?.submissionPeriodOpen}
+                    onRefresh={refetchSubmissions}
+                    isRefreshing={isSubmissionsFetching}
                   />
                 ),
                 id: 'yourSubmissions',
@@ -164,6 +199,8 @@ const RaceDetails = () => {
           />
         </Grid>
       </SpaceBetween>
+
+      {/* Delete confirmation modal */}
       <Modal
         onDismiss={() => setDeleteModalVisible(false)}
         visible={deleteModalVisible}
@@ -201,7 +238,34 @@ const RaceDetails = () => {
         }
         header={t('deleteRace')}
       >
-        {t('deleteRaceConfirm')}
+        {isActiveRace ? <Alert type="warning">{t('deleteActiveRaceConfirm')}</Alert> : t('deleteRaceConfirm')}
+      </Modal>
+
+      {/* Edit active race confirmation modal */}
+      <Modal
+        onDismiss={() => setEditActiveRaceModalVisible(false)}
+        visible={editActiveRaceModalVisible}
+        footer={
+          <Box float="right">
+            <SpaceBetween direction="horizontal" size="xs">
+              <Button onClick={() => setEditActiveRaceModalVisible(false)} variant="normal">
+                {t('submissionsTable.collectionPreferences.cancelLabel')}
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  setEditActiveRaceModalVisible(false);
+                  navigate(getPath(PageId.EDIT_RACE, { leaderboardId }));
+                }}
+              >
+                {t('editRace')}
+              </Button>
+            </SpaceBetween>
+          </Box>
+        }
+        header={t('editRace')}
+      >
+        <Alert type="warning">{t('editActiveRaceConfirm')}</Alert>
       </Modal>
     </ContentLayout>
   );

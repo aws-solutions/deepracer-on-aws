@@ -2,7 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { deepRacerIndyAppConfig } from '@deepracer-indy/config';
-import { ModelMetadata, ModelStatus, CarCustomization } from '@deepracer-indy/typescript-server-client';
+import {
+  ModelMetadata,
+  ModelStatus,
+  CarCustomization,
+  ModelSource,
+  OptimizationStatus,
+} from '@deepracer-indy/typescript-server-client';
 import { CustomAttributeType, Entity, EntityItem } from 'electrodb';
 
 import { METADATA_ATTRIBUTES, DynamoDBItemAttribute } from '../constants/itemAttributes.js';
@@ -131,6 +137,26 @@ export const ModelsEntity = new Entity(
         required: false,
       },
       [DynamoDBItemAttribute.IMPORT_ERROR_MESSAGE]: {
+        type: 'string',
+        required: false,
+      },
+      [DynamoDBItemAttribute.STATUS_MESSAGE]: {
+        type: 'string',
+        required: false,
+      },
+      [DynamoDBItemAttribute.OPTIMIZATION_STATUS]: {
+        type: Object.values(OptimizationStatus),
+        required: false,
+      },
+      [DynamoDBItemAttribute.OPTIMIZATION_ERROR_MESSAGE]: {
+        type: 'string',
+        required: false,
+      },
+      [DynamoDBItemAttribute.MODEL_SOURCE]: {
+        type: Object.values(ModelSource),
+        required: false,
+      },
+      [DynamoDBItemAttribute.OPTIMIZED_ARTIFACTS_S3_PREFIX]: {
         type: 'string',
         required: false,
       },

@@ -2,6 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
+  BulkInviteUserCommand,
+  BulkInviteUserCommandInput,
+  BulkInviteUserCommandOutput,
+  BulkInviteJobStatus,
   CreateProfileCommand,
   CreateProfileCommandInput,
   CreateProfileCommandOutput,
@@ -11,10 +15,17 @@ import {
   DeleteProfileModelsCommand,
   DeleteProfileModelsCommandInput,
   DeleteProfileModelsCommandOutput,
+  GetBulkInviteUserJobStatusCommand,
+  GetBulkInviteUserJobStatusCommandInput,
+  GetBulkInviteUserJobStatusCommandOutput,
   GetProfileCommand,
   GetProfileCommandOutput,
   Profile,
   paginateListProfiles,
+  RegisterUserCommand,
+  ResendInviteCommand,
+  ResendInviteCommandInput,
+  ResendInviteCommandOutput,
   UpdateGroupMembershipCommand,
   UpdateGroupMembershipCommandInput,
   UpdateGroupMembershipCommandOutput,
@@ -65,6 +76,40 @@ export const updateGroupMembership = {
   updateGroupMembershipTransformResponse: (response: UpdateGroupMembershipCommandOutput) => undefined,
 };
 
+export interface BulkInviteJobSummary {
+  jobId: string;
+  status: BulkInviteJobStatus;
+  totalEntries: number;
+}
+
+export const bulkInviteUser = {
+  bulkInviteUserCommand: (input: BulkInviteUserCommandInput) => ({
+    command: new BulkInviteUserCommand(input),
+    displayNotificationOnError: false,
+  }),
+  bulkInviteUserTransformResponse: (response: BulkInviteUserCommandOutput): BulkInviteJobSummary => ({
+    jobId: response.jobId,
+    status: response.status,
+    totalEntries: response.totalEntries,
+  }),
+};
+
+export const getBulkInviteUserJobStatus = {
+  getBulkInviteUserJobStatusCommand: (input: GetBulkInviteUserJobStatusCommandInput) => ({
+    command: new GetBulkInviteUserJobStatusCommand(input),
+    displayNotificationOnError: false,
+  }),
+  getBulkInviteUserJobStatusTransformResponse: (response: GetBulkInviteUserJobStatusCommandOutput) => response,
+};
+
+export const resendInvite = {
+  resendInviteCommand: (input: ResendInviteCommandInput) => ({
+    command: new ResendInviteCommand(input),
+    displayNotificationOnError: false,
+  }),
+  resendInviteTransformResponse: (response: ResendInviteCommandOutput) => response.message,
+};
+
 export const profileApi = deepRacerApi.injectEndpoints({
   endpoints: (build) => ({
     createProfile: build.mutation<string, CreateProfileCommandInput>({
@@ -104,6 +149,25 @@ export const profileApi = deepRacerApi.injectEndpoints({
       transformResponse: updateGroupMembership.updateGroupMembershipTransformResponse,
       invalidatesTags: [{ type: DeepRacerApiQueryTagType.PROFILE }],
     }),
+    registerUser: build.mutation<{ id: string }, { emailAddress: string; countryCode?: string }>({
+      query: (input) => ({ command: new RegisterUserCommand(input) }),
+      invalidatesTags: [{ type: DeepRacerApiQueryTagType.PROFILE }],
+    }),
+    bulkInviteUser: build.mutation<BulkInviteJobSummary, BulkInviteUserCommandInput>({
+      query: bulkInviteUser.bulkInviteUserCommand,
+      transformResponse: bulkInviteUser.bulkInviteUserTransformResponse,
+    }),
+    getBulkInviteUserJobStatus: build.query<
+      GetBulkInviteUserJobStatusCommandOutput,
+      GetBulkInviteUserJobStatusCommandInput
+    >({
+      query: getBulkInviteUserJobStatus.getBulkInviteUserJobStatusCommand,
+      transformResponse: getBulkInviteUserJobStatus.getBulkInviteUserJobStatusTransformResponse,
+    }),
+    resendInvite: build.mutation<string, ResendInviteCommandInput>({
+      query: resendInvite.resendInviteCommand,
+      transformResponse: resendInvite.resendInviteTransformResponse,
+    }),
   }),
 });
 
@@ -115,4 +179,8 @@ export const {
   useDeleteProfileMutation,
   useDeleteProfileModelsMutation,
   useUpdateGroupMembershipMutation,
+  useRegisterUserMutation,
+  useBulkInviteUserMutation,
+  useGetBulkInviteUserJobStatusQuery,
+  useResendInviteMutation,
 } = profileApi;

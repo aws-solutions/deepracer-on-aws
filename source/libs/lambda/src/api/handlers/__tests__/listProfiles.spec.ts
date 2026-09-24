@@ -3,10 +3,18 @@
 
 import { DEFAULT_MAX_QUERY_RESULTS, ProfileItem, TEST_PROFILE_ITEM, profileDao } from '@deepracer-indy/database';
 import { generateResourceId } from '@deepracer-indy/database/src/utils/resourceUtils';
+import { NotAuthorizedError } from '@deepracer-indy/typescript-server-client';
 import { vi } from 'vitest';
 
 import { TEST_OPERATION_CONTEXT } from '../../constants/testConstants.js';
 import { ListProfilesOperation } from '../listProfiles.js';
+
+vi.mock('../../utils/apiGateway.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../utils/apiGateway.js')>();
+  return { ...actual, isUserAdmin: (...args: unknown[]) => mockIsUserAdmin(...args) };
+});
+
+const mockIsUserAdmin = vi.fn().mockResolvedValue(true);
 
 // Mock the profileDao
 vi.mock('@deepracer-indy/database', async (importOriginal) => {
@@ -24,9 +32,17 @@ const mockProfileDao = vi.mocked(profileDao);
 describe('ListProfiles operation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockIsUserAdmin.mockResolvedValue(true);
   });
 
   describe('successful operations', () => {
+    it('should throw NotAuthorizedError when caller is not an admin', async () => {
+      mockIsUserAdmin.mockResolvedValue(false);
+
+      await expect(ListProfilesOperation({}, TEST_OPERATION_CONTEXT)).rejects.toThrow(NotAuthorizedError);
+      expect(mockProfileDao.list).not.toHaveBeenCalled();
+    });
+
     it('should return a list of profiles without pagination token', async () => {
       const mockProfiles: ProfileItem[] = [
         {

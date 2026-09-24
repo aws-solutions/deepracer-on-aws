@@ -1,11 +1,12 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda';
 import { SFNClient, StartExecutionCommand } from '@aws-sdk/client-sfn';
-import { TrackConfig } from '@deepracer-indy/typescript-server-client';
+import { ModelSource, TrackConfig } from '@deepracer-indy/typescript-server-client';
 import type { Context, SQSRecord } from 'aws-lambda';
 import { mockClient } from 'aws-sdk-client-mock';
-import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 import { ImportModelDispatcher } from '../importModelDispatcher.js';
 
@@ -124,6 +125,108 @@ describe('ImportModelDispatcher', () => {
       input: JSON.stringify(MOCK_IMPORT_MODEL_INPUT),
       stateMachineArn: 'test-state-machine-arn',
       name: `import-model-test-model-id-${currentTime}`,
+    });
+  });
+
+  describe('Physical import routing', () => {
+    const mockLambdaClient = mockClient(LambdaClient);
+
+    const PHYSICAL_IMPORT_MESSAGE: SQSRecord = {
+      ...MOCK_SQS_RECORD,
+      body: JSON.stringify({
+        importType: ModelSource.IMPORTED_PHYSICAL,
+        modelId: 'physical-model-id',
+        profileId: 'test-profile-id',
+        s3Location: 's3://bucket/uploads/physical-models/test-profile-id/model.tar.gz',
+        modelName: 'my-physical-model',
+      }),
+    };
+
+    beforeEach(() => {
+      mockLambdaClient.reset();
+      process.env.MODEL_OPTIMIZER_FUNCTION_NAME = 'test-optimizer-function';
+    });
+
+    afterEach(() => {
+      delete process.env.MODEL_OPTIMIZER_FUNCTION_NAME;
+    });
+
+    it('should invoke Model Optimizer synchronously for PHYSICAL importType', async () => {
+      mockLambdaClient.on(InvokeCommand).resolves({ StatusCode: 200 });
+
+      await ImportModelDispatcher({ Records: [PHYSICAL_IMPORT_MESSAGE] }, {} as Context, () => {
+        /** noop */
+      });
+
+      expect(mockLambdaClient.calls()).toHaveLength(1);
+      expect(mockLambdaClient).toHaveReceivedCommandWith(InvokeCommand, {
+        FunctionName: 'test-optimizer-function',
+        InvocationType: 'RequestResponse',
+        Payload: expect.any(String),
+      });
+      expect(mockSfnClient.calls()).toHaveLength(0);
+    });
+
+    it('should throw when Model Optimizer returns FunctionError', async () => {
+      mockLambdaClient.on(InvokeCommand).resolves({
+        StatusCode: 200,
+        FunctionError: 'Unhandled',
+        Payload: new TextEncoder().encode(JSON.stringify({ errorMessage: 'OutOfMemoryError' })) as never,
+      });
+
+      await expect(
+        ImportModelDispatcher({ Records: [PHYSICAL_IMPORT_MESSAGE] }, {} as Context, () => {
+          /** noop */
+        }),
+      ).rejects.toThrow('Model Optimizer failed: OutOfMemoryError');
+    });
+
+    it('should fall back to FunctionError string when payload is malformed JSON', async () => {
+      mockLambdaClient.on(InvokeCommand).resolves({
+        StatusCode: 200,
+        FunctionError: 'Unhandled',
+        Payload: new TextEncoder().encode('not valid json') as never,
+      });
+
+      await expect(
+        ImportModelDispatcher({ Records: [PHYSICAL_IMPORT_MESSAGE] }, {} as Context, () => {
+          /** noop */
+        }),
+      ).rejects.toThrow('Model Optimizer failed: Unhandled');
+    });
+
+    it('should throw when lambdaClient.send() rejects (throttle/network error)', async () => {
+      mockLambdaClient.on(InvokeCommand).rejects(new Error('TooManyRequestsException'));
+
+      await expect(
+        ImportModelDispatcher({ Records: [PHYSICAL_IMPORT_MESSAGE] }, {} as Context, () => {
+          /** noop */
+        }),
+      ).rejects.toThrow('TooManyRequestsException');
+    });
+
+    it('should throw when MODEL_OPTIMIZER_FUNCTION_NAME is not configured', async () => {
+      delete process.env.MODEL_OPTIMIZER_FUNCTION_NAME;
+
+      await expect(
+        ImportModelDispatcher({ Records: [PHYSICAL_IMPORT_MESSAGE] }, {} as Context, () => {
+          /** noop */
+        }),
+      ).rejects.toThrow('MODEL_OPTIMIZER_FUNCTION_NAME environment variable is not configured');
+    });
+
+    it('should route to Step Functions for messages without importType', async () => {
+      mockSfnClient.on(StartExecutionCommand).resolves({
+        executionArn: 'test-execution-arn',
+        startDate: new Date(),
+      });
+
+      await ImportModelDispatcher({ Records: [MOCK_SQS_RECORD] }, {} as Context, () => {
+        /** noop */
+      });
+
+      expect(mockSfnClient.calls()).toHaveLength(1);
+      expect(mockLambdaClient.calls()).toHaveLength(0);
     });
   });
 });

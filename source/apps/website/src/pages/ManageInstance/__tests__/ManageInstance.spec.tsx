@@ -15,6 +15,9 @@ import ManageInstance from '../ManageInstance';
 vi.mock('#services/deepRacer/profileApi.js', () => ({
   useListProfilesQuery: vi.fn(),
   useGetProfileQuery: vi.fn(),
+  useBulkInviteUserMutation: vi.fn(),
+  useGetBulkInviteUserJobStatusQuery: vi.fn(),
+  useResendInviteMutation: vi.fn(),
 }));
 
 vi.mock('aws-amplify/auth', () => ({
@@ -24,18 +27,22 @@ vi.mock('aws-amplify/auth', () => ({
 vi.mock('../ProfilesTable/ProfilesTable', () => ({
   default: ({
     onInviteUser,
+    onInviteMultipleUsers,
     onDeleteUser,
     onDeleteUserModels,
     onUpdateUserQuotas,
     onChangeUserRole,
+    onResendInvite,
     profiles,
     currentUserProfileId,
   }: {
     onInviteUser: () => void;
+    onInviteMultipleUsers: () => void;
     onDeleteUser: (user: Profile, clearSelection: () => void) => void;
     onDeleteUserModels: (user: Profile) => void;
     onUpdateUserQuotas: (user: Profile, clearSelection: () => void) => void;
     onChangeUserRole: (user: Profile, clearSelection: () => void) => void;
+    onResendInvite: (users: Profile[], clearSelection: () => void) => void;
     profiles: Profile[];
     currentUserProfileId?: string;
   }) => (
@@ -43,6 +50,15 @@ vi.mock('../ProfilesTable/ProfilesTable', () => ({
       Profiles Table
       <button onClick={onInviteUser} data-testid="invite-user-button">
         Invite User
+      </button>
+      <button onClick={onInviteMultipleUsers} data-testid="invite-multiple-users-button">
+        Invite Multiple Users
+      </button>
+      <button
+        onClick={() => onResendInvite(profiles, () => console.log('Clear selection called'))}
+        data-testid="resend-invite-button"
+      >
+        Resend Invitation
       </button>
       {profiles.map((profile) => (
         <div key={profile.profileId} data-testid={`profile-${profile.alias}`}>
@@ -100,6 +116,33 @@ vi.mock('../InviteUserModal/InviteUserModal', () => ({
   default: ({ isOpen, setIsOpen }: { isOpen: boolean; setIsOpen: (open: boolean) => void }) => (
     <div data-testid="invite-user-modal" data-is-open={isOpen}>
       Invite User Modal
+      <button onClick={() => setIsOpen(false)}>Close</button>
+    </div>
+  ),
+}));
+
+vi.mock('../BulkInviteUsersModal/BulkInviteUsersModal', () => ({
+  default: ({ isOpen, setIsOpen }: { isOpen: boolean; setIsOpen: (open: boolean) => void }) => (
+    <div data-testid="bulk-invite-users-modal" data-is-open={isOpen}>
+      Bulk Invite Users Modal
+      <button onClick={() => setIsOpen(false)}>Close</button>
+    </div>
+  ),
+}));
+
+vi.mock('../ResendInviteModal/ResendInviteModal', () => ({
+  default: ({
+    isOpen,
+    setIsOpen,
+    selectedUsers,
+  }: {
+    isOpen: boolean;
+    setIsOpen: (open: boolean) => void;
+    selectedUsers: Profile[];
+    onClearSelection?: (() => void) | null;
+  }) => (
+    <div data-testid="resend-invite-modal" data-is-open={isOpen} data-selected-count={selectedUsers.length}>
+      Resend Invite Modal
       <button onClick={() => setIsOpen(false)}>Close</button>
     </div>
   ),
@@ -489,6 +532,53 @@ describe('ManageInstance', () => {
     await user.click(inviteUserButton);
 
     const modal = screen.getByTestId('invite-user-modal');
+    expect(modal).toHaveAttribute('data-is-open', 'true');
+  });
+
+  it('should open BulkInviteUsersModal when onInviteMultipleUsers is called from ProfilesTable', async () => {
+    const user = userEvent.setup();
+    (fetchAuthSession as Mock).mockResolvedValue({
+      tokens: {
+        accessToken: {
+          payload: {
+            'cognito:groups': ['dr-admins'],
+          },
+        },
+      },
+    });
+
+    render(<ManageInstance />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Instance management')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByTestId('invite-multiple-users-button'));
+
+    expect(screen.getByTestId('bulk-invite-users-modal')).toHaveAttribute('data-is-open', 'true');
+  });
+
+  it('should open ResendInviteModal with the selected users when onResendInvite is called from ProfilesTable', async () => {
+    const user = userEvent.setup();
+    (fetchAuthSession as Mock).mockResolvedValue({
+      tokens: {
+        accessToken: {
+          payload: {
+            'cognito:groups': ['dr-admins'],
+          },
+        },
+      },
+    });
+
+    render(<ManageInstance />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Instance management')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByTestId('resend-invite-button'));
+
+    const modal = screen.getByTestId('resend-invite-modal');
     expect(modal).toHaveAttribute('data-is-open', 'true');
   });
 

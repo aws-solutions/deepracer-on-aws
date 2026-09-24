@@ -1,6 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import Alert from '@cloudscape-design/components/alert';
 import Box from '@cloudscape-design/components/box';
 import Container from '@cloudscape-design/components/container';
 import ExpandableSection from '@cloudscape-design/components/expandable-section';
@@ -22,7 +23,7 @@ import TilesField from '#components/FormFields/TilesField/TilesField';
 import TimeInputField from '#components/FormFields/TimeInputField/TimeInputField';
 import TrackSelection from '#components/TrackSelection';
 import { DEFAULT_OBJECT_POSITIONS, TRACKS } from '#constants/tracks';
-import { getUTCOffsetTimeZoneText, isDateRangeInvalid } from '#utils/dateTimeUtils';
+import { getUTCOffsetTimeZoneText, isDateRangeInvalid, isEndTimeInvalidForActiveRaceEdit } from '#utils/dateTimeUtils';
 
 import { CreateRaceFormValues } from '../CreateRace';
 import { parseDateTimeLocal } from '../validation';
@@ -32,11 +33,22 @@ export interface AddRaceDetailsProps {
   nameRef: MutableRefObject<HTMLDivElement | null>;
   control: Control<CreateRaceFormValues>;
   isEditMode?: boolean;
+  isConfigLocked?: boolean;
+  /** True when an admin is editing an already-open community race — only end date/time and
+   * max submissions per user are editable (enforced server-side). */
+  isActiveRaceAdminEdit?: boolean;
 }
 
 const AddRaceDetails = (props: AddRaceDetailsProps) => {
-  const { setValue, nameRef, control, isEditMode } = props;
+  const { setValue, nameRef, control, isEditMode, isConfigLocked, isActiveRaceAdminEdit } = props;
   const { t } = useTranslation('createRace');
+  // scoringLockedByQueue explains the live-race "submissions already queued" lock reason
+  // specifically — it must not show for an active-race admin edit, which locks the same
+  // fields for an unrelated reason already explained by the lockedForActiveRace notice.
+  const isConfigLockedByQueue = isConfigLocked && !isActiveRaceAdminEdit;
+  const scoringLockedByQueueText = isConfigLockedByQueue
+    ? t('addRaceDetails.validationErrors.scoringLockedByQueue')
+    : undefined;
   const { fields, append, remove } = useFieldArray({
     control,
     name: 'objectAvoidanceConfig.objectPositions',
@@ -146,6 +158,7 @@ const AddRaceDetails = (props: AddRaceDetailsProps) => {
             ]}
             name="raceType"
             control={control}
+            readOnly={isConfigLocked}
           />
 
           <div ref={nameRef}>
@@ -157,8 +170,13 @@ const AddRaceDetails = (props: AddRaceDetailsProps) => {
               constraintText={t('addRaceDetails.nameOfRacingEventDesc')}
               label={t('addRaceDetails.nameOfRacingEvent')}
               stretch
+              disabled={isActiveRaceAdminEdit}
             />
           </div>
+
+          {isActiveRaceAdminEdit && (
+            <Alert type="info">{t('addRaceDetails.validationErrors.lockedForActiveRace')}</Alert>
+          )}
 
           {isLive && (
             <FormField
@@ -219,6 +237,7 @@ const AddRaceDetails = (props: AddRaceDetailsProps) => {
                     control={control}
                     placeholder="YYYY/MM/DD"
                     isDateEnabled={(date) => date >= currentDateOnly}
+                    disabled={isActiveRaceAdminEdit}
                   />
                   <TimeInputField
                     name="startTime"
@@ -226,7 +245,10 @@ const AddRaceDetails = (props: AddRaceDetailsProps) => {
                     format="hh:mm"
                     placeholder="hh:mm"
                     use24Hour
-                    invalid={startTime !== '' && new Date(startDate + ' ' + startTime) < currentDate}
+                    invalid={
+                      !isActiveRaceAdminEdit && startTime !== '' && new Date(startDate + ' ' + startTime) < currentDate
+                    }
+                    disabled={isActiveRaceAdminEdit}
                   />
                 </SpaceBetween>
                 <Box margin={{ top: 'xs' }} />
@@ -244,7 +266,11 @@ const AddRaceDetails = (props: AddRaceDetailsProps) => {
                     format="hh:mm"
                     placeholder="hh:mm"
                     use24Hour
-                    invalid={isDateRangeInvalid({ startDate, startTime, endDate, endTime })}
+                    invalid={
+                      isActiveRaceAdminEdit
+                        ? isEndTimeInvalidForActiveRaceEdit({ startDate, startTime, endDate, endTime })
+                        : isDateRangeInvalid({ startDate, startTime, endDate, endTime })
+                    }
                     disabled={startDate === ''}
                   />
                 </SpaceBetween>
@@ -260,10 +286,16 @@ const AddRaceDetails = (props: AddRaceDetailsProps) => {
           </Header>
         }
       >
-        <TrackSelection control={control} setValue={setValue} trackConfigFieldName="track" />
+        {isConfigLockedByQueue && (
+          <Alert type="info">{t('addRaceDetails.validationErrors.scoringLockedByQueue')}</Alert>
+        )}
+        <TrackSelection control={control} setValue={setValue} trackConfigFieldName="track" disabled={isConfigLocked} />
         <br />
         <ExpandableSection headerText={t('addRaceDetails.raceCustom')}>
           <SpaceBetween size={'m'} direction="vertical">
+            {isConfigLockedByQueue && (
+              <Alert type="info">{t('addRaceDetails.validationErrors.scoringLockedByQueue')}</Alert>
+            )}
             <TextareaField
               label={
                 <span>
@@ -296,6 +328,8 @@ const AddRaceDetails = (props: AddRaceDetailsProps) => {
                   value: TimingMethod.BEST_LAP_TIME,
                 },
               ]}
+              disabled={isConfigLocked}
+              constraintText={scoringLockedByQueueText}
             />
 
             <SelectField
@@ -313,7 +347,8 @@ const AddRaceDetails = (props: AddRaceDetailsProps) => {
               }
               name="minLap"
               control={control}
-              disabled={ranking === TimingMethod.TOTAL_TIME}
+              disabled={isConfigLocked || ranking === TimingMethod.TOTAL_TIME}
+              constraintText={scoringLockedByQueueText}
               options={[
                 { label: '1 lap', value: '1' },
                 { label: `2 ${t('addRaceDetails.consecutiveLaps')}`, value: '2' },
@@ -328,6 +363,8 @@ const AddRaceDetails = (props: AddRaceDetailsProps) => {
               label={t('addRaceDetails.maximumLaps')}
               name="maxLap"
               control={control}
+              disabled={isConfigLocked}
+              constraintText={scoringLockedByQueueText}
               options={[
                 { label: '1 lap', value: '1' },
                 { label: `2 ${t('addRaceDetails.consecutiveLaps')}`, value: '2' },
@@ -342,6 +379,7 @@ const AddRaceDetails = (props: AddRaceDetailsProps) => {
               label={t('addRaceDetails.offtrackPenalty')}
               name="offTrackPenalty"
               control={control}
+              disabled={isConfigLocked}
               options={[
                 { label: `1 ${t('addRaceDetails.second')}`, value: '1' },
                 { label: `2 ${t('addRaceDetails.seconds')}`, value: '2' },
@@ -363,6 +401,7 @@ const AddRaceDetails = (props: AddRaceDetailsProps) => {
                   label={t('addRaceDetails.collisionPenalty')}
                   name="collisionPenalty"
                   control={control}
+                  disabled={isConfigLocked}
                   options={[
                     { label: `1 ${t('addRaceDetails.second')}`, value: '1' },
                     { label: `2 ${t('addRaceDetails.seconds')}`, value: '2' },
@@ -382,11 +421,13 @@ const AddRaceDetails = (props: AddRaceDetailsProps) => {
                     { label: '5', value: 5 },
                   ]}
                   type="number"
+                  disabled={isConfigLocked}
                 />
                 <CheckboxField
                   label={t('addRaceDetails.randomizeObstacles')}
                   control={control}
                   name="randomizeObstacles"
+                  readOnly={isConfigLocked}
                 />
                 {!randomizeObstacles &&
                   fields.map((item, index) => (
@@ -402,6 +443,7 @@ const AddRaceDetails = (props: AddRaceDetailsProps) => {
                             { label: t('addRaceDetails.outsideLane'), value: 1 },
                           ]}
                           type="number"
+                          disabled={isConfigLocked}
                         />
                         <FormField>
                           <InputField
@@ -409,6 +451,7 @@ const AddRaceDetails = (props: AddRaceDetailsProps) => {
                             type="number"
                             control={control}
                             name={`objectAvoidanceConfig.objectPositions.${index}.trackPercentage`}
+                            readOnly={isConfigLocked}
                           />
                         </FormField>
                       </SpaceBetween>

@@ -10,9 +10,10 @@ import { useTranslation } from 'react-i18next';
 interface ModelStatusIndicatorProps {
   modelStatus: ModelStatus;
   importErrorMessage?: string;
+  statusMessage?: string;
 }
 
-const ModelStatusIndicator = ({ modelStatus, importErrorMessage }: ModelStatusIndicatorProps) => {
+const ModelStatusIndicator = ({ modelStatus, importErrorMessage, statusMessage }: ModelStatusIndicatorProps) => {
   const { t } = useTranslation('common', { keyPrefix: 'modelStatus' });
 
   let statusType: StatusIndicatorProps['type'];
@@ -24,6 +25,10 @@ const ModelStatusIndicator = ({ modelStatus, importErrorMessage }: ModelStatusIn
       break;
     case ModelStatus.QUEUED:
       statusType = 'pending';
+      break;
+    case ModelStatus.WAITING_FOR_CAPACITY:
+      // Distinct from QUEUED: nothing is queued and the job will not start until the user retries.
+      statusType = 'warning';
       break;
     case ModelStatus.TRAINING:
     case ModelStatus.STOPPING:
@@ -46,6 +51,18 @@ const ModelStatusIndicator = ({ modelStatus, importErrorMessage }: ModelStatusIn
     return (
       <StatusIndicator type={statusType} colorOverride={colorOverride}>
         <Popover header="Import Error" size="large" position="right" dismissButton={false} content={importErrorMessage}>
+          <Box display="inline" color="inherit">
+            {t(modelStatus)}
+          </Box>
+        </Popover>
+      </StatusIndicator>
+    );
+  }
+
+  if (modelStatus === ModelStatus.WAITING_FOR_CAPACITY && statusMessage) {
+    return (
+      <StatusIndicator type={statusType} colorOverride={colorOverride}>
+        <Popover header={t(modelStatus)} size="large" position="right" dismissButton={false} content={statusMessage}>
           <Box display="inline" color="inherit">
             {t(modelStatus)}
           </Box>

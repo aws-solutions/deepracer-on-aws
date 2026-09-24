@@ -75,6 +75,51 @@ describe('<ModelStatusIndicator />', () => {
       const statusText = screen.getByText(i18n.t('common:modelStatus.ERROR'));
       expect(statusText).toBeInTheDocument();
     });
+
+    it('renders warning status for WAITING_FOR_CAPACITY', () => {
+      render(<ModelStatusIndicator modelStatus={ModelStatus.WAITING_FOR_CAPACITY} />);
+
+      const statusText = screen.getByText(i18n.t('common:modelStatus.WAITING_FOR_CAPACITY'));
+      expect(statusText).toBeInTheDocument();
+    });
+  });
+
+  describe('WAITING_FOR_CAPACITY with statusMessage', () => {
+    it('renders a popover with the status message when statusMessage is provided', () => {
+      const statusMessage = 'Both SageMaker training quotas are exhausted.';
+      render(<ModelStatusIndicator modelStatus={ModelStatus.WAITING_FOR_CAPACITY} statusMessage={statusMessage} />);
+
+      const statusText = screen.getByText(i18n.t('common:modelStatus.WAITING_FOR_CAPACITY'));
+      expect(statusText).toBeInTheDocument();
+
+      const popoverTrigger = screen.getByRole('button');
+      expect(popoverTrigger).toBeInTheDocument();
+    });
+
+    it('shows the status message in the popover when clicked', () => {
+      const statusMessage = 'Both SageMaker training quotas are exhausted.';
+      render(<ModelStatusIndicator modelStatus={ModelStatus.WAITING_FOR_CAPACITY} statusMessage={statusMessage} />);
+
+      const popoverTrigger = screen.getByRole('button');
+      fireEvent.click(popoverTrigger);
+
+      expect(screen.getByText(statusMessage)).toBeInTheDocument();
+    });
+
+    it('renders a plain status indicator (no popover) when statusMessage is not provided', () => {
+      render(<ModelStatusIndicator modelStatus={ModelStatus.WAITING_FOR_CAPACITY} />);
+
+      const statusText = screen.getByText(i18n.t('common:modelStatus.WAITING_FOR_CAPACITY'));
+      expect(statusText).toBeInTheDocument();
+      expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    });
+
+    it('renders a plain status indicator for other statuses even when statusMessage is provided', () => {
+      render(<ModelStatusIndicator modelStatus={ModelStatus.READY} statusMessage="Should be ignored" />);
+
+      expect(screen.getByText(i18n.t('common:modelStatus.READY'))).toBeInTheDocument();
+      expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    });
   });
 
   describe('Error Handling with Import Error Message', () => {

@@ -20,6 +20,7 @@ import {
   InternalFailureError,
   JobStatus,
   LiveEventStatus,
+  ModelSource,
   ModelStatus,
   RaceType,
 } from '@deepracer-indy/typescript-server-client';
@@ -132,6 +133,32 @@ describe('CreateSubmission operation', () => {
         TEST_OPERATION_CONTEXT,
       ),
     ).rejects.toStrictEqual(new BadRequestError({ message: 'Model is not in a submittable state.' }));
+  });
+
+  it('should throw error if model is a physical import', async () => {
+    const physicalModel = { ...READY_MODEL, modelSource: ModelSource.IMPORTED_PHYSICAL };
+    vi.spyOn(modelDao, 'load').mockResolvedValueOnce(physicalModel);
+    vi.spyOn(leaderboardDao, 'load').mockResolvedValueOnce(OPEN_LEADERBOARD_ITEM);
+
+    return expect(
+      CreateSubmissionOperation(
+        { leaderboardId: TEST_LEADERBOARD_ITEM.leaderboardId, modelId: TEST_MODEL_ITEM.modelId },
+        TEST_OPERATION_CONTEXT,
+      ),
+    ).rejects.toStrictEqual(new BadRequestError({ message: 'Physical models cannot participate in virtual races.' }));
+  });
+
+  it('should throw error if model is a physical import (live race leaderboard)', async () => {
+    const physicalModel = { ...READY_MODEL, modelSource: ModelSource.IMPORTED_PHYSICAL };
+    vi.spyOn(modelDao, 'load').mockResolvedValueOnce(physicalModel);
+    vi.spyOn(leaderboardDao, 'load').mockResolvedValueOnce({ ...TEST_LEADERBOARD_ITEM, isLive: true });
+
+    return expect(
+      CreateSubmissionOperation(
+        { leaderboardId: TEST_LEADERBOARD_ITEM.leaderboardId, modelId: TEST_MODEL_ITEM.modelId },
+        TEST_OPERATION_CONTEXT,
+      ),
+    ).rejects.toStrictEqual(new BadRequestError({ message: 'Physical models cannot participate in virtual races.' }));
   });
 
   it('should throw error if leaderboard is not open', async () => {

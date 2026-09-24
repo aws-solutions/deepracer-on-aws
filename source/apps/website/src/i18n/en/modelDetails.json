@@ -8,7 +8,8 @@
     "downloadVirtualModel": "Download virtual model",
     "startEvaluation": "Start evaluation",
     "stopEvaluation": "Stop evaluation",
-    "loadEvaluation": "Load evaluation"
+    "loadEvaluation": "Load evaluation",
+    "retryTraining": "Retry training"
   },
   "tabs": {
     "training": "Training",
@@ -49,7 +50,20 @@
     },
     "physicalDownloadModelSuccess": "Download started for physical model \"{{ modelName }}\".",
     "virtualDownloadModelSuccess": "Download started for virtual model \"{{ modelName }}\".",
-    "virtualDownloadModelPackaging": "Please wait. Preparing download for virtual model for \"{{ modelName }}\". This process may take 1-2 minutes."
+    "virtualDownloadModelPackaging": "Please wait. Preparing download for virtual model for \"{{ modelName }}\". This process may take 1-2 minutes.",
+    "retryTrainingQueued": "Training queued for model \"{{ modelName }}\".",
+    "retryTrainingStillWaiting": "Training capacity is not available yet. The model is still waiting for capacity.",
+    "retryTrainingError": "Failed to retry training. Please try again."
+  },
+  "capacityWaiting": {
+    "header": "Waiting for training capacity",
+    "content": "This model has not started training. Both the instance-type quota and the total training instance quota must have room before a training job can start. Try again later, or contact your administrator to request a quota increase."
+  },
+  "retryTrainingModal": {
+    "header": "Retry training",
+    "content": "Retry training for \"{{ modelName }}\"? Training will start only if both SageMaker training quotas have available capacity.",
+    "cancelButton": "Cancel",
+    "confirmButton": "Retry training"
   },
   "evaluationDetails": {
     "header": {
@@ -214,6 +228,9 @@
       "cancel": "Cancel",
       "confirm": "Stop training"
     }
+  },
+  "trainingTab": {
+    "importingStatus": "Model is being imported and optimized..."
   },
   "trainingConfiguration": {
     "header": "Training Configuration",

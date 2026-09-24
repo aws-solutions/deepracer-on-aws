@@ -6,7 +6,15 @@ import path from 'node:path';
 import { TrainingJobStatus } from '@aws-sdk/client-sagemaker';
 import { Duration, Stack } from 'aws-cdk-lib';
 import { TableV2 } from 'aws-cdk-lib/aws-dynamodb';
-import { ManagedPolicy, Policy, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import {
+  ArnPrincipal,
+  ManagedPolicy,
+  Policy,
+  PolicyDocument,
+  PolicyStatement,
+  Role,
+  ServicePrincipal,
+} from 'aws-cdk-lib/aws-iam';
 import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import { LogGroup } from 'aws-cdk-lib/aws-logs';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
@@ -55,6 +63,17 @@ export class Workflow extends Construct {
     const sageMakerRole = new Role(this, 'SageMakerRole', {
       assumedBy: new ServicePrincipal('sagemaker.amazonaws.com'),
     });
+
+    // ABAC session-tag chaining: SageMaker chains the profile-id tag onto this role's session,
+    // scoping S3 access to the caller's profile prefix.
+    // Note: no tag-key restriction here. SageMaker passes its own internal tags alongside the
+    // chained profile-id tag; a ForAllValues:StringEquals condition rejects them.
+    sageMakerRole.assumeRolePolicy?.addStatements(
+      new PolicyStatement({
+        actions: ['sts:TagSession'],
+        principals: [new ServicePrincipal('sagemaker.amazonaws.com')],
+      }),
+    );
 
     const sageMakerAccessPolicy = new Policy(this, 'SageMakerAccessPolicy', {
       document: new PolicyDocument({
@@ -133,7 +152,34 @@ export class Workflow extends Construct {
       );
     }
 
-    modelStorageBucket.grantReadWrite(sageMakerRole);
+    // ABAC-scoped S3 access: the execution role can only access the profile prefix that matches
+    // the session tag stamped by the job-creation role (see ABAC session-tag chaining above).
+    // All model data lives under {profileId}/models/ (S3PathHelper.ts:17), and cloning reads
+    // from the same profileId (SageMakerHelper.ts:204), so per-profile scoping is correct.
+    sageMakerRole.addToPolicy(
+      new PolicyStatement({
+        actions: [
+          's3:GetObject',
+          's3:PutObject',
+          's3:DeleteObject',
+          's3:AbortMultipartUpload',
+          's3:ListMultipartUploadParts',
+        ],
+        resources: [`${modelStorageBucket.bucketArn}/\${aws:PrincipalTag/profile-id}/*`],
+      }),
+    );
+    sageMakerRole.addToPolicy(
+      new PolicyStatement({
+        actions: ['s3:ListBucket'],
+        resources: [modelStorageBucket.bucketArn],
+        conditions: {
+          StringLike: {
+            // eslint-disable-next-line no-template-curly-in-string -- IAM policy variable, not JS template
+            's3:prefix': ['${aws:PrincipalTag/profile-id}/*'],
+          },
+        },
+      }),
+    );
 
     const jobInitializerFunction = new NodeLambdaFunction(this, 'JobInitializerFunction', {
       entry: path.join(__dirname, '../../../../../libs/lambda/src/workflow/handlers/jobInitializer.ts'),
@@ -158,16 +204,95 @@ export class Workflow extends Construct {
         resources: [`arn:aws:kinesisvideo:${region}:${account}:stream/deepracerindy-*`],
       }),
     );
+    // CreateTrainingJob and iam:PassRole are NOT granted to the jobInitializer's own role.
+    // Training job creation is only permitted through the ABAC job-creation role (below), which
+    // requires a profile-id session tag — making untagged job creation an IAM impossibility.
+    //
+    // The capacity recheck performed immediately before CreateTrainingJob reads both training quotas
+    // and sums instance usage across every active training job in the account.
+    //
+    // ListTrainingJobs defines no IAM resource type, so it can only be granted on '*'.
     jobInitializerFunction.addToRolePolicy(
+      new PolicyStatement({
+        actions: ['sagemaker:ListTrainingJobs'],
+        resources: ['*'],
+      }),
+    );
+    // DescribeTrainingJob is scoped to training jobs in this account and Region, but deliberately NOT
+    // to the deepracerindy- prefix: the account-wide "instances across all training jobs" quota
+    // (L-00C91CB5) counts jobs this solution did not create, so instance-unit accounting has to read
+    // them too. Narrowing this to deepracerindy-* would make foreign describes fail, silently
+    // under-report usage, and let the check report capacity that the account does not have.
+    jobInitializerFunction.addToRolePolicy(
+      new PolicyStatement({
+        actions: ['sagemaker:DescribeTrainingJob'],
+        resources: [`arn:aws:sagemaker:${region}:${account}:training-job/*`],
+      }),
+    );
+    jobInitializerFunction.addToRolePolicy(
+      new PolicyStatement({
+        // Granted on '*' deliberately. The Service Authorization Reference does define a `quota`
+        // resource type (arn:aws:servicequotas:<region>:<account>:<serviceCode>/<quotaCode>) and a
+        // `servicequotas:service` condition key for GetServiceQuota, so scoping looks possible on
+        // paper — but it is unverified against a live account, and getting it wrong fails silently:
+        // the capacity check catches AccessDenied, returns UNKNOWN, and every model would sit in
+        // WAITING_FOR_CAPACITY forever. Validate with the IAM policy simulator or a test-account
+        // deploy before narrowing this.
+        actions: ['servicequotas:GetServiceQuota'],
+        resources: ['*'],
+      }),
+    );
+
+    // ── Job-creation role for ABAC session-tag chaining ──────────────────────────
+    // Job-creation role for ABAC. The jobInitializer assumes this with a profile-id session tag;
+    // SageMaker chains the tag to the execution role, scoping S3 to that profile's prefix.
+    // Grants: CreateTrainingJob + PassRole only. Tag is immutable within the session.
+    // Defined after jobInitializerFunction to reference its execution role as trust principal.
+    const jobInitializerRoleArn = jobInitializerFunction.role?.roleArn;
+    if (!jobInitializerRoleArn) {
+      throw new Error('JobInitializerFunction must have an execution role');
+    }
+    const jobCreationRole = new Role(this, 'SageMakerJobCreationRole', {
+      assumedBy: new ArnPrincipal(jobInitializerRoleArn).withConditions({
+        StringLike: { 'aws:RequestTag/profile-id': '?*' },
+        'ForAllValues:StringEquals': { 'aws:TagKeys': ['profile-id'] },
+      }),
+    });
+    // Allow the jobInitializer's execution role to tag the session when assuming this role.
+    // Tag-presence conditions ensure an untagged assume yields nothing usable.
+    jobCreationRole.assumeRolePolicy?.addStatements(
+      new PolicyStatement({
+        actions: ['sts:TagSession'],
+        principals: [new ArnPrincipal(jobInitializerRoleArn)],
+        conditions: {
+          StringLike: { 'aws:RequestTag/profile-id': '?*' },
+          'ForAllValues:StringEquals': { 'aws:TagKeys': ['profile-id'] },
+        },
+      }),
+    );
+    jobCreationRole.addToPolicy(
       new PolicyStatement({
         actions: ['sagemaker:CreateTrainingJob'],
         resources: [`arn:aws:sagemaker:${region}:${account}:training-job/deepracerindy-*`],
       }),
     );
-    jobInitializerFunction.addToRolePolicy(
+    jobCreationRole.addToPolicy(
       new PolicyStatement({
         actions: ['iam:PassRole'],
         resources: [sageMakerRole.roleArn],
+        conditions: {
+          StringEquals: {
+            'iam:PassedToService': 'sagemaker.amazonaws.com',
+          },
+        },
+      }),
+    );
+    // Wire the role ARN and grant the Lambda permission to assume it with tags.
+    jobInitializerFunction.addEnvironment('SAGEMAKER_JOB_CREATION_ROLE_ARN', jobCreationRole.roleArn);
+    jobInitializerFunction.addToRolePolicy(
+      new PolicyStatement({
+        actions: ['sts:AssumeRole', 'sts:TagSession'],
+        resources: [jobCreationRole.roleArn],
       }),
     );
 
@@ -243,12 +368,24 @@ export class Workflow extends Construct {
     this.jobMonitorFunction = jobMonitorFunction;
     this.jobFinalizerFunction = jobFinalizerFunction;
     const successEndState = new Succeed(this, 'Job succeeded');
+    const capacityWaitingEndState = new Succeed(this, 'Job waiting for capacity');
     const failureEndState = new Fail(this, 'Job failed');
 
     const jobFinalizerInvocation = new LambdaInvoke(this, 'Job Finalizer', {
       lambdaFunction: jobFinalizerFunction,
       outputPath: '$.Payload',
     }).addCatch(failureEndState);
+
+    // Cleanup for a job that never reached SageMaker because a training quota had no room. The
+    // finalizer deletes the Kinesis stream, skips every SageMaker call, and preserves the
+    // WAITING_FOR_CAPACITY status, so this path must end successfully rather than in the failure
+    // branch that would mark the model ERROR.
+    const capacityCleanupInvocation = new LambdaInvoke(this, 'Capacity cleanup', {
+      lambdaFunction: jobFinalizerFunction,
+      outputPath: '$.Payload',
+    })
+      .addCatch(capacityWaitingEndState)
+      .next(capacityWaitingEndState);
 
     const jobInitializerInvocation = new LambdaInvoke(this, 'Job Initializer', {
       lambdaFunction: jobInitializerFunction,
@@ -260,35 +397,47 @@ export class Workflow extends Construct {
       outputPath: '$.Payload',
     }).addCatch(jobFinalizerInvocation, { resultPath: '$.errorDetails' });
 
+    const jobFinalizedChoice = new Choice(this, 'Workflow completed successfully?')
+      .when(Condition.isPresent('$.errorDetails'), failureEndState)
+      .otherwise(successEndState);
+
+    // `$.trainingJob` is absent whenever initialization stopped before CreateTrainingJob — capacity
+    // waiting, a deleted clone source, an S3/Kinesis failure. Reading `$.trainingJob.status` without
+    // an isPresent guard raises States.Runtime instead of following a controlled path.
+    const jobRunningChoice = new Choice(this, 'Job running?')
+      .when(
+        Condition.and(
+          Condition.isPresent('$.trainingJob.status'),
+          Condition.or(
+            Condition.stringEquals('$.trainingJob.status', TrainingJobStatus.IN_PROGRESS),
+            Condition.stringEquals('$.trainingJob.status', TrainingJobStatus.STOPPING),
+          ),
+        ),
+        new Wait(this, 'Wait while job runs', { time: WaitTime.duration(Duration.minutes(1)) }).next(
+          jobMonitorInvocation,
+        ),
+      )
+      .otherwise(jobFinalizerInvocation.next(jobFinalizedChoice));
+
+    const initializationOutcomeChoice = new Choice(this, 'Initialization outcome?')
+      .when(
+        // `$.capacityWaiting` is only present when the initializer stopped for lack of capacity.
+        // A Choice that reads an absent path raises States.Runtime, so presence is checked first.
+        Condition.and(Condition.isPresent('$.capacityWaiting'), Condition.booleanEquals('$.capacityWaiting', true)),
+        capacityCleanupInvocation,
+      )
+      .when(Condition.isPresent('$.errorDetails'), jobFinalizerInvocation)
+      .otherwise(jobMonitorInvocation.next(jobRunningChoice));
+
     const encryptionKey = KmsHelper.get(this, namespace);
     const workflow = new StateMachine(this, 'StateMachine', {
       definitionBody: DefinitionBody.fromChainable(
-        Chain.start(jobInitializerInvocation)
-          .next(jobMonitorInvocation)
-          .next(
-            new Choice(this, 'Job running?')
-              .when(
-                Condition.or(
-                  Condition.stringEquals('$.trainingJob.status', TrainingJobStatus.IN_PROGRESS),
-                  Condition.stringEquals('$.trainingJob.status', TrainingJobStatus.STOPPING),
-                ),
-                new Wait(this, 'Wait while job runs', { time: WaitTime.duration(Duration.minutes(1)) }).next(
-                  jobMonitorInvocation,
-                ),
-              )
-              .otherwise(
-                jobFinalizerInvocation.next(
-                  new Choice(this, 'Workflow completed successfully?')
-                    .when(Condition.isPresent('$.errorDetails'), failureEndState)
-                    .otherwise(successEndState),
-                ),
-              ),
-          ),
+        Chain.start(jobInitializerInvocation).next(initializationOutcomeChoice),
       ),
       stateMachineName: `${namespace}-DeepRacerIndyWorkflow`,
       logs: {
         destination: new LogGroup(this, 'ExecutionLogs', {
-          logGroupName: `/aws/vendedlogs/states/${namespace}-DeepRacerIndyWorkflow`,
+          logGroupName: `/aws/vendedlogs/states/${Stack.of(this).stackName}-DeepRacerIndyWorkflow`,
           removalPolicy: DefaultLogRemovalPolicy,
           retention: DefaultLogRetentionDays,
           encryptionKey,
@@ -307,29 +456,10 @@ export class Workflow extends Construct {
       managedPolicies: [ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole')],
     });
 
-    // Create and attach policies to the job dispatcher role
-    const jobDispatcherSageMakerPolicy = new Policy(this, 'JobDispatcherSageMakerPolicy', {
-      document: new PolicyDocument({
-        statements: [
-          new PolicyStatement({
-            actions: ['sagemaker:ListTrainingJobs'],
-            resources: ['*'],
-          }),
-        ],
-      }),
-    });
-
-    const jobDispatcherServiceQuotasPolicy = new Policy(this, 'JobDispatcherServiceQuotasPolicy', {
-      document: new PolicyDocument({
-        statements: [
-          new PolicyStatement({
-            actions: ['servicequotas:GetServiceQuota'],
-            resources: ['*'],
-          }),
-        ],
-      }),
-    });
-
+    // Create and attach policies to the job dispatcher role.
+    // The dispatcher no longer checks SageMaker quotas — CreateModel/RetryTraining gate admission
+    // before a message is queued, and JobInitializer rechecks before CreateTrainingJob — so it needs
+    // only StartExecution here.
     const jobDispatcherStepFunctionPolicy = new Policy(this, 'JobDispatcherStepFunctionPolicy', {
       document: new PolicyDocument({
         statements: [
@@ -341,8 +471,6 @@ export class Workflow extends Construct {
       }),
     });
 
-    jobDispatcherRole.attachInlinePolicy(jobDispatcherSageMakerPolicy);
-    jobDispatcherRole.attachInlinePolicy(jobDispatcherServiceQuotasPolicy);
     jobDispatcherRole.attachInlinePolicy(jobDispatcherStepFunctionPolicy);
 
     const jobDispatcherFunction = new NodeLambdaFunction(this, 'JobDispatcherFunction', {
@@ -357,6 +485,9 @@ export class Workflow extends Construct {
         POWERTOOLS_METRICS_NAMESPACE: 'DeepRacerIndyWorkflow',
       },
       memorySize: 256,
+      // Adaptive SageMaker retries make a dispatch slower than the 30s default; a timeout
+      // would redeliver the message and double-dispatch the training job.
+      timeout: Duration.minutes(2),
       role: jobDispatcherRole,
     });
 

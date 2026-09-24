@@ -25,6 +25,24 @@ describe('pageUtils', () => {
     it('should return null if no page matches', () => {
       expect(getPageDetailsByPathname('/random-path')).toEqual(null);
     });
+
+    it('prefers a static path over a dynamic one that also matches (order-independent)', () => {
+      // '/devices/:instanceId' also matches '/devices/activate'; the static route must win.
+      expect(getPageDetailsByPathname('/devices/activate')).toEqual({
+        pageId: PageId.ACTIVATE_DEVICE,
+        ...pages[PageId.ACTIVATE_DEVICE],
+        params: {},
+      });
+      // Same class of overlap for events/models/races.
+      expect(getPageDetailsByPathname('/events/create')?.pageId).toBe(PageId.CREATE_EVENT);
+      expect(getPageDetailsByPathname('/models/import')?.pageId).toBe(PageId.IMPORT_MODEL);
+      // A genuine id still resolves to the dynamic route.
+      expect(getPageDetailsByPathname('/devices/mi-0abc')).toEqual({
+        pageId: PageId.DEVICE_DETAIL,
+        ...pages[PageId.DEVICE_DETAIL],
+        params: { instanceId: 'mi-0abc' },
+      });
+    });
   });
 
   describe('getPath', () => {
@@ -45,6 +63,10 @@ describe('pageUtils', () => {
 
       expect(getPageBasePath(modelsPathname)).toEqual('/models');
       expect(getPageBasePath(racesPathname)).toEqual('/races');
+    });
+
+    it('should return /admin/models for admin paths (multi-segment nav base)', () => {
+      expect(getPageBasePath('/admin/models')).toEqual('/admin/models');
     });
   });
 });

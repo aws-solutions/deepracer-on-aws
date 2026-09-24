@@ -28,8 +28,10 @@ describe('GetModel operation', () => {
       description: TEST_MODEL_ITEM.description,
       metadata: TEST_MODEL_ITEM.metadata,
       modelId: TEST_MODEL_ITEM.modelId,
+      modelSource: TEST_MODEL_ITEM.modelSource,
       name: TEST_MODEL_ITEM.name,
       fileSizeInBytes: TEST_MODEL_ITEM.fileSizeInBytes,
+      optimizationStatus: TEST_MODEL_ITEM.optimizationStatus,
       status: TEST_MODEL_ITEM.status,
       importErrorMessage: TEST_MODEL_ITEM.importErrorMessage,
       trainingConfig: {

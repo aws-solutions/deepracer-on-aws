@@ -1,0 +1,15 @@
+[data-button-size='large'] {
+  min-height: 64px;
+  font-size: 24px !important;
+}
+
+button[data-button-color='orange']:not(:disabled) {
+  background: #ff9900 !important;
+  border-color: #ff9900 !important;
+  color: #16191f !important;
+}
+
+[data-testid='reset-info-and-decrement'] {
+  justify-content: space-between;
+  width: 100%;
+}

@@ -1,15 +1,12 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import fs from 'node:fs';
-
 import { App, Duration, RemovalPolicy, Stack } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { UserPool } from 'aws-cdk-lib/aws-cognito';
 import { AttributeType, TableV2 } from 'aws-cdk-lib/aws-dynamodb';
 import { SecurityGroup, Vpc } from 'aws-cdk-lib/aws-ec2';
 import { Repository } from 'aws-cdk-lib/aws-ecr';
-import { Code, Function as LambdaFunction, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
@@ -28,10 +25,6 @@ vi.mock('../../common/nodeLambdaFunction.js', () => createNodeLambdaFunctionMock
 vi.mock('../../common/logGroupsHelper.js', () => createLogGroupsHelperMock());
 
 // Interface for testing private methods
-interface ApiTestInterface {
-  getOpenApiDef: (functions: Record<string, LambdaFunction>, userPool: UserPool) => void;
-}
-
 // Mock EcrStack for testing
 class MockEcrStack extends Construct {
   public readonly imageRepositoryMappings: ImageRepositoryMapping[] = [
@@ -39,10 +32,10 @@ class MockEcrStack extends Construct {
       publicImageUri: 'public.ecr.aws/aws-solutions/deepracer-on-aws-reward-function-validation',
       imageTag: 'v0.0.1',
       repository: new Repository(this, 'MockRewardValidationRepository', {
-        repositoryName: 'deepracer-on-aws-reward-function-validation',
+        repositoryName: 'custom-reward-validation',
       }),
-      repositoryId: 'deepracer-on-aws-reward-function-validation',
-      privateRepositoryName: `${TEST_NAMESPACE}-deepracer-on-aws-reward-function-validation`,
+      repositoryId: 'custom-reward-validation',
+      privateRepositoryName: `${TEST_NAMESPACE}-custom-reward-validation`,
     },
     {
       publicImageUri: 'public.ecr.aws/aws-solutions/deepracer-on-aws-model-validation',
@@ -81,6 +74,7 @@ describe('Api', () => {
     app = new App({
       context: {
         REWARD_VALIDATION_REPO_NAME: 'deepracer-on-aws-reward-function-validation',
+        OVERRIDE_REWARD_VALIDATION_REPO_NAME: 'custom-reward-validation',
         MODEL_VALIDATION_REPO_NAME: 'deepracer-on-aws-model-validation',
       },
     });
@@ -109,6 +103,10 @@ describe('Api', () => {
       removalPolicy: RemovalPolicy.DESTROY,
     });
 
+    const deviceLogsBucket = new Bucket(stack, 'TestDeviceLogsBucket', {
+      removalPolicy: RemovalPolicy.DESTROY,
+    });
+
     const vpc = new Vpc(stack, 'TestVpc');
     expect(stack).toBeDefined();
     const securityGroup = new SecurityGroup(stack, 'TestSecurityGroup', {
@@ -134,6 +132,7 @@ describe('Api', () => {
       userExecutionVpc: vpc,
       userExecutionSecurityGroup: securityGroup,
       virtualModelBucket,
+      deviceLogsBucket,
       globalSettings,
       namespace: TEST_NAMESPACE,
     });
@@ -148,16 +147,37 @@ describe('Api', () => {
           FifoQueue: true,
           MessageRetentionPeriod: Duration.days(14).toSeconds(),
           KmsMasterKeyId: 'alias/aws/sqs',
-          VisibilityTimeout: Duration.minutes(1).toSeconds(),
+          // Should be at least six times the JobDispatcher timeout (2 minutes).
+          VisibilityTimeout: Duration.minutes(12).toSeconds(),
         }),
       ).not.toThrow();
 
-      // Test API Gateway
+      // The workflow job queue must have a dead-letter queue so that a message which
+      // keeps failing cannot block the queue for its entire retention period.
       expect(() =>
-        template.hasResourceProperties('AWS::ApiGateway::RestApi', {
-          Name: `${TEST_NAMESPACE}-DeepRacerIndyApi`,
+        template.hasResourceProperties('AWS::SQS::Queue', {
+          FifoQueue: true,
+          RedrivePolicy: {
+            maxReceiveCount: 3,
+          },
         }),
       ).not.toThrow();
+
+      // The workflow DLQ must have an alarm (Threshold 1 distinguishes it from the assetPackaging one).
+      expect(() =>
+        template.hasResourceProperties('AWS::CloudWatch::Alarm', {
+          MetricName: 'ApproximateNumberOfMessagesVisible',
+          Namespace: 'AWS/SQS',
+          Threshold: 1,
+          EvaluationPeriods: 1,
+          TreatMissingData: 'notBreaching',
+        }),
+      ).not.toThrow();
+
+      // The RestApi belongs to GatewayStack, not this construct. Asserting its absence
+      // here makes a regression that reintroduces it — and the CFN cycle that would
+      // follow — fail loudly. Positive assertions live in gatewayStack.spec.ts.
+      template.resourceCountIs('AWS::ApiGateway::RestApi', 0);
       expect(() =>
         template.hasResourceProperties('AWS::Lambda::Function', {
           FunctionName: `${TEST_NAMESPACE}-DeepRacerIndy-AssetPackagingFunction`,
@@ -183,168 +203,9 @@ describe('Api', () => {
         }),
       ).not.toThrow();
     });
-
-    it('configures API Gateway error responses', () => {
-      ['BAD_REQUEST_BODY', 'BAD_REQUEST_PARAMETERS'].forEach((responseType) => {
-        expect(() =>
-          template.hasResourceProperties('AWS::ApiGateway::GatewayResponse', {
-            ResponseType: responseType,
-            ResponseParameters: {
-              'gatewayresponse.header.Access-Control-Allow-Origin': "'*'",
-              'gatewayresponse.header.Access-Control-Allow-Headers': "'*'",
-            },
-            StatusCode: '400',
-          }),
-        ).not.toThrow();
-      });
-    });
   });
 
   describe('OpenAPI Integration', () => {
-    it('throws error when x-amazon-apigateway-integration is missing', () => {
-      // Create minimal test resources
-      const testApp = new App({
-        context: {
-          REWARD_VALIDATION_REPO_NAME: 'deepracer-on-aws-reward-function-validation',
-          MODEL_VALIDATION_REPO_NAME: 'deepracer-on-aws-model-validation',
-        },
-      });
-      const testStack = new Stack(testApp, 'TestStack');
-      const testUserPool = new UserPool(testStack, 'TestUserPool');
-      const testTable = new TableV2(testStack, 'TestTable', {
-        partitionKey: { name: 'pk', type: AttributeType.STRING },
-        sortKey: { name: 'sk', type: AttributeType.STRING },
-      });
-      const testBucket = new Bucket(testStack, 'TestBucket');
-      const testVpc = new Vpc(testStack, 'TestVpc');
-      const testSecurityGroup = new SecurityGroup(testStack, 'TestSecurityGroup', {
-        vpc: testVpc,
-      });
-      const testGlobalSettings = new GlobalSettings(testStack, 'TestGlobalSettings', {
-        namespace: TEST_NAMESPACE,
-      });
-
-      // Create mock EcrStack
-      const mockEcrStack = new MockEcrStack(testStack, 'MockEcrStack1') as unknown as EcrStack;
-
-      // Create API instance
-      const testApi = new Api(testStack, 'TestApi', {
-        userPool: testUserPool,
-        dynamoDBTable: testTable,
-        modelStorageBucket: testBucket,
-        uploadBucket: testBucket,
-        ecrStack: mockEcrStack,
-        userExecutionVpc: testVpc,
-        userExecutionSecurityGroup: testSecurityGroup,
-        virtualModelBucket: testBucket,
-        globalSettings: testGlobalSettings,
-        namespace: TEST_NAMESPACE,
-      });
-
-      // Mock fs.readFileSync to return an OpenAPI spec without integration
-      const mockFs = vi.spyOn(fs, 'readFileSync');
-      mockFs.mockReturnValue(
-        JSON.stringify({
-          components: {},
-          paths: {
-            '/test': {
-              get: {
-                operationId: 'GetModel',
-                // Intentionally missing x-amazon-apigateway-integration
-              },
-            },
-          },
-        }),
-      );
-
-      // Verify error is thrown
-      expect(() => {
-        (testApi as unknown as ApiTestInterface).getOpenApiDef(
-          {
-            GetModel: new LambdaFunction(testStack, 'TestFunction', {
-              handler: 'index.handler',
-              runtime: Runtime.NODEJS_22_X,
-              code: Code.fromInline('exports.handler = async () => {}'),
-            }),
-          },
-          testUserPool,
-        );
-      }).toThrow('No x-amazon-apigateway-integration for GetModel. Make sure API Gateway integration is configured.');
-
-      mockFs.mockRestore();
-    });
-
-    it('throws error when function is missing for operation', () => {
-      // Create minimal test resources
-      const testApp = new App({
-        context: {
-          REWARD_VALIDATION_REPO_NAME: 'deepracer-on-aws-reward-function-validation',
-          MODEL_VALIDATION_REPO_NAME: 'deepracer-on-aws-model-validation',
-        },
-      });
-      const testStack = new Stack(testApp, 'TestStack');
-      const testUserPool = new UserPool(testStack, 'TestUserPool');
-      const testTable = new TableV2(testStack, 'TestTable', {
-        partitionKey: { name: 'pk', type: AttributeType.STRING },
-        sortKey: { name: 'sk', type: AttributeType.STRING },
-      });
-      const testBucket = new Bucket(testStack, 'TestBucket');
-      const testVpc = new Vpc(testStack, 'TestVpc');
-      const testSecurityGroup = new SecurityGroup(testStack, 'TestSecurityGroup', {
-        vpc: testVpc,
-      });
-      const testGlobalSettings = new GlobalSettings(testStack, 'TestGlobalSettings', {
-        namespace: TEST_NAMESPACE,
-      });
-
-      // Create mock EcrStack
-      const mockEcrStack = new MockEcrStack(testStack, 'MockEcrStack2') as unknown as EcrStack;
-
-      // Create API instance
-      const testApi = new Api(testStack, 'TestApi', {
-        userPool: testUserPool,
-        dynamoDBTable: testTable,
-        modelStorageBucket: testBucket,
-        uploadBucket: testBucket,
-        ecrStack: mockEcrStack,
-        userExecutionVpc: testVpc,
-        userExecutionSecurityGroup: testSecurityGroup,
-        virtualModelBucket: testBucket,
-        globalSettings: testGlobalSettings,
-        namespace: TEST_NAMESPACE,
-      });
-
-      // Mock fs.readFileSync to return an OpenAPI spec with integration but missing function
-      const mockFs = vi.spyOn(fs, 'readFileSync');
-      mockFs.mockReturnValue(
-        JSON.stringify({
-          components: {},
-          paths: {
-            '/test': {
-              get: {
-                operationId: 'GetModel',
-                'x-amazon-apigateway-integration': {
-                  type: 'aws_proxy',
-                },
-              },
-            },
-          },
-        }),
-      );
-
-      // Verify error is thrown when function is missing from functions map
-      expect(() => {
-        (testApi as unknown as ApiTestInterface).getOpenApiDef(
-          {
-            // Intentionally empty functions map
-          },
-          testUserPool,
-        );
-      }).toThrow('No function for GetModel');
-
-      mockFs.mockRestore();
-    });
-
     it('throws error when reward validation ECR repository mapping is missing', () => {
       // Create minimal test resources
       const testApp = new App({
@@ -381,6 +242,7 @@ describe('Api', () => {
           dynamoDBTable: testTable,
           modelStorageBucket: testBucket,
           uploadBucket: testBucket,
+          deviceLogsBucket: testBucket,
           ecrStack: mockEcrStackWithoutReward,
           userExecutionVpc: testVpc,
           userExecutionSecurityGroup: testSecurityGroup,
@@ -425,7 +287,15 @@ describe('Api', () => {
     });
 
     it('grants cognito AdminListGroupsForUser to admin Lambda functions', () => {
-      ['GetAdminAssetUrl', 'ListAdminProfiles', 'ListModelsForProfile'].forEach((operation) => {
+      [
+        'GetAdminAssetUrl',
+        'ListAdminProfiles',
+        'ListModelsForProfile',
+        'EditLeaderboard',
+        'DeleteLeaderboard',
+        'GetRaceStats',
+        'AttachLiveRacePolicy',
+      ].forEach((operation) => {
         expect(() =>
           template.hasResourceProperties('AWS::IAM::Policy', {
             PolicyName: Match.stringLikeRegexp(`.*${operation}Function.*`),
@@ -440,6 +310,37 @@ describe('Api', () => {
           }),
         ).not.toThrow();
       });
+    });
+
+    it('grants the bulk-invite handlers their Cognito permissions', () => {
+      ['BulkInviteUser', 'GetBulkInviteUserJobStatus', 'ListBulkInviteUserJobs', 'ResendInvite'].forEach(
+        (operation) => {
+          expect(() =>
+            template.hasResourceProperties('AWS::IAM::Policy', {
+              PolicyName: Match.stringLikeRegexp(`.*${operation}Function.*`),
+              PolicyDocument: {
+                Statement: Match.arrayWith([
+                  Match.objectLike({ Effect: 'Allow', Action: 'cognito-idp:AdminListGroupsForUser' }),
+                ]),
+              },
+            }),
+          ).not.toThrow();
+        },
+      );
+      // Resend additionally reads status (AdminGetUser) and re-issues the invite (AdminCreateUser).
+      expect(() =>
+        template.hasResourceProperties('AWS::IAM::Policy', {
+          PolicyName: Match.stringLikeRegexp('.*ResendInviteFunction.*'),
+          PolicyDocument: {
+            Statement: Match.arrayWith([
+              Match.objectLike({
+                Effect: 'Allow',
+                Action: Match.arrayWith(['cognito-idp:AdminGetUser', 'cognito-idp:AdminCreateUser']),
+              }),
+            ]),
+          },
+        }),
+      ).not.toThrow();
     });
 
     it('grants S3 read on model storage bucket to GetAdminAssetUrl', () => {
@@ -489,6 +390,7 @@ describe('Api', () => {
                   'cognito-idp:AdminCreateUser',
                   'cognito-idp:AdminAddUserToGroup',
                   'cognito-idp:AdminDeleteUser',
+                  'cognito-idp:AdminListGroupsForUser',
                 ],
                 Resource: { 'Fn::GetAtt': [Match.stringLikeRegexp('TestUserPool.*'), 'Arn'] },
               }),
@@ -520,24 +422,6 @@ describe('Api', () => {
   });
 
   describe('Admin Observability', () => {
-    it('creates WAF rate-based rule scoped to /admin/ path', () => {
-      expect(() =>
-        template.hasResourceProperties('AWS::WAFv2::WebACL', {
-          Rules: Match.arrayWith([
-            Match.objectLike({
-              Name: 'AdminRateLimit',
-              Statement: {
-                RateBasedStatement: Match.objectLike({
-                  Limit: 100,
-                  AggregateKeyType: 'IP',
-                }),
-              },
-            }),
-          ]),
-        }),
-      ).not.toThrow();
-    });
-
     it('creates CloudWatch metric filters for admin actions', () => {
       ['ADMIN_MODEL_DOWNLOAD', 'ADMIN_AUTH_FAILURE', 'ADMIN_PROFILE_LIST', 'ADMIN_LIST_MODELS'].forEach((action) => {
         expect(() =>
@@ -558,79 +442,6 @@ describe('Api', () => {
           }),
         ).not.toThrow();
       });
-    });
-  });
-
-  describe('WAF Body Size Restriction', () => {
-    it('downgrades SizeRestrictions_BODY to count without disabling the rest of CommonRuleSet', () => {
-      expect(() =>
-        template.hasResourceProperties('AWS::WAFv2::WebACL', {
-          Rules: Match.arrayWith([
-            Match.objectLike({
-              Name: 'AWSManagedRulesCommonRuleSet',
-              OverrideAction: { None: {} },
-              Statement: {
-                ManagedRuleGroupStatement: Match.objectLike({
-                  Name: 'AWSManagedRulesCommonRuleSet',
-                  RuleActionOverrides: [
-                    {
-                      Name: 'SizeRestrictions_BODY',
-                      ActionToUse: { Count: {} },
-                    },
-                  ],
-                }),
-              },
-            }),
-          ]),
-        }),
-      ).not.toThrow();
-    });
-
-    it('re-blocks oversized bodies everywhere except the reward function endpoints', () => {
-      expect(() =>
-        template.hasResourceProperties('AWS::WAFv2::WebACL', {
-          Rules: Match.arrayWith([
-            Match.objectLike({
-              Name: 'ReenforceBodySizeExceptRewardFunctionEndpoints',
-              Action: { Block: {} },
-              Statement: {
-                AndStatement: {
-                  Statements: Match.arrayWith([
-                    Match.objectLike({
-                      LabelMatchStatement: {
-                        Scope: 'LABEL',
-                        Key: 'awswaf:managed:aws:core-rule-set:SizeRestrictions_Body',
-                      },
-                    }),
-                    Match.objectLike({
-                      NotStatement: {
-                        Statement: {
-                          OrStatement: {
-                            Statements: Match.arrayWith([
-                              Match.objectLike({
-                                ByteMatchStatement: Match.objectLike({
-                                  SearchString: '/models',
-                                  PositionalConstraint: 'ENDS_WITH',
-                                }),
-                              }),
-                              Match.objectLike({
-                                ByteMatchStatement: Match.objectLike({
-                                  SearchString: '/rewardFunction',
-                                  PositionalConstraint: 'ENDS_WITH',
-                                }),
-                              }),
-                            ]),
-                          },
-                        },
-                      },
-                    }),
-                  ]),
-                },
-              },
-            }),
-          ]),
-        }),
-      ).not.toThrow();
     });
   });
 });

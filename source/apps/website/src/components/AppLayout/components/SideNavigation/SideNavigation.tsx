@@ -11,7 +11,12 @@ import { PageId } from '#constants/pages.js';
 import { getUserGroups } from '#utils/authUtils.js';
 import { getPageBasePath, getPath } from '#utils/pageUtils.js';
 
-import { getAdminNavigationItems, getModelManagementNavigationItems } from './itemsUtils.js';
+import {
+  getAdminNavigationItems,
+  getDeviceManagementNavigationItems,
+  getModelManagementNavigationItems,
+  getRaceManagementNavigationItems,
+} from './itemsUtils.js';
 import { useVersionCheck } from '../../../../hooks/useVersionCheck.js';
 import VersionAlert from '../VersionAlert/VersionAlert.js';
 
@@ -31,37 +36,34 @@ const SideNavigation = () => {
     void getUserGroupsFn();
   }, []);
 
-  const baseNavigationItems: SideNavigationProps.Item[] = [
-    {
-      type: 'section',
-      text: t('sections.raceHub', { ns: 'navigation' }),
-      items: [
-        {
-          type: 'link',
-          text: t(`breadcrumbs.${PageId.RACES}`, { ns: 'navigation' }),
-          href: getPath(PageId.RACES),
-        },
-      ],
-    },
-    {
-      type: 'section',
-      text: t('sections.learningAndModels', { ns: 'navigation' }),
-      items: [
-        {
-          type: 'link',
-          text: t(`breadcrumbs.${PageId.GET_STARTED}`, { ns: 'navigation' }),
-          href: getPath(PageId.GET_STARTED),
-        },
-        {
-          type: 'link',
-          text: t(`breadcrumbs.${PageId.MODELS}`, { ns: 'navigation' }),
-          href: getPath(PageId.MODELS),
-        },
-      ],
-    },
-  ];
-
   const isAdmin = userGroups.includes(UserGroups.ADMIN);
+  const isFacilitator = userGroups.includes(UserGroups.RACE_FACILITATORS);
+  const isRacer = userGroups.includes(UserGroups.RACERS);
+  const canViewModels = isAdmin || isFacilitator || isRacer;
+
+  // Get started and Your models are only relevant to roles that can train/manage models —
+  // Commentators and Registration Managers have no model-training relationship.
+  const baseNavigationItems: SideNavigationProps.Item[] = canViewModels
+    ? [
+        {
+          type: 'section',
+          text: t('sections.learningAndModels', { ns: 'navigation' }),
+          items: [
+            {
+              type: 'link',
+              text: t(`breadcrumbs.${PageId.GET_STARTED}`, { ns: 'navigation' }),
+              href: getPath(PageId.GET_STARTED),
+            },
+            {
+              type: 'link',
+              text: t(`breadcrumbs.${PageId.MODELS}`, { ns: 'navigation' }),
+              href: getPath(PageId.MODELS),
+            },
+          ],
+        },
+      ]
+    : [];
+
   const { data: versionData } = useVersionCheck({ enabled: isAdmin });
 
   return (
@@ -75,8 +77,10 @@ const SideNavigation = () => {
         }}
         items={[
           ...baseNavigationItems,
-          ...getAdminNavigationItems(userGroups, t),
+          ...getRaceManagementNavigationItems(userGroups, t),
+          ...getDeviceManagementNavigationItems(userGroups, t),
           ...getModelManagementNavigationItems(userGroups, t),
+          ...getAdminNavigationItems(userGroups, t),
         ]}
       />
       {isAdmin && (

@@ -32,8 +32,11 @@ export enum DynamoDBItemAttribute {
   SK = 'sk',
   GSI1_PK = 'gsi1pk',
   GSI1_SK = 'gsi1sk',
+  GSI2_PK = 'gsi2pk',
+  GSI2_SK = 'gsi2sk',
   VERSION = 'version',
   CREATED_AT = 'createdAt',
+  CREATED_BY = 'createdBy',
   UPDATED_AT = 'updatedAt',
   DESCRIPTION = 'description',
   NAME = 'name',
@@ -104,6 +107,17 @@ export enum DynamoDBItemAttribute {
   SUBMISSION_TERMINATION_CONDITIONS = 'submissionTerminationConditions',
   TIMING_METHOD = 'timingMethod',
   TOTAL_LAPS = 'totalLaps',
+  // RaceStats aggregate attributes
+  TOTAL_EVENTS = 'totalEvents',
+  TOTAL_RACERS = 'totalRacers',
+  TOTAL_VALID_LAPS = 'totalValidLaps',
+  TOTAL_RACES = 'totalRaces',
+  SUM_VALID_LAP_TIME_MS = 'sumValidLapTimeMs',
+  FASTEST_LAPS_EVER = 'fastestLapsEver',
+  TOTAL_COUNTRIES = 'totalCountries',
+  EVENTS_BY_COUNTRY = 'eventsByCountry',
+  EVENTS_BY_MONTH = 'eventsByMonth',
+  EVENT_TYPE_BREAKDOWN = 'eventTypeBreakdown',
   TRACK_PERCENTAGE = 'trackPercentage',
   /** Set of profileIds that have submitted to this leaderboard */
   SUBMITTED_PROFILES = 'submittedProfiles',
@@ -122,6 +136,45 @@ export enum DynamoDBItemAttribute {
   WINNER_DECLARED_AT = 'winnerDeclaredAt',
   LAST_SF_FAILURE_AT = 'lastSFFailureAt',
   PARTICIPANT_NAME = 'participantName',
+  /** Links a Leaderboard (track) to a physical Event. Null for standalone virtual leaderboards. */
+  TRACK_TYPE = 'trackType',
+  /** Per-track leaderboard footer text (physical events). Null for standalone virtual leaderboards. */
+  LEADERBOARD_FOOTER = 'leaderBoardFooter',
+  /** Fixed-width ordinal used to order tracks within a physical event. */
+  TRACK_ORDER = 'trackOrder',
+
+  // Event attributes
+  EVENT_ID = 'eventId',
+  EVENT_TYPE = 'eventType',
+  EVENT_STATUS = 'eventStatus',
+  EVENT_DATE = 'eventDate',
+  COUNTRY_CODE = 'countryCode',
+  SPONSOR = 'sponsor',
+  RACE_FORMAT = 'raceFormat',
+  COMBINED_SCORING_STRATEGY = 'combinedScoringStrategy',
+  COMBINED_LEADERBOARD_HEADER = 'combinedLeaderBoardHeader',
+  COMBINED_LEADERBOARD_FOOTER = 'combinedLeaderBoardFooter',
+  MAX_RUNS_PER_RACER = 'maxRunsPerRacer',
+  AVERAGE_LAPS_WINDOW = 'averageLapsWindow',
+
+  // Run attributes
+  RUN_ID = 'runId',
+  RUN_STATUS = 'runStatus',
+  RACED_BY_PROXY = 'racedByProxy',
+  LAP_COUNT = 'lapCount',
+
+  // Lap attributes
+  LAP_NUMBER = 'lapNumber',
+  LAP_TIME_MS = 'lapTimeMs',
+  DEVICE_ID = 'deviceId',
+  IS_VALID = 'isValid',
+  RESETS = 'resets',
+  ORIGINAL_LAP_TIME_MS = 'originalLapTimeMs',
+  EDITED_BY = 'editedBy',
+  EDITED_AT = 'editedAt',
+  EDIT_REASON = 'editReason',
+  /** Client-supplied idempotency token for CreateLap (guards against duplicate laps on retry). */
+  CLIENT_TOKEN = 'clientToken',
 
   // Model attributes
   ACTION_SPACE = 'actionSpace',
@@ -144,6 +197,13 @@ export enum DynamoDBItemAttribute {
   PACKAGING_ERROR_REQUEST_ID = 'packagingErrorRequestId',
   PACKAGED_AT = 'packagedAt',
   IMPORT_ERROR_MESSAGE = 'importErrorMessage',
+  STATUS_MESSAGE = 'statusMessage',
+
+  // Model optimization attributes
+  OPTIMIZATION_STATUS = 'optimizationStatus',
+  OPTIMIZATION_ERROR_MESSAGE = 'optimizationErrorMessage',
+  MODEL_SOURCE = 'modelSource',
+  OPTIMIZED_ARTIFACTS_S3_PREFIX = 'optimizedArtifactsS3Prefix',
 
   // Training config attributes
   MIN_EVAL_TRIALS = 'minEvalTrials',
@@ -162,6 +222,43 @@ export enum DynamoDBItemAttribute {
   ACCOUNT_RESOURCE_COMPUTE_MINUTES_QUEUED = 'accountComputeMinutesQueued',
   ACCOUNT_RESOURCE_USAGE_MONTH = 'month',
   ACCOUNT_RESOURCE_USAGE_YEAR = 'year',
+
+  // Race Manager — Device & Fleet attributes
+  INSTANCE_ID = 'instanceId',
+  DEVICE_TYPE = 'deviceType',
+  CAR_TYPE = 'carType',
+  FLEET_ID = 'fleetId',
+  LAST_SEEN_AT = 'lastSeenAt',
+  ACTIVATED_AT = 'activatedAt',
+  TTL = 'ttl',
+  IP_ADDRESS = 'ipAddress',
+  ASSIGNED_AT = 'assignedAt',
+  SSID = 'ssid',
+  GPIO_PINS = 'gpioPins',
+  // Async remote-command result (written by the SSM State Change Handler, Task 5;
+  // consumed by the BroadcastHandler → IoT path, Task 11).
+  LAST_COMMAND_ID = 'lastCommandId',
+  LAST_COMMAND_STATUS = 'lastCommandStatus',
+  LAST_COMMAND_AT = 'lastCommandAt',
+
+  // Deployment attributes
+  DEPLOYMENT_ID = 'deploymentId',
+  BATCH_ID = 'batchId',
+  CAR_INSTANCE_ID = 'carInstanceId',
+  CAR_NAME = 'carName',
+  ERROR_MESSAGE = 'errorMessage',
+  UPLOAD_STARTED_AT = 'uploadStartedAt',
+  COMPLETED_AT = 'completedAt',
+
+  // Bulk invite job attributes (Epic 6)
+  ADMIN_PROFILE_ID = 'adminProfileId',
+  BULK_INVITE_JOB_ID = 'bulkInviteJobId',
+  TOTAL_ENTRIES = 'totalEntries',
+  PROCESSED_COUNT = 'processedCount',
+  CREATED_COUNT = 'createdCount',
+  SKIPPED_COUNT = 'skippedCount',
+  FAILED_COUNT = 'failedCount',
+  RESULTS = 'results',
 }
 
 /**
@@ -277,18 +374,32 @@ export const getWorkflowJobAttributes = <
         [Attribute.PRIMARY_VIDEO_S3_LOCATION]: '',
       },
       watch: [Attribute.NAME],
-      set: (_, { modelId, profileId, name: jobName }) => ({
-        [Attribute.METRICS_S3_LOCATION]: s3PathHelper.getMetricsS3Location(modelId, profileId, jobName),
-        [Attribute.SIM_TRACE_S3_LOCATION]: s3PathHelper.getSimTraceS3Location(modelId, profileId, jobName),
-        [Attribute.SIMULATION_HEARTBEAT_S3_LOCATION]: s3PathHelper.getSimulationHeartbeatS3Location(
-          modelId,
-          profileId,
-          jobName,
-        ),
-        [Attribute.SIMULATION_YAML_S3_LOCATION]: s3PathHelper.getSimulationYamlS3Location(modelId, profileId),
-        [Attribute.VIDEOS_S3_LOCATION]: s3PathHelper.getVideosS3Location(modelId, profileId, jobName),
-        [Attribute.PRIMARY_VIDEO_S3_LOCATION]: s3PathHelper.getPrimaryVideoS3Location(modelId, profileId, jobName),
-      }),
+      set: (_, { modelId, profileId, name: jobName }) => {
+        // Generate a single timestamp so all timestamped asset locations (videos,
+        // primary video, metrics, sim-trace) share the exact same base prefix.
+        // Previously each helper called new Date() independently, so videosS3Location
+        // and primaryVideoS3Location could resolve to different prefixes, causing the
+        // simulator to upload to one path while lookup happened at another (missing video).
+        const timestamp = new Date().toISOString();
+
+        return {
+          [Attribute.METRICS_S3_LOCATION]: s3PathHelper.getMetricsS3Location(modelId, profileId, jobName, timestamp),
+          [Attribute.SIM_TRACE_S3_LOCATION]: s3PathHelper.getSimTraceS3Location(modelId, profileId, jobName, timestamp),
+          [Attribute.SIMULATION_HEARTBEAT_S3_LOCATION]: s3PathHelper.getSimulationHeartbeatS3Location(
+            modelId,
+            profileId,
+            jobName,
+          ),
+          [Attribute.SIMULATION_YAML_S3_LOCATION]: s3PathHelper.getSimulationYamlS3Location(modelId, profileId),
+          [Attribute.VIDEOS_S3_LOCATION]: s3PathHelper.getVideosS3Location(modelId, profileId, jobName, timestamp),
+          [Attribute.PRIMARY_VIDEO_S3_LOCATION]: s3PathHelper.getPrimaryVideoS3Location(
+            modelId,
+            profileId,
+            jobName,
+            timestamp,
+          ),
+        };
+      },
       properties: {
         [Attribute.METRICS_S3_LOCATION]: {
           type: 'string',
@@ -358,6 +469,9 @@ export const getWorkflowJobAttributes = <
     [Attribute.STATUS]: {
       type: Object.values(JobStatus),
       required: true,
+    },
+    [Attribute.STATUS_MESSAGE]: {
+      type: 'string',
     },
     [Attribute.TERMINATION_CONDITIONS]: {
       type: 'map',

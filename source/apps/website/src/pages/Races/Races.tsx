@@ -31,10 +31,13 @@ const Races = ({ __forceFacilitator }: { __forceFacilitator?: boolean } = {}) =>
   }, [__forceFacilitator]);
 
   const now = new Date();
+  // Physical-race leaderboards belong to an Event (eventId is set) and are managed
+  // through the Events/Timekeeping pages — exclude them from the community races view.
+  const communityLeaderboards = leaderboards.filter((item) => !item.eventId);
   const isActive = (item: (typeof leaderboards)[0]) =>
     item.closeTime > now || (item.isLive && item.liveEventStatus !== 'COMPLETED');
-  const activeLeaderboards = leaderboards.filter(isActive);
-  const closedLeaderboards = leaderboards.filter((item) => !isActive(item));
+  const activeLeaderboards = communityLeaderboards.filter(isActive);
+  const closedLeaderboards = communityLeaderboards.filter((item) => !isActive(item));
   return (
     <ContentLayout header={<Header variant="h1">{t('welcome')}</Header>}>
       <SpaceBetween size="l">

@@ -5,18 +5,27 @@ import type { AppLayoutProps } from '@cloudscape-design/components/app-layout';
 
 export enum PageId {
   ACCOUNT = 'account',
-  ADMIN_MODEL_DOWNLOAD = 'adminModelDownload',
+  ADMIN_MODELS = 'adminModels',
   CREATE_EVALUATION = 'createEvaluation',
+  CREATE_EVENT = 'createEvent',
   CREATE_MODEL = 'createModel',
   CREATE_RACE = 'createRace',
   CLONE_RACE = 'cloneRace',
+  DEVICES = 'devices',
+  DEVICE_DETAIL = 'deviceDetail',
+  ACTIVATE_DEVICE = 'activateDevice',
+  FLEETS = 'fleets',
+  EDIT_EVENT = 'editEvent',
   EDIT_RACE = 'editRace',
   ENTER_RACE = 'enterRace',
+  EVENT_DETAIL = 'eventDetail',
+  EVENTS = 'events',
   FORGOT_PASSWORD_REQUEST = 'forgotPasswordRequest',
   FORGOT_PASSWORD_RESET = 'forgotPasswordReset',
   GET_STARTED = 'getStarted',
   HOME = 'home',
   IMPORT_MODEL = 'importModel',
+  IMPORT_PHYSICAL_MODEL = 'importPhysicalModel',
   LIVE_RACE = 'liveRace',
   MANAGE_INSTANCE = 'manageInstance',
   MANAGE_RACES = 'manageRaces',
@@ -26,14 +35,25 @@ export enum PageId {
   RACER_PROFILE = 'racerProfile',
   RACES = 'races',
   SIGN_IN = 'signIn',
+  SIGN_UP = 'signUp',
   SUBMIT_MODEL_TO_RACE = 'submitModelToRace',
+  UPLOAD_STATUS = 'uploadStatus',
+  TIMEKEEPING = 'timekeeping',
+  TIMEKEEPING_TRACK = 'timekeepingTrack',
   VERIFY_EMAIL = 'verifyEmail',
+  // Race Management — Epics 4+5
+  PUBLIC_LEADERBOARD = 'publicLeaderboard',
+  STREAMING_OVERLAY = 'streamingOverlay',
+  COMMENTATOR_VIEW = 'commentatorView',
+  RACE_STATS = 'raceStats',
+  REGISTER_RACER = 'registerRacer',
 }
 
 export const AUTH_PAGE_IDS = [
   PageId.FORGOT_PASSWORD_REQUEST,
   PageId.FORGOT_PASSWORD_RESET,
   PageId.SIGN_IN,
+  PageId.SIGN_UP,
   PageId.VERIFY_EMAIL,
 ];
 
@@ -50,8 +70,8 @@ export const pages = {
     path: '/account',
     contentType: 'form',
   },
-  [PageId.ADMIN_MODEL_DOWNLOAD]: {
-    path: '/admin/model-download',
+  [PageId.ADMIN_MODELS]: {
+    path: '/admin/models',
     contentType: 'table',
   },
   [PageId.CLONE_RACE]: {
@@ -62,6 +82,10 @@ export const pages = {
     path: '/models/:modelId/evaluate',
     contentType: 'form',
   },
+  [PageId.CREATE_EVENT]: {
+    path: '/events/create',
+    contentType: 'form',
+  },
   [PageId.CREATE_MODEL]: {
     path: '/models/create',
     contentType: 'wizard',
@@ -70,11 +94,37 @@ export const pages = {
     path: '/races/create',
     contentType: 'wizard',
   },
+  [PageId.DEVICES]: {
+    path: '/devices',
+    contentType: 'table',
+  },
+  [PageId.ACTIVATE_DEVICE]: {
+    path: '/devices/activate',
+    contentType: 'wizard',
+  },
+  [PageId.DEVICE_DETAIL]: {
+    path: '/devices/:instanceId',
+  },
+  [PageId.FLEETS]: {
+    path: '/fleets',
+    contentType: 'table',
+  },
   [PageId.EDIT_RACE]: {
     path: '/races/:leaderboardId/editRace',
   },
+  [PageId.EDIT_EVENT]: {
+    path: '/events/:eventId/edit',
+    contentType: 'form',
+  },
   [PageId.ENTER_RACE]: {
     path: '/races/:leaderboardId/enter',
+  },
+  [PageId.EVENT_DETAIL]: {
+    path: '/events/:eventId',
+  },
+  [PageId.EVENTS]: {
+    path: '/events',
+    contentType: 'table',
   },
   [PageId.FORGOT_PASSWORD_REQUEST]: {
     path: '/forgotPasswordRequest',
@@ -92,6 +142,9 @@ export const pages = {
   },
   [PageId.IMPORT_MODEL]: {
     path: '/models/import',
+  },
+  [PageId.IMPORT_PHYSICAL_MODEL]: {
+    path: '/models/import-physical',
   },
   [PageId.LIVE_RACE]: {
     path: '/races/:leaderboardId/live',
@@ -123,10 +176,43 @@ export const pages = {
   [PageId.SIGN_IN]: {
     path: '/signIn',
   },
+  [PageId.SIGN_UP]: {
+    path: '/signUp',
+  },
   [PageId.SUBMIT_MODEL_TO_RACE]: {
     path: '/models/:modelId/submit',
   },
+  [PageId.UPLOAD_STATUS]: {
+    path: '/admin/upload-status',
+    contentType: 'table',
+  },
+  [PageId.TIMEKEEPING]: {
+    path: '/timekeep',
+    contentType: 'default',
+  },
+  [PageId.TIMEKEEPING_TRACK]: {
+    path: '/events/:eventId/tracks/:leaderboardId/timekeep',
+    contentType: 'default',
+  },
   [PageId.VERIFY_EMAIL]: {
     path: '/verifyEmail',
+  },
+  // Race Management — Epics 4+5
+  [PageId.PUBLIC_LEADERBOARD]: {
+    path: '/race-management/events/:eventId/leaderboard',
+  },
+  [PageId.STREAMING_OVERLAY]: {
+    path: '/race-management/overlay',
+  },
+  [PageId.COMMENTATOR_VIEW]: {
+    path: '/race-management/commentator',
+    contentType: 'table',
+  },
+  [PageId.RACE_STATS]: {
+    path: '/race-management/stats',
+  },
+  [PageId.REGISTER_RACER]: {
+    path: '/race-management/register',
+    contentType: 'form',
   },
 } as const satisfies { [Page in PageId]: PageDetails };

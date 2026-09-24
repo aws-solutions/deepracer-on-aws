@@ -54,9 +54,12 @@ export const ListModelsOperation: Operation<ListModelsServerInput, ListModelsSer
         fileSizeInBytes: modelItem.fileSizeInBytes,
         metadata: modelItem.metadata,
         modelId: modelItem.modelId,
+        modelSource: modelItem.modelSource,
         name: modelItem.name,
+        optimizationStatus: modelItem.optimizationStatus,
         status: modelItem.status,
         importErrorMessage: modelItem.importErrorMessage,
+        statusMessage: modelItem.statusMessage,
         trainingConfig: {
           maxTimeInMinutes: trainingItem.terminationConditions.maxTimeInMinutes,
           minEvalTrials: trainingItem.minEvalTrials,

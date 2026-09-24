@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-09-24
+
+### Added
+
+- Race Management for physical events with support for up to 10 tracks per event, run/lap timekeeping, configurable combined leaderboards (best result per racer, best single result, sum, or average), automatic enforcement of run, reset, and attempt limits, and aggregate event statistics.
+- Event lifecycle management with a state machine progressing through `DRAFT`, `OPEN`, `IN_PROGRESS`, `COMPLETED`, and `ARCHIVED` states.
+- Timekeeping page for facilitators to manage runs, record laps, validate laps, and edit lap times with original values preserved and an audit trail (editor identity, timestamp, and reason).
+- Live countdown timer broadcast to spectators in real time via AWS IoT Core with sub-100ms pause/resume sync.
+- Device fleet management to register, activate, and manage AWS DeepRacer cars and Raspberry Pi devices via AWS Systems Manager, organize devices into fleets, assign fleets to events, and monitor device status (online, offline, pending) in real time via IoT Core.
+- Remote device commands to restart the DeepRacer service, trigger an emergency stop, and change the tail-light color from the console.
+- Model optimizer to convert trained models to OpenVINO IR and TensorFlow Lite formats for on-device inference, with the correct artifact auto-selected per car type (original AWS DeepRacer, [Custom AWS DeepRacer with Ubuntu 24.04](https://github.com/aws-deepracer-community/deepracer-custom-car), and Raspberry Pi).
+- Push-to-car deployment to send optimized models to registered cars over SSM with progress tracking, multi-model batch push, and an event-scoped deployment history page.
+- Physical model import to upload pre-trained model archives (`.tar.gz`) with automatic optimization and support for both flat and nested archive structures.
+- Bulk user invite for administrators to upload a CSV of up to 200 entries, create racer accounts, send invitation emails in one action with live progress reporting and per-entry results (`CREATED`, `SKIPPED`, or `FAILED`), and resend invitations to users who have not yet accepted.
+- Registration Manager role for dedicated walk-up account creation at events.
+- Commentator view for read-only real-time race statistics during events, including per-racer lap-by-lap data, fastest lap, and current position.
+- Self-registration flow via the main login page for walk-up racers at events.
+- Admin-only Race Statistics page aggregating deployment-wide metrics including events by country, activity over time, event type breakdown, and fastest laps.
+- Ability for administrators to edit community race end time and maximum submissions per user on active races.
+- Public unauthenticated leaderboard and streaming overlay (OBS/Twitch-compatible) via AWS IoT Core WebSocket pub/sub.
+- Video playback, download, and additional statistics for race submissions ([#46](https://github.com/aws-solutions/deepracer-on-aws/pull/46)) - contributed by ([@larsll](https://github.com/larsll)).
+
+### Changed
+
+- Decomposed CDK infrastructure into nested stacks (`EventManagement`, `ModelManagement`, `DeviceManagement`, `RealTimeRoles`, `Gateway`) to stay within CloudFormation template size and resource limits.
+
+### Fixed
+
+- Training job dispatch deadlock when ListTrainingJobs is throttled at scale ([#87](https://github.com/aws-solutions/deepracer-on-aws/issues/87)).
+- Editing a live race with queued submissions no longer allows scoring, track, or penalty field changes that would cause config divergence between queued and completed submissions.
+
+### Security
+
+- Added GuardDuty Malware Protection scanning on physical model imports before optimization or deployment.
+- Scoped each SageMaker training execution role's S3 access to that user's own prefix via [ABAC session-tag chaining](https://docs.aws.amazon.com/sagemaker/latest/dg/model-access-training-data-abac.html), eliminating cross-user data access.
+
 ## [1.2.11] - 2026-09-15
 
 ### Security

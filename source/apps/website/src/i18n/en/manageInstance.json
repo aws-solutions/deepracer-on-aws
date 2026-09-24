@@ -1,0 +1,301 @@
+{
+  "page": {
+    "header": "Instance management",
+    "actions": {
+      "instanceQuotas": "Instance quotas",
+      "newUserQuotas": "New user quotas"
+    },
+    "unauthorized": {
+      "header": "Unauthorized",
+      "message": "The page you are trying to view is only available to administrators.",
+      "returnHome": "Return to Home"
+    },
+    "loading": "Loading..."
+  },
+  "usageSummary": {
+    "header": "Usage summary",
+    "description": "Summarizes the current usage of your deployment, including compute resources, model storage, and any limits that have been configured.",
+    "trainingEvalHoursUsed": {
+      "label": "Training and evaluation hours used",
+      "popover": "This shows the number of hours that have been spent on training and evaluating machine learning users on your deployment."
+    },
+    "modelsStored": {
+      "label": "Models stored",
+      "popover": "This shows the total number of models currently stored on your deployment across all users."
+    },
+    "storageUsed": {
+      "label": "Storage used",
+      "popover": "This shows the total amount of storage space used by all models across all users on your deployment."
+    },
+    "numberOfUsers": {
+      "label": "Number of users",
+      "popover": "This shows the total number of users who are registered on your deployment."
+    },
+    "registrationMode": {
+      "label": "Registration mode",
+      "popover": "This indicates how new users join your deployment. \"Invite only\" means users must be explicitly invited by an administrator.",
+      "value": "Invite only"
+    },
+    "globalComputeLimit": {
+      "label": "Global compute usage limit",
+      "popover": "This shows the maximum total compute hours that can be used across all users in your deployment for training and evaluation."
+    },
+    "globalModelLimit": {
+      "label": "Global model count limit",
+      "popover": "This shows the maximum total number of models that can be stored across all users in your deployment."
+    },
+    "newUserComputeLimit": {
+      "label": "New user compute usage limit",
+      "popover": "This shows the default compute usage limit that will be assigned to new users. To change this, click <i>New user quotas</i> and update <i>New user compute usage limit</i>."
+    },
+    "newUserModelLimit": {
+      "label": "New user model count limit",
+      "popover": "This shows the default model count limit that will be assigned to new users. To change this, click <i>New user quotas</i> and update <i>New user model count limit</i>."
+    },
+    "units": {
+      "hours": "hours",
+      "hrs": "hrs",
+      "models": "models",
+      "users": "users",
+      "unlimited": "Unlimited",
+      "empty": "-/-"
+    }
+  },
+  "profilesTable": {
+    "columns": {
+      "email": "Email",
+      "alias": "Alias",
+      "role": "Role",
+      "currentUsage": "Current usage",
+      "queuedUsage": "Queued usage",
+      "usageLimit": "Usage limit",
+      "modelLimit": "Model limit",
+      "modelStorage": "Model storage",
+      "dateAdded": "Date added"
+    },
+    "usageLimitPopover": "The maximum number of training and evaluation hours an individual user can consume. This can be changed by selecting the checkbox in the user's row and clicking <i>Actions</i> > <i>Update usage quotas</i>.",
+    "modelLimitPopover": "The maximum number of models an individual user can have. This can be changed by selecting the checkbox in the user's row and clicking <i>Actions</i> > <i>Update usage quotas</i>.",
+    "empty": {
+      "title": "No users",
+      "description": "No users to display."
+    },
+    "loadingUsers": "Loading users",
+    "addUser": "Add user",
+    "header": "Users",
+    "selectedCount": "{{count}} selected",
+    "actions": {
+      "label": "Actions",
+      "inviteUser": "Invite user",
+      "inviteMultipleUsers": "Invite multiple users",
+      "changeRole": "Change role",
+      "updateUsageQuotas": "Update usage quotas",
+      "deleteModels": "Delete models",
+      "deleteUser": "Delete user",
+      "resendInvitation": "Resend invitation"
+    },
+    "filterPlaceholder": "Find user by alias or email",
+    "filterPopover": "Search for users by alias or email address. Examples: <br /> <strong>Alias:</strong> \"john\" matches \"John Smith\" or \"johnson\" <br /> <strong>Email:</strong> \"example.com\" matches any user with that domain",
+    "roles": {
+      "admin": "Admin",
+      "raceFacilitator": "Race facilitator",
+      "commentator": "Commentator",
+      "registrationManager": "Registration manager",
+      "racer": "Racer"
+    },
+    "empty_value": "-/-"
+  },
+  "inviteUserModal": {
+    "header": "Invite user",
+    "validation": {
+      "emailInvalid": "Please enter a valid email address",
+      "emailRequired": "Email address is required"
+    },
+    "notifications": {
+      "success": "User invitation sent to {{email}}",
+      "error": "Failed to invite user. Please try again."
+    },
+    "email": {
+      "label": "Email address",
+      "description": "Enter the email address of the user you want to invite.",
+      "placeholder": "Enter email address"
+    },
+    "buttons": {
+      "cancel": "Cancel",
+      "invite": "Invite"
+    }
+  },
+  "bulkInviteUsersModal": {
+    "header": "Invite multiple users",
+    "csvFile": {
+      "label": "CSV file",
+      "description": "One entry per row: email (required), displayName (optional). Up to {{maxEntries}} entries. A header row is auto-detected and skipped.",
+      "constraintText": "CSV files only"
+    },
+    "fileUpload": {
+      "uploadButtonText": "Choose file",
+      "dropzoneText": "Drop CSV file to upload",
+      "removeFileAriaLabel": "Remove file",
+      "limitShowFewer": "Show fewer files",
+      "limitShowMore": "Show more files",
+      "errorIconAriaLabel": "Error",
+      "warningIconAriaLabel": "Warning"
+    },
+    "errors": {
+      "emptyFile": "The file contains no entries.",
+      "readFailed": "Failed to read the selected file. Please try again.",
+      "submitFailed": "Failed to start the bulk invite. Please try again."
+    },
+    "issuesFound_one": "{{count}} issue found — please fix and re-upload",
+    "issuesFound_other": "{{count}} issues found — please fix and re-upload",
+    "issueLine": "Line {{line}}: {{message}}",
+    "progress": {
+      "importComplete": "Import complete",
+      "importing": "Importing users…",
+      "description": "{{processedCount}} of {{totalEntries}} processed — {{createdCount}} created, {{skippedCount}} skipped, {{failedCount}} failed",
+      "importFailed": "Import failed"
+    },
+    "table": {
+      "entriesCount_one": "{{count}} entry",
+      "entriesCount_other": "{{count}} entries",
+      "columns": {
+        "email": "Email",
+        "displayName": "Display name",
+        "status": "Status",
+        "reason": "Reason"
+      },
+      "status": {
+        "pending": "Pending",
+        "created": "Created",
+        "skipped": "Skipped",
+        "failed": "Failed"
+      },
+      "empty_value": "-",
+      "pagination": {
+        "nextPageLabel": "Next page",
+        "previousPageLabel": "Previous page",
+        "pageLabel": "Page {{pageNumber}} of all pages"
+      },
+      "preferences": {
+        "title": "Preferences",
+        "confirm": "Confirm",
+        "cancel": "Cancel",
+        "pageSizeTitle": "Page size",
+        "pageSizeOptionsLabel_one": "{{count}} entry",
+        "pageSizeOptionsLabel_other": "{{count}} entries"
+      }
+    },
+    "buttons": {
+      "cancel": "Cancel",
+      "close": "Close",
+      "inviteUsers": "Invite users"
+    }
+  },
+  "deleteUserModal": {
+    "header": "Delete user",
+    "confirmMessage": "Delete this user from the system? This action cannot be undone.",
+    "notifications": {
+      "success": "User {{alias}} has been deleted from the system",
+      "error": "Failed to delete user. Please try again."
+    },
+    "buttons": {
+      "cancel": "Cancel",
+      "delete": "Delete"
+    }
+  },
+  "deleteUserModelsModal": {
+    "header": "Delete models",
+    "confirmMessage": "Delete all models for user {{alias}}? This will permanently remove all models associated with this user. This action cannot be undone.",
+    "notifications": {
+      "success": "All models for user {{alias}} have been deleted",
+      "error": "Failed to delete user models. Please try again."
+    },
+    "buttons": {
+      "cancel": "Cancel",
+      "delete": "Delete"
+    }
+  },
+  "changeUserRoleModal": {
+    "header": "Change user role",
+    "rolePlaceholder": "Select a role",
+    "roles": {
+      "racer": "Racer",
+      "raceFacilitator": "Race facilitator",
+      "commentator": "Commentator",
+      "registrationManager": "Registration manager",
+      "admin": "Admin"
+    },
+    "warning": {
+      "intro": "Please note the following when changing a user's role:",
+      "sessionLogout": "If the user whose role you are updating has a current session, they will need to log out and log back in for their role change to take effect.",
+      "propagationDelay": "A successful role change will take 1-2 minutes to propagate and reflect in the Users table."
+    },
+    "notifications": {
+      "success": "User {{alias}}'s role has been changed to {{role}}. Please allow 1-2 minutes for this change to take effect.",
+      "error": "Failed to change user role. Please try again."
+    },
+    "buttons": {
+      "cancel": "Cancel",
+      "change": "Change"
+    }
+  },
+  "resendInviteModal": {
+    "header": "Resend invitation",
+    "confirmMessage_one": "Resend the invitation email to {{count}} selected user? Only users who have not yet accepted their invitation will receive a new email.",
+    "confirmMessage_other": "Resend the invitation email to {{count}} selected users? Only users who have not yet accepted their invitation will receive a new email.",
+    "noUsersSelected": "No users selected.",
+    "results": {
+      "columns": {
+        "email": "Email",
+        "result": "Result",
+        "details": "Details"
+      },
+      "status": {
+        "sent": "Sent",
+        "skipped": "Skipped",
+        "error": "Error"
+      },
+      "skippedMessage": "Skipped — already confirmed",
+      "errorMessage": "Failed to resend invitation"
+    },
+    "buttons": {
+      "cancel": "Cancel",
+      "resendInvitation": "Resend invitation",
+      "done": "Done"
+    }
+  },
+  "quotasModal": {
+    "instance": {
+      "header": "Instance quotas",
+      "computeLabel": "Global compute usage limit (hours)",
+      "computeDescription": "The maximum number of training hours to be used by the instance.",
+      "modelCountLabel": "Global model count limit",
+      "modelCountDescription": "The maximum number of models to be stored on the instance."
+    },
+    "newUser": {
+      "header": "New user quotas",
+      "computeLabel": "New user compute usage limit (hours)",
+      "computeDescription": "The maximum number of training hours for new users.",
+      "modelCountLabel": "New user model count limit",
+      "modelCountDescription": "The maximum number of models for new users."
+    },
+    "user": {
+      "header": "Update usage quotas",
+      "computeLabel": "Usage limit (hours)",
+      "computeDescription": "The maximum number of training hours for this user.",
+      "modelCountLabel": "Model count limit",
+      "modelCountDescription": "The maximum number of models this user can store.",
+      "error": "Failed to update user quotas. Please try again."
+    },
+    "validation": {
+      "required": "{{label}} is required",
+      "invalidLimit": "Value must be -1 (unlimited) or greater than or equal to 0"
+    },
+    "computePlaceholder": "Enter training hours limit",
+    "modelCountPlaceholder": "Enter model count limit",
+    "unlimited": "Unlimited",
+    "buttons": {
+      "cancel": "Cancel",
+      "confirm": "Confirm"
+    }
+  }
+}

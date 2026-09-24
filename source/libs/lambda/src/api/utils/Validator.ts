@@ -7,6 +7,7 @@ import {
   Sensors,
   ModelDefinition,
   BadRequestError,
+  ModelSource,
   ModelStatus,
 } from '@deepracer-indy/typescript-server-client';
 import { logger } from '@deepracer-indy/utils';
@@ -25,6 +26,10 @@ class Validator {
     if (preTrainedModel.status !== ModelStatus.READY) {
       logger.error(ErrorMessage.PRE_TRAINED_MODEL_NOT_READY, { preTrainedModelId });
       throw new BadRequestError({ message: ErrorMessage.PRE_TRAINED_MODEL_NOT_READY });
+    }
+
+    if (preTrainedModel.modelSource === ModelSource.IMPORTED_PHYSICAL) {
+      throw new BadRequestError({ message: 'Cannot clone from a physical model.' });
     }
 
     this.validateCloneActionSpace(newModelDefinition.metadata.actionSpace, preTrainedModel.metadata.actionSpace);

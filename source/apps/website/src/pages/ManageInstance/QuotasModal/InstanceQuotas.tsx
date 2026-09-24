@@ -9,17 +9,17 @@ interface InstanceQuotasModalProps {
 }
 
 const instanceQuotasConfig: QuotasConfig = {
-  modalHeader: 'Instance quotas',
+  modalHeaderKey: 'quotasModal.instance.header',
   computeField: {
     name: 'globalComputeMinutesLimit',
-    label: 'Global compute usage limit (hours)',
-    description: 'The maximum number of training hours to be used by the instance.',
+    labelKey: 'quotasModal.instance.computeLabel',
+    descriptionKey: 'quotasModal.instance.computeDescription',
     fieldKey: 'usageQuotas.global.globalComputeMinutesLimit',
   },
   modelCountField: {
     name: 'globalModelCountLimit',
-    label: 'Global model count limit',
-    description: 'The maximum number of models to be stored on the instance.',
+    labelKey: 'quotasModal.instance.modelCountLabel',
+    descriptionKey: 'quotasModal.instance.modelCountDescription',
     fieldKey: 'usageQuotas.global.globalModelCountLimit',
   },
   keyToUpdate: 'usageQuotas.global',

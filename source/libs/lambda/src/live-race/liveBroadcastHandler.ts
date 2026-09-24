@@ -1,48 +1,81 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import { EventBridgeClient, PutEventsCommand } from '@aws-sdk/client-eventbridge';
 import { IoTDataPlaneClient, PublishCommand } from '@aws-sdk/client-iot-data-plane';
-import { leaderboardDao, liveQueueItemDao, rankingDao, type ResourceId } from '@deepracer-indy/database';
+import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda';
+import {
+  eventDao,
+  leaderboardDao,
+  liveQueueItemDao,
+  rankingDao,
+  ResourceType,
+  type ResourceId,
+} from '@deepracer-indy/database';
 import { LiveEventStatus } from '@deepracer-indy/typescript-client';
 import { logger } from '@deepracer-indy/utils';
 import type { DynamoDBBatchResponse, DynamoDBRecord, DynamoDBStreamEvent } from 'aws-lambda';
 
+import { buildDeviceEvents, parseDeviceRecord, type ParsedDeviceRecord } from './deviceBroadcast.js';
+import { recomputeCombinedLeaderboard } from './physical/combinedLeaderboard.js';
+import {
+  buildPhysicalEvents,
+  buildPhysicalTopic,
+  DDB_EVENT_NAMES,
+  EVENT_PK,
+  parsePhysicalRecord,
+  type ParsedPhysicalRecord,
+  type PhysicalRaceEvent,
+} from './physical/index.js';
+import { publishLeaderboardToS3 as publishLeaderboardToS3Impl, sanitizeDisplayField } from './publicLeaderboardS3.js';
 import { instrumentHandler } from '../utils/instrumentation/instrumentHandler.js';
 
-const { IOT_ENDPOINT, TOPIC_PREFIX } = process.env;
-if (!IOT_ENDPOINT || !TOPIC_PREFIX) {
-  throw new Error('Missing required environment variables: IOT_ENDPOINT, TOPIC_PREFIX');
+const { IOT_ENDPOINT, TOPIC_PREFIX, RACE_TOPIC_PREFIX, PUBLIC_LEADERBOARD_BUCKET, RACE_EVENT_BUS_NAME, NAMESPACE } =
+  process.env;
+if (!IOT_ENDPOINT || !TOPIC_PREFIX || !RACE_TOPIC_PREFIX || !PUBLIC_LEADERBOARD_BUCKET) {
+  throw new Error(
+    'Missing required environment variables: IOT_ENDPOINT, TOPIC_PREFIX, RACE_TOPIC_PREFIX, PUBLIC_LEADERBOARD_BUCKET',
+  );
 }
 
+// Device routing (Task 11) is optional: absent env means device broadcast/pruning is disabled,
+// keeping the shared handler backward compatible in contexts that don't set them.
+const { DEVICE_TOPIC_PREFIX, PRUNER_FUNCTION_NAME } = process.env;
+
 const iotClient = new IoTDataPlaneClient({ endpoint: `https://${IOT_ENDPOINT}` });
+const lambdaClient = new LambdaClient({});
+const eventBridgeClient = new EventBridgeClient({});
 
 // --- Entity detection ---
 
+/** SK suffix shared by both virtual and physical Ranking items (RANKING_KEY_TEMPLATE). */
+const RANKING_SK_SUFFIX = `#${ResourceType.RANKING}`;
+
 type EntityType = 'LiveQueueItem' | 'Ranking' | 'Leaderboard' | 'Submission';
+type PhysicalRecordProcessResult = 'processed' | 'not-physical';
 
 interface ParsedRecord {
   entityType: EntityType;
   leaderboardId: ResourceId;
   newImage: Record<string, { S?: string; N?: string; BOOL?: boolean; M?: Record<string, unknown> }>;
   oldImage?: Record<string, { S?: string; N?: string; BOOL?: boolean; M?: Record<string, unknown> }>;
-  eventName: 'INSERT' | 'MODIFY' | 'REMOVE';
+  eventName: keyof typeof DDB_EVENT_NAMES;
 }
 
 export const parseRecord = (record: DynamoDBRecord): ParsedRecord | undefined => {
   const newImage = record.dynamodb?.NewImage;
-  if (!newImage) return undefined;
+  if (!newImage || !record.eventName) return undefined;
 
   const pk = newImage.pk?.S ?? '';
   const sk = newImage.sk?.S ?? '';
   const eventName = record.eventName;
-  if (eventName !== 'INSERT' && eventName !== 'MODIFY' && eventName !== 'REMOVE') return undefined;
 
   if (pk.includes('#livequeueitem')) {
     const leaderboardId = pk.split('#livequeueitem')[0].replace('leaderboard_', '') as ResourceId;
     return { entityType: 'LiveQueueItem', leaderboardId, newImage, oldImage: record.dynamodb?.OldImage, eventName };
   }
 
-  if (sk.endsWith('#ranking')) {
+  if (sk.endsWith(RANKING_SK_SUFFIX)) {
     const leaderboardId = pk.replace('leaderboard_', '') as ResourceId;
     return { entityType: 'Ranking', leaderboardId, newImage, oldImage: record.dynamodb?.OldImage, eventName };
   }
@@ -294,6 +327,121 @@ export const publishToIoT = async (leaderboardId: ResourceId, event: Record<stri
   );
 };
 
+/**
+ * Publishes a physical race event to the race topic tree: race/{eventId}/{trackId}.
+ * Truncation is handled upstream (top-50 for leaderboard); throws only as a last-resort guard.
+ */
+const publishToRaceTopic = async (eventId: string, trackId: string, event: PhysicalRaceEvent): Promise<void> => {
+  const topic = buildPhysicalTopic(RACE_TOPIC_PREFIX, eventId, trackId);
+  const payload = { ...event, publishedAt: new Date().toISOString() };
+  const encoded = Buffer.from(JSON.stringify(payload));
+
+  if (encoded.byteLength > IOT_MAX_PAYLOAD_BYTES) {
+    throw new Error(`IoT payload exceeds 128 KB (${encoded.byteLength} bytes) for race topic ${topic}`);
+  }
+
+  await iotClient.send(
+    new PublishCommand({
+      topic,
+      qos: 1,
+      payload: encoded,
+    }),
+  );
+};
+
+// --- Device status/command routing + prune fan-out (Task 11) ---
+
+/** Publish a device status/command event to the browser-facing device topic. No-op if unset. */
+export const publishToDeviceTopic = async (instanceId: string, event: Record<string, unknown>): Promise<void> => {
+  if (!DEVICE_TOPIC_PREFIX) return;
+  const payload = { ...event, publishedAt: new Date().toISOString() };
+  const encoded = Buffer.from(JSON.stringify(payload));
+  if (encoded.byteLength > IOT_MAX_PAYLOAD_BYTES) {
+    throw new Error(`IoT payload exceeds 128 KB (${encoded.byteLength} bytes) for device ${instanceId}`);
+  }
+  await iotClient.send(new PublishCommand({ topic: `${DEVICE_TOPIC_PREFIX}/${instanceId}`, qos: 1, payload: encoded }));
+};
+
+/**
+ * Fan out TTL-expired device ids to the Pruning Lambda via async (`Event`) invoke — the
+ * BroadcastHandler is not itself a stream consumer for pruning. Best-effort:
+ * a pruning-invoke failure must not fail the broadcast batch.
+ */
+const dispatchPruneFanout = async (instanceIds: string[]): Promise<void> => {
+  if (instanceIds.length === 0 || !PRUNER_FUNCTION_NAME) return;
+  try {
+    await lambdaClient.send(
+      new InvokeCommand({
+        FunctionName: PRUNER_FUNCTION_NAME,
+        InvocationType: 'Event',
+        Payload: Buffer.from(JSON.stringify({ instanceIds })),
+      }),
+    );
+    logger.info('Dispatched device prune fan-out', { count: instanceIds.length });
+  } catch (error) {
+    logger.error('Failed to invoke device pruner', { error, count: instanceIds.length });
+  }
+};
+
+// --- S3 leaderboard JSON hydration ---
+// Write logic lives in ./publicLeaderboardS3.js, shared with addTrackToEvent.ts. This wrapper
+// keeps every call site's existing bucket-less call shape.
+
+export const publishLeaderboardToS3 = (
+  leaderboardId: ResourceId,
+  leaderboardName?: string,
+  leaderboardFooter?: string,
+): Promise<void> =>
+  publishLeaderboardToS3Impl(PUBLIC_LEADERBOARD_BUCKET, leaderboardId, leaderboardName, leaderboardFooter);
+
+/**
+ * Recomputes the combined (multi-track) leaderboard for a racer, then makes the combined standings
+ * available to the unauthenticated public leaderboard via BOTH paths
+ * ("S3 hydrate + IoT subscribe"):
+ *   1. S3 — writes public/leaderboards/{eventId}.json for initial page hydration.
+ *   2. IoT push — publishes LEADERBOARD_UPDATED to race/{eventId}/combined so subscribed spectators
+ *      receive live updates (the spectator IoT policy already grants Subscribe on race/*).
+ *
+ * The combined leaderboard is stored as Ranking records keyed by leaderboardId = eventId.
+ *
+ * Isolated in its own error boundary: a failure here must never affect the per-track broadcast
+ * that already completed.
+ */
+const COMBINED_TRACK_ID = 'combined';
+const MAX_COMBINED_RANKINGS = 50;
+
+const recomputeAndPublishCombinedLeaderboard = async (eventId: ResourceId, profileId: ResourceId): Promise<void> => {
+  try {
+    await recomputeCombinedLeaderboard(eventId, profileId);
+
+    const event = await eventDao.get({ eventId });
+
+    // 1. Hydration artifact for initial page load.
+    await publishLeaderboardToS3(eventId, event?.name, event?.combinedLeaderBoardFooter);
+
+    // 2. Publish the real-time update to the combined race topic.
+    const { data: rankings } = await rankingDao.listByRank({
+      leaderboardId: eventId,
+      maxResults: MAX_COMBINED_RANKINGS,
+    });
+    const combinedEvent: PhysicalRaceEvent = {
+      eventType: 'LEADERBOARD_UPDATED',
+      eventId,
+      trackId: COMBINED_TRACK_ID,
+      rankings: rankings.slice(0, MAX_COMBINED_RANKINGS).map((r, i) => ({
+        rank: i + 1,
+        participantName: sanitizeDisplayField(r.userProfile?.alias),
+        bestLapTimeMilliseconds: r.rankingScore ?? 0,
+        modelName: sanitizeDisplayField(r.modelName),
+        country: sanitizeDisplayField((r.userProfile as unknown as Record<string, string> | undefined)?.countryCode),
+      })),
+    };
+    await publishToRaceTopic(eventId, COMBINED_TRACK_ID, combinedEvent);
+  } catch (err) {
+    logger.error('Failed to publish combined leaderboard', { eventId, err });
+  }
+};
+
 // --- Main handler ---
 
 const isLiveAndActive = (leaderboard: { isLive?: boolean; liveEventStatus?: string }): boolean =>
@@ -305,7 +453,7 @@ type LeaderboardCache = Map<string, Awaited<ReturnType<typeof leaderboardDao.get
  * Processes a single DynamoDB stream record: resolves the leaderboard, builds events,
  * and publishes them to IoT Core. Throws on unrecoverable errors.
  */
-const processRecord = async (parsed: ParsedRecord, leaderboardCache: LeaderboardCache): Promise<void> => {
+const processVirtualRecord = async (parsed: ParsedRecord, leaderboardCache: LeaderboardCache): Promise<void> => {
   let leaderboard;
   if (leaderboardCache.has(parsed.leaderboardId)) {
     leaderboard = leaderboardCache.get(parsed.leaderboardId);
@@ -327,6 +475,12 @@ const processRecord = async (parsed: ParsedRecord, leaderboardCache: Leaderboard
       break;
     case 'Ranking':
       events = await buildEventsForRanking(parsed);
+      // Secondary artifact — S3 failure must not block or retry the real-time IoT broadcast
+      try {
+        await publishLeaderboardToS3(parsed.leaderboardId, leaderboard.name, leaderboard.leaderBoardFooter);
+      } catch (err) {
+        logger.error('Failed to publish leaderboard to S3', { leaderboardId: parsed.leaderboardId, err });
+      }
       break;
     case 'Leaderboard': {
       // Use stream record's newImage as authoritative for the Leaderboard record itself
@@ -357,28 +511,305 @@ const processRecord = async (parsed: ParsedRecord, leaderboardCache: Leaderboard
   }
 };
 
+/**
+ * Resolves a leaderboard from the cache, fetching from the DAO on a miss.
+ */
+const resolveFromCache = async (
+  leaderboardId: ResourceId,
+  leaderboardCache: LeaderboardCache,
+): Promise<ReturnType<typeof leaderboardDao.get> | undefined> => {
+  if (leaderboardCache.has(leaderboardId)) {
+    return leaderboardCache.get(leaderboardId);
+  }
+  const leaderboard = await leaderboardDao.get({ leaderboardId });
+  leaderboardCache.set(leaderboardId, leaderboard);
+  return leaderboard;
+};
+
+/**
+ * Handles REMOVE events for a Ranking item (e.g. rankingDao.deleteByLeaderboardId, invoked by
+ * clearLiveLeaderboard/deleteLeaderboard). DynamoDB REMOVE stream records carry only an OldImage —
+ * NewImage is absent — so this is handled independently of tryProcessPhysicalRecord/
+ * parsePhysicalRecord, which are NewImage-only and would otherwise silently skip the deletion.
+ *
+ * Only the combined-leaderboard recompute is performed here (there is no per-track broadcast for
+ * a Ranking deletion in either the physical or virtual path today). Returns true if handled.
+ */
+const tryRecomputeCombinedLeaderboardOnRankingRemove = async (
+  record: DynamoDBRecord,
+  leaderboardCache: LeaderboardCache,
+): Promise<boolean> => {
+  if (record.eventName !== DDB_EVENT_NAMES.REMOVE) return false;
+
+  const oldImage = record.dynamodb?.OldImage;
+  if (!oldImage) return false;
+
+  const pk = attr(oldImage, 'pk');
+  const sk = attr(oldImage, 'sk');
+  if (!sk.endsWith(RANKING_SK_SUFFIX)) return false;
+
+  const leaderboardId = pk.replace('leaderboard_', '') as ResourceId;
+  const leaderboard = await resolveFromCache(leaderboardId, leaderboardCache);
+  const leaderboardEventId =
+    leaderboard && 'eventId' in leaderboard && typeof leaderboard.eventId === 'string'
+      ? leaderboard.eventId
+      : undefined;
+  if (!leaderboardEventId) return false;
+
+  const profileId = sk.replace(/^profile_/, '').slice(0, -RANKING_SK_SUFFIX.length) as ResourceId;
+  await recomputeAndPublishCombinedLeaderboard(leaderboardEventId as ResourceId, profileId);
+  return true;
+};
+
+/**
+ * Hydration artifact for the per-track public leaderboard's initial page load — mirrors
+ * processVirtualRecord's Ranking case. Without this, a physical track's S3 file is never
+ * written, so a fresh page load shows no results until a live IoT event happens to land while a
+ * spectator tab is already open. Isolated in its own error boundary: an S3 failure must never
+ * block or delay the real-time IoT broadcast, which the caller has already completed by the time
+ * this is invoked.
+ *
+ * leaderboardName/leaderboardFooter are the caller's already-resolved values for
+ * parsed.leaderboardId (avoiding an extra, uncached DAO call) — only applied when evt.trackId is
+ * that same leaderboard, since a future event type could in principle target a different track
+ * within the same batch.
+ */
+const publishPhysicalLeaderboardToS3IfUpdated = async (
+  evt: PhysicalRaceEvent,
+  parsedLeaderboardId: ResourceId,
+  leaderboardName: string | undefined,
+  leaderboardFooter: string | undefined,
+): Promise<void> => {
+  if (evt.eventType !== 'LEADERBOARD_UPDATED') return;
+  try {
+    const isSameTrack = evt.trackId === parsedLeaderboardId;
+    const nameForTrack = isSameTrack ? leaderboardName : undefined;
+    const footerForTrack = isSameTrack ? leaderboardFooter : undefined;
+    await publishLeaderboardToS3(evt.trackId as ResourceId, nameForTrack, footerForTrack);
+  } catch (err) {
+    logger.error('Failed to publish leaderboard to S3', { leaderboardId: evt.trackId, err });
+  }
+};
+
+const publishPhysicalEvents = async (
+  parsed: ParsedPhysicalRecord,
+  extraLogFields?: Record<string, unknown>,
+  leaderboardName?: string,
+  leaderboardFooter?: string,
+): Promise<void> => {
+  const events = await buildPhysicalEvents(parsed);
+  for (const evt of events) {
+    // Use the event's own trackId, not parsed.leaderboardId — an Event record fans out to
+    // multiple events across different tracks (see buildEventsForEvent), so there is no
+    // single leaderboardId for the whole batch.
+    await publishToRaceTopic(parsed.eventId, evt.trackId, evt);
+    await publishPhysicalLeaderboardToS3IfUpdated(evt, parsed.leaderboardId, leaderboardName, leaderboardFooter);
+  }
+
+  // When a run is submitted, emit race-submitted to EventBridge to trigger stats rebuild (D5).
+  const hasRunFinished = events.some((evt) => evt.eventType === 'RUN_FINISHED');
+  if (hasRunFinished && RACE_EVENT_BUS_NAME) {
+    try {
+      const response = await eventBridgeClient.send(
+        new PutEventsCommand({
+          Entries: [
+            {
+              EventBusName: RACE_EVENT_BUS_NAME,
+              Source: `deepracer.${NAMESPACE}`,
+              DetailType: 'race-submitted',
+              Detail: JSON.stringify({ eventId: parsed.eventId, trackId: parsed.leaderboardId }),
+            },
+          ],
+        }),
+      );
+      if (response.FailedEntryCount && response.FailedEntryCount > 0) {
+        logger.error('Failed to emit race-submitted to EventBridge', {
+          eventId: parsed.eventId,
+          trackId: parsed.leaderboardId,
+          failedEntries: response.Entries?.filter((e) => e.ErrorCode),
+        });
+      } else {
+        logger.info('Emitted race-submitted to EventBridge', {
+          eventId: parsed.eventId,
+          trackId: parsed.leaderboardId,
+        });
+      }
+    } catch (err) {
+      // Non-fatal — stats rebuild failure must not affect the broadcast path
+      logger.error('Failed to emit race-submitted to EventBridge', { err });
+    }
+  }
+
+  if (events.length > 0) {
+    logger.info('Published physical events', {
+      count: events.length,
+      entityType: parsed.entityType,
+      ...extraLogFields,
+    });
+  }
+};
+
+/**
+ * Attempts to process a record as a physical race entity.
+ * Returns 'processed' if handled, 'not-physical' if the record should fall through to the virtual path.
+ */
+const tryProcessPhysicalRecord = async (
+  record: DynamoDBRecord,
+  leaderboardCache: LeaderboardCache,
+): Promise<PhysicalRecordProcessResult> => {
+  const newImage = record.dynamodb?.NewImage;
+  if (!newImage) return 'not-physical';
+
+  const pk = newImage.pk?.S ?? '';
+  const sk = newImage.sk?.S ?? '';
+
+  // Event entity: PK is the events partition (standalone, not leaderboard-scoped)
+  if (pk === EVENT_PK) {
+    const leaderboardEventId = sk.replace('event#', '');
+    const parsed = parsePhysicalRecord(record, leaderboardEventId);
+    if (!parsed) return 'not-physical';
+    await publishPhysicalEvents(parsed, { eventId: leaderboardEventId });
+    return 'processed';
+  }
+
+  // Run or Ranking: requires leaderboard-scoped PK with eventId discriminator
+  if (!sk.startsWith('run_') && !sk.endsWith(RANKING_SK_SUFFIX)) return 'not-physical';
+
+  const leaderboardId = pk.replace('leaderboard_', '') as ResourceId;
+  const leaderboard = await resolveFromCache(leaderboardId, leaderboardCache);
+
+  // If the leaderboard has no eventId, this is a virtual record — fall through.
+  const leaderboardEventId =
+    leaderboard && 'eventId' in leaderboard && typeof leaderboard.eventId === 'string'
+      ? leaderboard.eventId
+      : undefined;
+  if (!leaderboardEventId) return 'not-physical';
+
+  const parsed = parsePhysicalRecord(record, leaderboardEventId);
+  if (!parsed) return 'not-physical';
+  await publishPhysicalEvents(
+    parsed,
+    { eventId: leaderboardEventId, trackId: leaderboardId },
+    leaderboard?.name,
+    leaderboard?.leaderBoardFooter,
+  );
+
+  // Combined-leaderboard aggregation: isolated from per-track broadcast above —
+  // recomputeCombinedLeaderboard never throws, so a failure here cannot affect the per-track
+  // broadcast that already completed, nor mark this record as a batch item failure.
+  if (parsed.entityType === 'PhysicalRanking' && sk.endsWith(RANKING_SK_SUFFIX)) {
+    const profileId = sk.replace(/^profile_/, '').slice(0, -RANKING_SK_SUFFIX.length) as ResourceId;
+    await recomputeAndPublishCombinedLeaderboard(leaderboardEventId as ResourceId, profileId);
+  }
+
+  return 'processed';
+};
+
+/** Shared per-record processing state threaded through the stream-record router. */
+interface RecordProcessingContext {
+  readonly leaderboardCache: LeaderboardCache;
+  readonly pruneInstanceIds: string[];
+  readonly batchItemFailures: Array<{ itemIdentifier: string }>;
+}
+
+/**
+ * Record a stream record as a partial-batch failure so Lambda retries only it
+ * (ReportBatchItemFailures). No-op when the record carries no sequence number.
+ */
+const recordBatchFailure = (record: DynamoDBRecord, batchItemFailures: Array<{ itemIdentifier: string }>): void => {
+  const sequenceNumber = record.dynamodb?.SequenceNumber;
+  if (sequenceNumber) {
+    batchItemFailures.push({ itemIdentifier: sequenceNumber });
+  }
+};
+
+/**
+ * Handle a `device#` record (Task 11): collect TTL-deletes for the pruning fan-out, otherwise
+ * publish its status/command events to the device topic. Sequential publish preserves ordering.
+ */
+const processDeviceRecord = async (deviceRecord: ParsedDeviceRecord, pruneInstanceIds: string[]): Promise<void> => {
+  if (deviceRecord.isTtlDelete) {
+    pruneInstanceIds.push(deviceRecord.instanceId);
+    return;
+  }
+  for (const evt of buildDeviceEvents(deviceRecord)) {
+    await publishToDeviceTopic(deviceRecord.instanceId, evt);
+  }
+};
+
+/**
+ * Route a single stream record through the paths in order — device → ranking-remove → physical →
+ * virtual — recording a batch failure on error. Extracted from {@link handler} so the handler's
+ * loop body is a single call (keeps each function's cognitive complexity within the SonarQube
+ * threshold).
+ */
+const processStreamRecord = async (record: DynamoDBRecord, ctx: RecordProcessingContext): Promise<void> => {
+  const { leaderboardCache, pruneInstanceIds, batchItemFailures } = ctx;
+
+  // Check for valid DDB Stream Event
+  if (!record.eventName || !new Set(Object.keys(DDB_EVENT_NAMES)).has(record.eventName)) {
+    return;
+  }
+
+  // Device records: distinct `device#` PK, so neither the physical nor virtual parsers claim them.
+  const deviceRecord = parseDeviceRecord(record);
+  if (deviceRecord) {
+    try {
+      await processDeviceRecord(deviceRecord, pruneInstanceIds);
+    } catch (error) {
+      logger.error('Failed to process device record', { error, instanceId: deviceRecord.instanceId });
+      recordBatchFailure(record, batchItemFailures);
+    }
+    return;
+  }
+
+  // REMOVE records carry only an OldImage — handle Ranking deletions (combined-leaderboard
+  // recompute) independently of the NewImage-only physical/virtual routing below.
+  try {
+    if (await tryRecomputeCombinedLeaderboardOnRankingRemove(record, leaderboardCache)) return;
+  } catch (error) {
+    logger.error('Failed to process Ranking removal', { error });
+    recordBatchFailure(record, batchItemFailures);
+    return;
+  }
+
+  // Attempt physical record detection first; fall through to the virtual path when not physical.
+  try {
+    const physicalResult = await tryProcessPhysicalRecord(record, leaderboardCache);
+    if (physicalResult === 'processed') return;
+    // physicalResult === 'not-physical' — fall through to virtual path
+  } catch (error) {
+    logger.error('Failed to process physical record', { error });
+    recordBatchFailure(record, batchItemFailures);
+    return;
+  }
+
+  // Virtual path (existing logic)
+  const parsed = parseRecord(record);
+  if (!parsed) return;
+
+  try {
+    await processVirtualRecord(parsed, leaderboardCache);
+  } catch (error) {
+    logger.error('Failed to process record', {
+      error,
+      entityType: parsed.entityType,
+      leaderboardId: parsed.leaderboardId,
+    });
+    recordBatchFailure(record, batchItemFailures);
+  }
+};
+
 export const handler = async (event: DynamoDBStreamEvent): Promise<DynamoDBBatchResponse> => {
   const batchItemFailures: Array<{ itemIdentifier: string }> = [];
   const leaderboardCache: LeaderboardCache = new Map();
+  const pruneInstanceIds: string[] = [];
 
   for (const record of event.Records) {
-    const parsed = parseRecord(record);
-    if (!parsed) continue;
-
-    try {
-      await processRecord(parsed, leaderboardCache);
-    } catch (error) {
-      logger.error('Failed to process record', {
-        error,
-        entityType: parsed.entityType,
-        leaderboardId: parsed.leaderboardId,
-      });
-      const sequenceNumber = record.dynamodb?.SequenceNumber;
-      if (sequenceNumber) {
-        batchItemFailures.push({ itemIdentifier: sequenceNumber });
-      }
-    }
+    await processStreamRecord(record, { leaderboardCache, pruneInstanceIds, batchItemFailures });
   }
+
+  await dispatchPruneFanout(pruneInstanceIds);
 
   return { batchItemFailures };
 };

@@ -593,6 +593,34 @@ describe('JobFinalizer', () => {
       expect(persistEvaluationMetricsSpy).not.toHaveBeenCalled();
       expect(persistSubmissionStatsSpy).not.toHaveBeenCalled();
     });
+
+    it('should preserve WAITING_FOR_CAPACITY status and skip updates when workflowContext.capacityWaiting is true', async () => {
+      // The training job was never created (capacity-waiting path), so there is nothing to
+      // COMPLETE or FAIL. Overwriting the status here would turn a retryable capacity wait
+      // into a terminal COMPLETED/FAILED state.
+      getJobSpy.mockResolvedValueOnce({ ...TEST_TRAINING_ITEM, status: JobStatus.IN_PROGRESS });
+      mockInitTrainingContext.capacityWaiting = true;
+
+      await jobFinalizer.persistWorkflowData(mockInitTrainingContext);
+
+      expect(updateModelSpy).not.toHaveBeenCalled();
+      expect(updateJobSpy).not.toHaveBeenCalled();
+      expect(persistEvaluationMetricsSpy).not.toHaveBeenCalled();
+      expect(persistSubmissionStatsSpy).not.toHaveBeenCalled();
+    });
+
+    it('should preserve WAITING_FOR_CAPACITY status and skip updates when currentJob.status is already WAITING_FOR_CAPACITY', async () => {
+      // Covers the case where a previous step already set WAITING_FOR_CAPACITY in DynamoDB but
+      // the workflowContext flag was not propagated (e.g. a retry or a Step Functions re-drive).
+      getJobSpy.mockResolvedValueOnce({ ...TEST_TRAINING_ITEM, status: JobStatus.WAITING_FOR_CAPACITY });
+
+      await jobFinalizer.persistWorkflowData(mockInitTrainingContext);
+
+      expect(updateModelSpy).not.toHaveBeenCalled();
+      expect(updateJobSpy).not.toHaveBeenCalled();
+      expect(persistEvaluationMetricsSpy).not.toHaveBeenCalled();
+      expect(persistSubmissionStatsSpy).not.toHaveBeenCalled();
+    });
   });
 
   describe('persistEvaluationMetrics()', () => {
@@ -846,6 +874,38 @@ describe('JobFinalizer', () => {
         { participantCount: TEST_LEADERBOARD_ITEM.participantCount + 1 },
       );
       expect(updateRankingSpy).not.toHaveBeenCalled();
+    });
+
+    it('should carry the profile countryCode into the ranking userProfile snapshot when present', async () => {
+      const mockSubmissionStats: SubmissionStats = {
+        avgResets: 0,
+        avgLapTime: 10000,
+        bestLapTime: 9000,
+        collisionCount: 0,
+        completedLapCount: 2,
+        offTrackCount: 0,
+        resetCount: 0,
+        totalLapTime: 20000,
+      };
+
+      getRankingSpy.mockResolvedValueOnce(null);
+      loadProfileSpy.mockResolvedValueOnce({ ...TEST_PROFILE_ITEM, countryCode: 'GB' });
+      createRankingSpy.mockResolvedValueOnce(TEST_RANKING_ITEM);
+      updateLeaderboardSpy.mockResolvedValueOnce(TEST_LEADERBOARD_ITEM);
+
+      await jobFinalizer.persistRankingStats(
+        mockInitSubmissionContext,
+        mockSubmissionStats,
+        mockSubmissionStats.avgLapTime,
+        TEST_SUBMISSION_ITEM,
+        TEST_LEADERBOARD_ITEM,
+      );
+
+      expect(createRankingSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userProfile: { alias: TEST_PROFILE_ITEM.alias, avatar: TEST_PROFILE_ITEM.avatar, countryCode: 'GB' },
+        }),
+      );
     });
 
     it('should update ranking for submission with worse previous ranking', async () => {

@@ -10,7 +10,6 @@ import { mockClient } from 'aws-sdk-client-mock';
 
 import { sleepHelper } from '../../../utils/SleepHelper.js';
 import type { WorkflowContext } from '../../types/workflowContext.js';
-import { sageMakerHelper } from '../../utils/SageMakerHelper.js';
 import { workflowHelper } from '../../utils/WorkflowHelper.js';
 import { JobDispatcher } from '../jobDispatcher.js';
 
@@ -48,9 +47,8 @@ describe('JobDispatcher', () => {
     vi.spyOn(sleepHelper, 'sleep').mockResolvedValue();
   });
 
-  it('should start workflow when sagemaker training instance capacity is available', async () => {
+  it('should start a workflow execution for a queued job', async () => {
     vi.spyOn(workflowHelper, 'getJob').mockResolvedValueOnce({ ...TEST_TRAINING_ITEM, status: JobStatus.QUEUED });
-    vi.spyOn(sageMakerHelper, 'isTrainingInstanceCapacityAvailable').mockResolvedValueOnce(true);
     mockSfnClient.on(StartExecutionCommand).resolves({});
 
     await JobDispatcher({ Records: [MOCK_SQS_RECORD] }, {} as Context, () => {
@@ -60,17 +58,97 @@ describe('JobDispatcher', () => {
     expect(mockSfnClient.calls()).toHaveLength(1);
   });
 
-  it('should not start workflow and throw error when sagemaker training instance capacity is not available', async () => {
+  it('should derive a stable execution name so a redelivered message cannot start a duplicate', async () => {
+    vi.spyOn(workflowHelper, 'getJob').mockResolvedValue({ ...TEST_TRAINING_ITEM, status: JobStatus.QUEUED });
+    mockSfnClient.on(StartExecutionCommand).resolves({});
+    // Advance the clock between deliveries so a wall-clock-derived name would differ. This is what
+    // makes the assertion a real guard: the name has to come from the message, not from time.
+    let now = 1_700_000_000_000;
+    vi.spyOn(Date, 'now').mockImplementation(() => (now += 60_000));
+
+    // SQS delivery is at-least-once: the same message can arrive more than once.
+    await JobDispatcher({ Records: [MOCK_SQS_RECORD] }, {} as Context, () => {
+      /** empty callback */
+    });
+    await JobDispatcher({ Records: [MOCK_SQS_RECORD] }, {} as Context, () => {
+      /** empty callback */
+    });
+
+    const [first, second] = mockSfnClient.commandCalls(StartExecutionCommand);
+    // Identical names mean the redundant StartExecution is rejected with ExecutionAlreadyExists
+    // rather than starting a second concurrent workflow for the same training job.
+    expect(second.args[0].input.name).toBe(first.args[0].input.name);
+    expect(first.args[0].input.name).toMatch(new RegExp(`^${TEST_TRAINING_ITEM.name}-[0-9a-f]+$`));
+    // Step Functions rejects execution names longer than 80 characters.
+    expect((first.args[0].input.name ?? '').length).toBeLessThanOrEqual(80);
+  });
+
+  it('should derive a different execution name for a genuine new dispatch attempt', async () => {
+    vi.spyOn(workflowHelper, 'getJob').mockResolvedValue({ ...TEST_TRAINING_ITEM, status: JobStatus.QUEUED });
+    mockSfnClient.on(StartExecutionCommand).resolves({});
+
+    // A manual RetryTraining reuses the deterministic job name but sends a new message with a fresh
+    // deduplication ID, so the completed execution's name is not reused.
+    const retryRecord: SQSRecord = {
+      ...MOCK_SQS_RECORD,
+      messageId: 'a-different-message-id',
+      attributes: { ...MOCK_SQS_RECORD.attributes, MessageDeduplicationId: 'a-different-dedup-id' },
+    };
+
+    await JobDispatcher({ Records: [MOCK_SQS_RECORD] }, {} as Context, () => {
+      /** empty callback */
+    });
+    await JobDispatcher({ Records: [retryRecord] }, {} as Context, () => {
+      /** empty callback */
+    });
+
+    const [first, second] = mockSfnClient.commandCalls(StartExecutionCommand);
+    expect(second.args[0].input.name).not.toBe(first.args[0].input.name);
+  });
+
+  it('should fall back to the message ID when no deduplication ID is present', async () => {
+    vi.spyOn(workflowHelper, 'getJob').mockResolvedValue({ ...TEST_TRAINING_ITEM, status: JobStatus.QUEUED });
+    mockSfnClient.on(StartExecutionCommand).resolves({});
+
+    const attributesWithoutDedupId = { ...MOCK_SQS_RECORD.attributes };
+    delete attributesWithoutDedupId.MessageDeduplicationId;
+    const record: SQSRecord = { ...MOCK_SQS_RECORD, attributes: attributesWithoutDedupId };
+
+    await JobDispatcher({ Records: [record] }, {} as Context, () => {
+      /** empty callback */
+    });
+    await JobDispatcher({ Records: [record] }, {} as Context, () => {
+      /** empty callback */
+    });
+
+    const [first, second] = mockSfnClient.commandCalls(StartExecutionCommand);
+    expect(second.args[0].input.name).toBe(first.args[0].input.name);
+  });
+
+  it('should discard a redelivered message when the execution already exists', async () => {
     vi.spyOn(workflowHelper, 'getJob').mockResolvedValueOnce({ ...TEST_TRAINING_ITEM, status: JobStatus.QUEUED });
-    vi.spyOn(sageMakerHelper, 'isTrainingInstanceCapacityAvailable').mockResolvedValueOnce(false);
+    mockSfnClient
+      .on(StartExecutionCommand)
+      .rejects(Object.assign(new Error('Execution Already Exists'), { name: 'ExecutionAlreadyExists' }));
+
+    // Must not rethrow: the work is already in flight, so requeueing would only churn the message
+    // until it reached the DLQ.
+    await expect(
+      JobDispatcher({ Records: [MOCK_SQS_RECORD] }, {} as Context, () => {
+        /** empty callback */
+      }),
+    ).resolves.toBeUndefined();
+  });
+
+  it('should requeue the message when StartExecution fails for any other reason', async () => {
+    vi.spyOn(workflowHelper, 'getJob').mockResolvedValueOnce({ ...TEST_TRAINING_ITEM, status: JobStatus.QUEUED });
+    mockSfnClient.on(StartExecutionCommand).rejects(new Error('ThrottlingException'));
 
     await expect(
       JobDispatcher({ Records: [MOCK_SQS_RECORD] }, {} as Context, () => {
         /** empty callback */
       }),
-    ).rejects.toEqual(new Error('SageMaker training instance capacity is not available. Message will be retried.'));
-
-    expect(mockSfnClient).not.toHaveReceivedCommand(StartExecutionCommand);
+    ).rejects.toThrow('ThrottlingException');
   });
 
   it('should not start workflow when job status is CANCELED', async () => {

@@ -11,7 +11,7 @@ import {
 } from '@deepracer-indy/typescript-client';
 import { describe, expect, it } from 'vitest';
 
-import { isDeleteDisabled, isEditDisabled, isEnterRaceDisabled } from '../raceDetailsHelpers';
+import { isActiveRace, isDeleteDisabled, isEditDisabled, isEnterRaceDisabled } from '../raceDetailsHelpers';
 
 const baseLeaderboard: Leaderboard = {
   leaderboardId: 'lb-1',
@@ -28,6 +28,33 @@ const baseLeaderboard: Leaderboard = {
 };
 
 describe('raceDetailsHelpers', () => {
+  describe('isActiveRace', () => {
+    it('returns true for a community race within its open/close window', () => {
+      const lb = { ...baseLeaderboard, openTime: new Date('2020-01-01'), closeTime: new Date('2099-01-01') };
+      expect(isActiveRace(lb)).toBe(true);
+    });
+
+    it('returns false for a community race that has not opened yet', () => {
+      const lb = { ...baseLeaderboard, openTime: new Date('2099-01-01'), closeTime: new Date('2099-02-01') };
+      expect(isActiveRace(lb)).toBe(false);
+    });
+
+    it('returns false for a community race that has closed', () => {
+      const lb = { ...baseLeaderboard, openTime: new Date('2020-01-01'), closeTime: new Date('2020-02-01') };
+      expect(isActiveRace(lb)).toBe(false);
+    });
+
+    it('returns false for a live race, regardless of open/close window', () => {
+      const lb = {
+        ...baseLeaderboard,
+        isLive: true,
+        openTime: new Date('2020-01-01'),
+        closeTime: new Date('2099-01-01'),
+      };
+      expect(isActiveRace(lb)).toBe(false);
+    });
+  });
+
   describe('isDeleteDisabled', () => {
     it('disables delete for live race when IN_PROGRESS', () => {
       const lb = { ...baseLeaderboard, isLive: true, liveEventStatus: LiveEventStatus.IN_PROGRESS };
@@ -44,9 +71,24 @@ describe('raceDetailsHelpers', () => {
       expect(isDeleteDisabled(lb)).toBe(false);
     });
 
-    it('disables delete for community race when active', () => {
+    it('disables delete for active community race when non-admin', () => {
       const lb = { ...baseLeaderboard, openTime: new Date('2020-01-01'), closeTime: new Date('2099-01-01') };
-      expect(isDeleteDisabled(lb)).toBe(true);
+      expect(isDeleteDisabled(lb, false)).toBe(true);
+    });
+
+    it('enables delete for active community race when admin', () => {
+      const lb = { ...baseLeaderboard, openTime: new Date('2020-01-01'), closeTime: new Date('2099-01-01') };
+      expect(isDeleteDisabled(lb, true)).toBe(false);
+    });
+
+    it('enables delete for future community race (not yet started)', () => {
+      const lb = { ...baseLeaderboard, openTime: new Date('2099-01-01'), closeTime: new Date('2099-02-01') };
+      expect(isDeleteDisabled(lb)).toBe(false);
+    });
+
+    it('enables delete for closed community race', () => {
+      const lb = { ...baseLeaderboard, openTime: new Date('2020-01-01'), closeTime: new Date('2020-02-01') };
+      expect(isDeleteDisabled(lb)).toBe(false);
     });
   });
 
@@ -63,6 +105,26 @@ describe('raceDetailsHelpers', () => {
 
     it('disables edit for live race when COMPLETED', () => {
       const lb = { ...baseLeaderboard, isLive: true, liveEventStatus: LiveEventStatus.COMPLETED };
+      expect(isEditDisabled(lb)).toBe(true);
+    });
+
+    it('disables edit for active community race when non-admin', () => {
+      const lb = { ...baseLeaderboard, openTime: new Date('2020-01-01'), closeTime: new Date('2099-01-01') };
+      expect(isEditDisabled(lb, false)).toBe(true);
+    });
+
+    it('enables edit for active community race when admin', () => {
+      const lb = { ...baseLeaderboard, openTime: new Date('2020-01-01'), closeTime: new Date('2099-01-01') };
+      expect(isEditDisabled(lb, true)).toBe(false);
+    });
+
+    it('enables edit for future community race (not yet started)', () => {
+      const lb = { ...baseLeaderboard, openTime: new Date('2099-01-01'), closeTime: new Date('2099-02-01') };
+      expect(isEditDisabled(lb)).toBe(false);
+    });
+
+    it('disables edit for closed community race', () => {
+      const lb = { ...baseLeaderboard, openTime: new Date('2020-01-01'), closeTime: new Date('2020-02-01') };
       expect(isEditDisabled(lb)).toBe(true);
     });
   });

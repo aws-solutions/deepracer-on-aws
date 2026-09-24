@@ -14,6 +14,7 @@ export default mergeConfig(
       env: {
         IOT_ENDPOINT: 'test.iot.us-east-1.amazonaws.com',
         TOPIC_PREFIX: 'deepracer/test/leaderboard',
+        RACE_TOPIC_PREFIX: 'deepracer/test/race',
       },
     },
   }),

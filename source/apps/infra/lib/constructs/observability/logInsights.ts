@@ -1,13 +1,20 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { CfnQueryDefinition } from 'aws-cdk-lib/aws-logs';
+import { CfnQueryDefinition, ILogGroup } from 'aws-cdk-lib/aws-logs';
 import { Construct } from 'constructs';
 
 import { LogGroupsHelper } from '../common/logGroupsHelper.js';
 
 interface LogInsightsProps {
   namespace: string;
+  /**
+   * Log groups not registered with `LogGroupsHelper`, typically from epic nested
+   * stacks. Epic log groups are created directly to avoid the helper's static-cache
+   * cross-stack leak, so they must be passed explicitly or they are silently absent
+   * from every query definition below.
+   */
+  additionalLogGroups?: readonly ILogGroup[];
 }
 
 /**
@@ -25,11 +32,11 @@ export class LogInsights extends Construct {
    * @param id - The construct identifier
    * @param props - Configuration properties for the LogInsights construct
    */
-  constructor(scope: Construct, id: string, { namespace }: LogInsightsProps) {
+  constructor(scope: Construct, id: string, { namespace, additionalLogGroups = [] }: LogInsightsProps) {
     super(scope, id);
 
     const allLogGroups = LogGroupsHelper.getAllLogGroups();
-    const logGroupNames = allLogGroups.map((lg) => lg.logGroupName);
+    const logGroupNames = [...allLogGroups, ...additionalLogGroups].map((lg) => lg.logGroupName);
 
     const baseFolderName = `DeepRacerOnAWS Sample Queries (${namespace})`;
 

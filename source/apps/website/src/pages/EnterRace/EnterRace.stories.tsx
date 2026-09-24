@@ -6,6 +6,8 @@ import {
   GetProfileCommand,
   ListLiveQueueItemsCommand,
   ListModelsCommand,
+  ModelSource,
+  ModelStatus,
 } from '@deepracer-indy/typescript-client';
 import type { Meta, StoryObj } from '@storybook/react';
 
@@ -69,6 +71,26 @@ export const LiveRaceFiltered: Story = {
         ],
       });
       client.on(GetProfileCommand).resolves({ profile: { alias: 'TestUser', profileId: 'p1', avatar: {} } });
+    },
+  },
+};
+
+export const WithPhysicalModel: Story = {
+  parameters: {
+    deepRacerApiMocks: (client) => {
+      client.on(GetLeaderboardCommand).resolves({ leaderboard: mockLeaderboardTTFuture });
+      client.on(ListModelsCommand).resolves({
+        models: [
+          ...mockModelList,
+          {
+            ...mockModelList[0],
+            modelId: 'physical-model-id',
+            name: 'my-physical-model',
+            modelSource: ModelSource.IMPORTED_PHYSICAL,
+            status: ModelStatus.READY,
+          },
+        ],
+      });
     },
   },
 };

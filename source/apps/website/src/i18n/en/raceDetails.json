@@ -5,6 +5,8 @@
   "editRace": "Edit race",
   "deleteRace": "Delete race",
   "deleteRaceConfirm": "This action will permanently delete this race.",
+  "deleteActiveRaceConfirm": "This race is currently active. Deleting it will hide it from participants immediately. Existing submissions and rankings will be preserved.",
+  "editActiveRaceConfirm": "This race is currently active. You can update the end date/time and submission limits. This change will impact all participants.",
   "deleteRaceSuccessful": "Successfully deleted the race.",
   "raceDetailsColumnLabels": {
     "raceType": "Race type",
@@ -76,13 +78,25 @@
   "info": "Info",
   "yourFastestTime": "Your fastest time",
   "fastestModelSubmitted": "Fastest model submitted",
+  "videoModal": {
+    "header": "Submission video – {{title}}",
+    "watchVideo": "Watch video",
+    "downloadVideo": "Download video",
+    "noVideo": "No video available",
+    "noVideoSupport": "Your browser does not support HTML5 video.",
+    "loading": "Downloading video…",
+    "loadError": "Failed to load video. Please try again.",
+    "downloadError": "Failed to download video. Please try again."
+  },
   "submissionsTable": {
     "tableHeader": "Your submissions",
+    "refresh": "Refresh submissions",
     "header": {
       "modelName": "Model name",
       "time": "Time",
       "status": "Status",
-      "date": "Date submitted to race"
+      "date": "Date submitted to race",
+      "video": "Video"
     },
     "emptySubtitle": "No submissions to display.",
     "emptyTitle": "No submissions",
@@ -114,6 +128,7 @@
     }
   },
   "raceLeaderboardTable": {
+    "refresh": "Refresh leaderboard",
     "header": {
       "rank": "Rank",
       "racer": "Racer",

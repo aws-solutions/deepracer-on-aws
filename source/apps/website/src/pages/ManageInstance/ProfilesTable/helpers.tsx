@@ -3,37 +3,42 @@
 
 import { Badge } from '@cloudscape-design/components';
 import { Profile } from '@deepracer-indy/typescript-client';
+import { TFunction } from 'i18next';
 
-export const formatRoleName = (roleName?: string) => {
+export const formatRoleName = (t: TFunction<'manageInstance'>, roleName?: string) => {
   switch (roleName) {
     case 'dr-admins':
-      return <Badge>Admin</Badge>;
+      return <Badge>{t('profilesTable.roles.admin')}</Badge>;
     case 'dr-race-facilitators':
-      return <Badge color="blue">Race facilitator</Badge>;
+      return <Badge color="blue">{t('profilesTable.roles.raceFacilitator')}</Badge>;
+    case 'dr-commentators':
+      return <Badge color="green">{t('profilesTable.roles.commentator')}</Badge>;
+    case 'dr-registration-managers':
+      return <Badge color="grey">{t('profilesTable.roles.registrationManager')}</Badge>;
     case 'dr-racers':
-      return 'Racer';
+      return t('profilesTable.roles.racer');
     default:
       return roleName;
   }
 };
 
-export const formatStorageUsage = (storageUsage?: number) => {
+export const formatStorageUsage = (t: TFunction<'manageInstance'>, storageUsage?: number) => {
   if (storageUsage === undefined) {
-    return '-/-';
+    return t('profilesTable.empty_value');
   }
   return `${(storageUsage / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 };
 
-export const formatComputeUsage = (computeUsage?: number) => {
+export const formatComputeUsage = (t: TFunction<'manageInstance'>, computeUsage?: number) => {
   if (computeUsage === undefined) {
-    return '-/-';
+    return t('profilesTable.empty_value');
   }
-  return `${(computeUsage / 60).toFixed(2)} hrs`;
+  return `${(computeUsage / 60).toFixed(2)} ${t('usageSummary.units.hrs')}`;
 };
 
-export const formatProfileCreationDate = (dateString?: string) => {
+export const formatProfileCreationDate = (t: TFunction<'manageInstance'>, dateString?: string) => {
   if (!dateString) {
-    return '-/-';
+    return t('profilesTable.empty_value');
   }
   return new Date(dateString).toISOString().split('T')[0];
 };
@@ -46,8 +51,12 @@ export const getRolePriority = (roleName?: string): number => {
       return 2;
     case 'dr-racers':
       return 3;
-    default:
+    case 'dr-commentators':
       return 4;
+    case 'dr-registration-managers':
+      return 5;
+    default:
+      return 6;
   }
 };
 

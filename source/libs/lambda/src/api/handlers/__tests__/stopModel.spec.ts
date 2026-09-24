@@ -20,7 +20,12 @@ import { ErrorMessage as ApiErrorMessage } from '../../constants/errorMessages.j
 import { TEST_OPERATION_CONTEXT } from '../../constants/testConstants.js';
 import { StopModelOperation } from '../stopModel.js';
 
-const STOPPABLE_MODEL_STATUSES: string[] = [ModelStatus.EVALUATING, ModelStatus.QUEUED, ModelStatus.TRAINING];
+const STOPPABLE_MODEL_STATUSES: string[] = [
+  ModelStatus.EVALUATING,
+  ModelStatus.QUEUED,
+  ModelStatus.TRAINING,
+  ModelStatus.WAITING_FOR_CAPACITY,
+];
 
 describe('StopModel operation', () => {
   beforeEach(() => {
@@ -246,6 +251,26 @@ describe('StopModel operation', () => {
     expect(workflowHelper.updateJob).not.toHaveBeenCalled();
     expect(submissionDao.getStoppableSubmission).not.toHaveBeenCalled();
     expect(evaluationDao.getStoppableEvaluation).not.toHaveBeenCalled();
+  });
+
+  it('should cancel a waiting training job without calling SageMaker', async () => {
+    vi.spyOn(modelDao, 'load').mockResolvedValue({ ...TEST_MODEL_ITEM, status: ModelStatus.WAITING_FOR_CAPACITY });
+    vi.spyOn(trainingDao, 'getStoppableTraining').mockResolvedValueOnce({
+      ...TEST_TRAINING_ITEM,
+      status: JobStatus.WAITING_FOR_CAPACITY,
+    });
+
+    await StopModelOperation({ modelId: TEST_MODEL_ITEM.modelId }, TEST_OPERATION_CONTEXT);
+
+    // Nothing was ever queued or created in SageMaker, so setting the final statuses is the whole
+    // cancellation.
+    expect(sageMakerHelper.stopQueuedJob).not.toHaveBeenCalled();
+    expect(sageMakerHelper.stopTrainingJob).not.toHaveBeenCalled();
+    expect(modelDao.update).toHaveBeenCalledWith(
+      { modelId: TEST_MODEL_ITEM.modelId, profileId: TEST_OPERATION_CONTEXT.profileId },
+      { status: ModelStatus.ERROR },
+    );
+    expect(workflowHelper.updateJob).toHaveBeenCalledWith(expect.anything(), { status: JobStatus.CANCELED });
   });
 
   it.each(Object.values(ModelStatus).filter((s) => !STOPPABLE_MODEL_STATUSES.includes(s)))(

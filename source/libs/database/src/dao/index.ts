@@ -2,6 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 
 export { evaluationDao } from './EvaluationDao.js';
+export { deploymentDao } from './DeploymentDao.js';
+export { deviceDao } from './DeviceDao.js';
+export { fleetDao } from './FleetDao.js';
+export { fleetEventDao } from './FleetEventDao.js';
+export { eventDao } from './EventDao.js';
+export { lapDao } from './LapDao.js';
+export { runDao } from './RunDao.js';
+export { bulkInviteJobDao, type BulkInviteEntryResult, ACTIVE_JOB_STALE_MS } from './BulkInviteJobDao.js';
+export { raceStatsDao } from './RaceStatsDao.js';
 export { leaderboardDao } from './LeaderboardDao.js';
 export { liveQueueItemDao } from './LiveQueueItemDao.js';
 export { metricsDao } from './metrics/metricsDao.js';

@@ -38,6 +38,7 @@ describe('authUtils', () => {
             userPoolClientId: mockEnvironmentConfig.userPoolClientId,
             userPoolId: mockEnvironmentConfig.userPoolId,
             identityPoolId: mockEnvironmentConfig.identityPoolId,
+            allowGuestAccess: true,
           },
         },
       });

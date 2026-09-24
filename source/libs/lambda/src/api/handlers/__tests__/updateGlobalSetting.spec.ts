@@ -1,6 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import { NotAuthorizedError } from '@deepracer-indy/typescript-server-client';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import { globalSettingsHelper } from '../../../utils/GlobalSettingsHelper.js';
@@ -13,13 +14,30 @@ vi.mock('#utils/GlobalSettingsHelper.js', () => ({
   },
 }));
 
+vi.mock('../../utils/apiGateway.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../utils/apiGateway.js')>();
+  return { ...actual, isUserAdmin: (...args: unknown[]) => mockIsUserAdmin(...args) };
+});
+
+const mockIsUserAdmin = vi.fn().mockResolvedValue(true);
+
 describe('UpdateGlobalSetting operation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockIsUserAdmin.mockResolvedValue(true);
   });
 
   afterEach(() => {
     vi.resetAllMocks();
+  });
+
+  it('should throw NotAuthorizedError when caller is not an administrator', async () => {
+    mockIsUserAdmin.mockResolvedValue(false);
+
+    await expect(
+      UpdateGlobalSettingOperation({ key: 'registration.type', value: 'invite-only' }, TEST_OPERATION_CONTEXT),
+    ).rejects.toThrow(NotAuthorizedError);
+    expect(globalSettingsHelper.setGlobalSetting).not.toHaveBeenCalled();
   });
 
   it('should update a registration type value', async () => {

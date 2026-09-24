@@ -9,17 +9,17 @@ interface NewUserQuotasModalProps {
 }
 
 const newUserQuotasConfig: QuotasConfig = {
-  modalHeader: 'New user quotas',
+  modalHeaderKey: 'quotasModal.newUser.header',
   computeField: {
     name: 'newUserComputeMinutesLimit',
-    label: 'New user compute usage limit (hours)',
-    description: 'The maximum number of training hours for new users.',
+    labelKey: 'quotasModal.newUser.computeLabel',
+    descriptionKey: 'quotasModal.newUser.computeDescription',
     fieldKey: 'usageQuotas.newUser.newUserComputeMinutesLimit',
   },
   modelCountField: {
     name: 'newUserModelCountLimit',
-    label: 'New user model count limit',
-    description: 'The maximum number of models for new users.',
+    labelKey: 'quotasModal.newUser.modelCountLabel',
+    descriptionKey: 'quotasModal.newUser.modelCountDescription',
     fieldKey: 'usageQuotas.newUser.newUserModelCountLimit',
   },
   keyToUpdate: 'usageQuotas.newUser',

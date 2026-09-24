@@ -100,7 +100,10 @@
       "endTimeBeforeStartTime": "End time must be after start time.",
       "startDateInPast": "Start date must not be in the past.",
       "startTimeInPast": "Start time must be in the future.",
-      "maxLapsLessThanMinLaps": "Maximum laps must be greater than or equal to minimum laps."
+      "endTimeInPast": "End time must be in the future.",
+      "maxLapsLessThanMinLaps": "Maximum laps must be greater than or equal to minimum laps.",
+      "scoringLockedByQueue": "Cannot be changed while submissions are queued.",
+      "lockedForActiveRace": "This race is already open. Only the end date/time and max submissions per user can be changed."
     }
   },
   "cancel": "Cancel",

@@ -6,10 +6,15 @@ import path from 'node:path';
 import { CloudFrontToS3 } from '@aws-solutions-constructs/aws-cloudfront-s3';
 import { CfnCondition, CfnOutput, CustomResource, Duration, Fn, Stack } from 'aws-cdk-lib';
 import {
+  BehaviorOptions,
+  CachePolicy,
+  CacheQueryStringBehavior,
   CfnDistribution,
   DistributionProps,
   HeadersFrameOption,
   HeadersReferrerPolicy,
+  ResponseHeadersPolicy,
+  ViewerProtocolPolicy,
 } from 'aws-cdk-lib/aws-cloudfront';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
@@ -36,6 +41,7 @@ interface StaticWebsiteProps {
 
 export class StaticWebsite extends Construct {
   public readonly cloudFrontDomainName: string;
+  public readonly s3Bucket: Bucket;
 
   constructor(scope: Construct, id: string, props: StaticWebsiteProps) {
     super(scope, id);
@@ -80,6 +86,70 @@ export class StaticWebsite extends Construct {
       ),
     });
 
+    // Shared with the public/leaderboards/* additionalBehavior below — additionalBehaviors
+    // aren't covered by responseHeadersPolicyProps, which only attaches to the default behavior.
+    const securityHeadersBehavior = {
+      contentSecurityPolicy: {
+        contentSecurityPolicy: [
+          "base-uri 'none'",
+          "default-src 'none'",
+          "frame-ancestors 'none'",
+          "font-src 'self' data:",
+          "img-src 'self' data:",
+          `media-src 'self' blob: https://${modelStorageBucket.bucketRegionalDomainName}`,
+          "object-src 'none'",
+          "style-src 'self'",
+          "script-src 'self' 'wasm-unsafe-eval'",
+          "worker-src 'self' blob:",
+          `connect-src 'self' blob: ${apiEndpointUrl} https://cognito-idp.${region}.amazonaws.com https://cognito-identity.${region}.amazonaws.com https://*.kinesisvideo.${region}.amazonaws.com https://${uploadBucket.bucketRegionalDomainName} https://${modelStorageBucket.bucketRegionalDomainName} https://www.gstatic.com/draco/versioned/decoders/ https://api.github.com${iotEndpoint ? ` wss://${iotEndpoint}` : ''}`,
+          'upgrade-insecure-requests',
+        ].join('; '),
+        override: true,
+      },
+      contentTypeOptions: {
+        override: true,
+      },
+      frameOptions: {
+        frameOption: HeadersFrameOption.DENY,
+        override: true,
+      },
+      referrerPolicy: {
+        referrerPolicy: HeadersReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN,
+        override: true,
+      },
+      strictTransportSecurity: {
+        accessControlMaxAge: Duration.seconds(47304000),
+        includeSubdomains: true,
+        preload: true,
+        override: true,
+      },
+      xssProtection: {
+        protection: true,
+        modeBlock: true,
+        override: true,
+      },
+    };
+    const customHeadersBehavior = {
+      customHeaders: [
+        {
+          header: 'Cache-Control',
+          value: 'no-cache,no-store',
+          override: true,
+        },
+        {
+          header: 'Cross-Origin-Opener-Policy',
+          value: 'same-origin',
+          override: true,
+        },
+      ],
+    };
+
+    const publicLeaderboardResponseHeadersPolicy = new ResponseHeadersPolicy(this, 'PublicLeaderboardHeadersPolicy', {
+      responseHeadersPolicyName: `${namespace}PublicLeaderboardHeadersPolicy-${region}`,
+      securityHeadersBehavior,
+      customHeadersBehavior,
+    });
+
     const cloudFrontToS3 = new CloudFrontToS3(this, 'CloudFrontToS3', {
       cloudFrontDistributionProps: {
         defaultRootObject: 'index.html',
@@ -95,65 +165,39 @@ export class StaticWebsite extends Construct {
             responsePagePath: '/index.html',
           },
         ],
+        // public/leaderboards/*.json needs a short cache TTL — the default behavior's managed
+        // CachingOptimized policy ignores the S3 object's own Cache-Control and can serve a
+        // stale, pre-race leaderboard for up to 24h. `origin` is omitted so CloudFrontToS3's
+        // helper auto-fills it, avoiding a second S3 origin (the `as BehaviorOptions` cast below
+        // works around CDK's type requiring `origin` even though the runtime helper does not).
+        additionalBehaviors: {
+          'public/leaderboards/*': {
+            cachePolicy: new CachePolicy(this, 'PublicLeaderboardCachePolicy', {
+              cachePolicyName: `${namespace}PublicLeaderboardCachePolicy-${region}`,
+              comment: 'Short TTL so newly-published race results are never served stale from the edge.',
+              defaultTtl: Duration.seconds(5),
+              minTtl: Duration.seconds(0),
+              maxTtl: Duration.seconds(5),
+              // The public leaderboard page fetches with a ?t= cache-buster to also defeat the
+              // browser's own HTTP cache. It must NOT be forwarded to the CDN cache key though —
+              // it's unique on every request, so CacheQueryStringBehavior.all() would make every
+              // request a guaranteed cache miss, defeating this policy's entire 5s-TTL purpose.
+              // denyList('t') excludes just that param, so same-URL requests within the 5s window
+              // still share a cache hit at the edge, while the buster still reaches the browser.
+              queryStringBehavior: CacheQueryStringBehavior.denyList('t'),
+            }),
+            // additionalBehaviors aren't covered by the construct's default-behavior-only
+            // responseHeadersPolicyProps, so this path needs its own copy of the security headers.
+            responseHeadersPolicy: publicLeaderboardResponseHeadersPolicy,
+            viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          } satisfies Omit<BehaviorOptions, 'origin'> as unknown as BehaviorOptions,
+        },
       } satisfies Partial<DistributionProps>,
       insertHttpSecurityHeaders: false,
       responseHeadersPolicyProps: {
         responseHeadersPolicyName: `${namespace}SecurityHeadersPolicy-${region}`,
-        securityHeadersBehavior: {
-          contentSecurityPolicy: {
-            contentSecurityPolicy: [
-              "base-uri 'none'",
-              "default-src 'none'",
-              "frame-ancestors 'none'",
-              "font-src 'self' data:",
-              "img-src 'self' data:",
-              `media-src 'self' blob: https://${modelStorageBucket.bucketRegionalDomainName}`,
-              "object-src 'none'",
-              "style-src 'self'",
-              "script-src 'self' 'wasm-unsafe-eval'",
-              "worker-src 'self' blob:",
-              `connect-src 'self' blob: ${apiEndpointUrl} https://cognito-idp.${region}.amazonaws.com https://cognito-identity.${region}.amazonaws.com https://*.kinesisvideo.${region}.amazonaws.com https://${uploadBucket.bucketRegionalDomainName} https://${modelStorageBucket.bucketRegionalDomainName} https://www.gstatic.com/draco/versioned/decoders/ https://api.github.com${iotEndpoint ? ` wss://${iotEndpoint}` : ''}`,
-              'upgrade-insecure-requests',
-            ].join('; '),
-            override: true,
-          },
-          contentTypeOptions: {
-            override: true,
-          },
-          frameOptions: {
-            frameOption: HeadersFrameOption.DENY,
-            override: true,
-          },
-          referrerPolicy: {
-            referrerPolicy: HeadersReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN,
-            override: true,
-          },
-          strictTransportSecurity: {
-            accessControlMaxAge: Duration.seconds(47304000),
-            includeSubdomains: true,
-            preload: true,
-            override: true,
-          },
-          xssProtection: {
-            protection: true,
-            modeBlock: true,
-            override: true,
-          },
-        },
-        customHeadersBehavior: {
-          customHeaders: [
-            {
-              header: 'Cache-Control',
-              value: 'no-cache,no-store',
-              override: true,
-            },
-            {
-              header: 'Cross-Origin-Opener-Policy',
-              value: 'same-origin',
-              override: true,
-            },
-          ],
-        },
+        securityHeadersBehavior,
+        customHeadersBehavior,
       },
     });
 
@@ -177,7 +221,14 @@ export class StaticWebsite extends Construct {
       destinationBucket: cloudFrontToS3.s3Bucket as Bucket,
       distribution: cloudFrontToS3.cloudFrontWebDistribution,
       memoryLimit: 2048, // increased due to timeouts occurring at 512
-      sources: [Source.asset(websiteDistPath)],
+      // Keep dev/toolchain artifacts out of the public origin: Vite copies public/* (incl. the MSW
+      // worker) into dist/, and the build also emits package.json/source maps. Excluding them from
+      // the asset means they are never uploaded and are pruned from the bucket on deploy.
+      sources: [Source.asset(websiteDistPath, { exclude: ['mockServiceWorker.js', 'package.json', '**/*.map'] })],
+      // The live-race broadcast handler writes public/leaderboards/*.json into this same
+      // bucket at runtime (for the unauthenticated leaderboard page's initial S3 hydration).
+      // Exclude that prefix from the deployment's prune so those files survive future deploys.
+      exclude: ['public/leaderboards/*'],
     });
 
     addCfnGuardSuppressionForAutoCreatedLambdas(this, 'CDKBucketDeployment');
@@ -242,6 +293,7 @@ export class StaticWebsite extends Construct {
     addCfnGuardSuppressionForAutoCreatedLambdas(this, 'CreateEnvFileProvider');
 
     this.cloudFrontDomainName = cloudFrontToS3.cloudFrontWebDistribution.domainName;
+    this.s3Bucket = cloudFrontToS3.s3Bucket as Bucket;
 
     new CfnOutput(this, 'Url', {
       value: 'https://' + this.cloudFrontDomainName,

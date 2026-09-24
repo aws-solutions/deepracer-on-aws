@@ -45,6 +45,12 @@ describe('ListRankings operation', () => {
         videoUrl: TEST_RANKING_ITEMS[index].submissionVideoS3Location,
       });
     });
+    expect(s3Helper.getPresignedUrl).toHaveBeenCalledWith(
+      TEST_RANKING_ITEMS[0].submissionVideoS3Location,
+      undefined,
+      undefined,
+      'video/mp4',
+    );
   });
 
   it('should throw an error when leaderboard is not found', async () => {

@@ -35,7 +35,7 @@ export interface BaseCognitoEventDetail {
 }
 
 export interface CognitoEventDetail extends BaseCognitoEventDetail {
-  eventName: 'AdminAddUserToGroup' | 'AdminRemoveUserFromGroup';
+  eventName: 'AdminAddUserToGroup';
   requestParameters: {
     username: string;
     groupName: string;

@@ -40,10 +40,10 @@ class MockEcrStack extends Construct {
       publicImageUri: 'public.ecr.aws/aws-solutions/deepracer-on-aws-model-validation',
       imageTag: 'v0.0.1',
       repository: new Repository(this, 'MockModelValidationRepository', {
-        repositoryName: 'deepracer-on-aws-model-validation',
+        repositoryName: 'custom-model-validation',
       }),
-      repositoryId: 'deepracer-on-aws-model-validation',
-      privateRepositoryName: `${TEST_NAMESPACE}-deepracer-on-aws-model-validation`,
+      repositoryId: 'custom-model-validation',
+      privateRepositoryName: `${TEST_NAMESPACE}-custom-model-validation`,
     },
   ];
 }
@@ -56,6 +56,7 @@ describe('Import Workflow', () => {
       context: {
         REWARD_VALIDATION_REPO_NAME: 'deepracer-on-aws-reward-function-validation',
         MODEL_VALIDATION_REPO_NAME: 'deepracer-on-aws-model-validation',
+        OVERRIDE_MODEL_VALIDATION_REPO_NAME: 'custom-model-validation',
       },
     });
     const stack = new Stack(app, 'TestStack');
@@ -82,6 +83,7 @@ describe('Import Workflow', () => {
       modelStorageBucket: bucket,
       uploadBucket: bucket,
       virtualModelBucket: bucket,
+      deviceLogsBucket: bucket,
       ecrStack: mockEcrStack,
       userExecutionVpc: vpc,
       userExecutionSecurityGroup: securityGroup,
@@ -137,7 +139,7 @@ describe('Import Workflow', () => {
       template.hasResourceProperties('AWS::SQS::Queue', {
         MessageRetentionPeriod: Duration.hours(1).toSeconds(),
         KmsMasterKeyId: 'alias/aws/sqs',
-        VisibilityTimeout: Duration.minutes(6).toSeconds(),
+        VisibilityTimeout: Duration.minutes(36).toSeconds(),
       }),
     ).not.toThrow();
 

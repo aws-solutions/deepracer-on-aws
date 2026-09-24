@@ -1,0 +1,35 @@
+{
+  "header": "Import physical model",
+  "description": "Choose a physical DeepRacer model archive (.tar.gz) to upload from your local file system. The archive must contain a trained model exported from the AWS DeepRacer console or a compatible training environment.",
+  "modelInfo": {
+    "header": "Details",
+    "nameLabel": "Model name",
+    "nameDescription": "The model name can have up to 64 characters. Valid characters: A-Z, a-z, 0-9, and hyphens (-). No spaces or underscores (_).",
+    "descriptionLabel": "Model description - optional",
+    "descriptionDescription": "The model description can have up to 255 characters. Valid characters: A-Z, a-z, 0-9, and hyphens (-). No spaces or underscores (_).",
+    "fileLabel": "Model archive",
+    "fileDescription": "Select a .tar.gz archive containing the trained model (model.pb and model_metadata.json).",
+    "chooseFile": "Choose file",
+    "noFileSelected": "No file selected",
+    "constraint": "Accepted format: .tar.gz, max 500 MB"
+  },
+  "buttons": {
+    "cancel": "Cancel",
+    "import": "Import"
+  },
+  "progress": {
+    "uploading": "Uploading archive...",
+    "importing": "Importing and optimizing model...",
+    "importingDescription": "Processing archive, scanning for malware, and optimizing model for on-device inference. This may take up to a minute."
+  },
+  "validation": {
+    "modelNameInvalid": "Model name has one or more non-allowed characters, or is greater than 64 characters in length",
+    "fileRequired": "Please select a .tar.gz archive to import",
+    "fileTooLarge": "File exceeds the maximum size of 500 MB",
+    "invalidFileType": "Only .tar.gz archives are accepted"
+  },
+  "notifications": {
+    "importSuccess": "Model \"{{modelName}}\" uploaded successfully. Redirecting to Models page...",
+    "importFailed": "Failed to import model. Please try again."
+  }
+}

@@ -76,6 +76,19 @@ describe('ChangeUserRoleModal', () => {
     expect(dropdown).toBeInTheDocument();
   });
 
+  it('should list all 5 assignable roles when the dropdown is opened', async () => {
+    const user = userEvent.setup();
+    render(<ChangeUserRoleModal {...defaultProps} />);
+
+    const dropdown = screen.getByRole('button', { name: /racer/i });
+    await user.click(dropdown);
+
+    expect(screen.getByText('Race facilitator')).toBeInTheDocument();
+    expect(screen.getByText('Commentator')).toBeInTheDocument();
+    expect(screen.getByText('Registration manager')).toBeInTheDocument();
+    expect(screen.getByText('Admin')).toBeInTheDocument();
+  });
+
   it('should show current user role as selected in dropdown', () => {
     render(<ChangeUserRoleModal {...defaultProps} />);
 

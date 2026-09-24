@@ -9,7 +9,7 @@ import Pagination from '@cloudscape-design/components/pagination';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import Table from '@cloudscape-design/components/table';
 import TextFilter from '@cloudscape-design/components/text-filter';
-import { Model, ModelStatus } from '@deepracer-indy/typescript-client';
+import { Model, ModelSource, ModelStatus } from '@deepracer-indy/typescript-client';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -18,6 +18,7 @@ import { PageId } from '#constants/pages';
 import { useAppDispatch } from '#hooks/useAppDispatch';
 import { LIST_MODELS_POLLING_INTERVAL_TIME } from '#pages/ModelDetails/constants.js';
 import { useDeleteModelMutation, useListModelsQuery } from '#services/deepRacer/modelsApi.js';
+import { useGetProfileQuery } from '#services/deepRacer/profileApi.js';
 import { displayErrorNotification, displaySuccessNotification } from '#store/notifications/notificationsSlice';
 import { getPath } from '#utils/pageUtils.js';
 
@@ -42,6 +43,13 @@ const Models = () => {
   });
 
   const hasImportingModels = models.some((model) => model.status === ModelStatus.IMPORTING);
+
+  const { data: profile } = useGetProfileQuery();
+  const isModelQuotaExceeded =
+    profile?.maxModelCount !== undefined &&
+    profile.maxModelCount !== -1 &&
+    (profile.modelCount ?? 0) >= profile.maxModelCount;
+  const importDisabledReason = isModelQuotaExceeded ? t('table.importDisabledQuotaExceeded') : undefined;
 
   const [deleteModel] = useDeleteModelMutation();
   const {
@@ -124,19 +132,45 @@ const Models = () => {
             actions={
               <SpaceBetween direction="horizontal" size="xs">
                 <Button iconName="refresh" loading={isLoading} onClick={() => refetch()} />
-                <Button
+                <ButtonDropdown
                   data-testid="importModelButton"
                   variant="normal"
-                  onClick={() => navigate(getPath(PageId.IMPORT_MODEL))}
+                  onItemClick={({ detail }) => {
+                    switch (detail.id) {
+                      case 'IMPORT_VIRTUAL':
+                        navigate(getPath(PageId.IMPORT_MODEL));
+                        break;
+                      case 'IMPORT_PHYSICAL':
+                        navigate(getPath(PageId.IMPORT_PHYSICAL_MODEL));
+                        break;
+                      default:
+                        break;
+                    }
+                  }}
+                  items={[
+                    {
+                      text: t('table.importVirtualButton'),
+                      id: 'IMPORT_VIRTUAL',
+                    },
+                    {
+                      text: t('table.importPhysicalButton'),
+                      id: 'IMPORT_PHYSICAL',
+                      disabled: isModelQuotaExceeded,
+                      disabledReason: importDisabledReason,
+                    },
+                  ]}
                 >
                   {t('table.importModelButton')}
-                </Button>
+                </ButtonDropdown>
                 <ButtonDropdown
                   items={[
                     {
                       text: t('table.cloneButton'),
                       id: 'CLONE',
-                      disabled: !selectedItems?.length || selectedItems?.[0].status !== ModelStatus.READY,
+                      disabled:
+                        !selectedItems?.length ||
+                        selectedItems?.[0].status !== ModelStatus.READY ||
+                        selectedItems?.[0].modelSource === ModelSource.IMPORTED_PHYSICAL,
                     },
                     {
                       text: t('table.deleteButton'),

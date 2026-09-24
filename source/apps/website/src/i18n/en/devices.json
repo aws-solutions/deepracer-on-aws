@@ -1,0 +1,153 @@
+{
+  "list": {
+    "header": "Devices",
+    "loadingText": "Loading devices",
+    "refreshButtonLabel": "Refresh devices",
+    "activateButton": "Activate device",
+    "viewDetailsButton": "View details",
+    "moveToFleet": {
+      "button": "Move to fleet",
+      "modalTitle": "Move {{count}} device to a fleet",
+      "modalTitle_other": "Move {{count}} devices to a fleet",
+      "fleetLabel": "Fleet",
+      "unassignedOption": "Unassigned",
+      "confirm": "Move",
+      "cancel": "Cancel",
+      "success": "{{assigned}} device(s) moved; {{failed}} failed.",
+      "error": "Failed to move the selected devices."
+    },
+    "emptyTitle": "No devices",
+    "emptySubtitle": "Activate a car or timer to get started.",
+    "columnHeaders": {
+      "name": "Name",
+      "deviceType": "Type",
+      "status": "Status",
+      "fleetId": "Fleet",
+      "lastSeenAt": "Last seen",
+      "ipAddress": "IP address"
+    },
+    "filters": {
+      "filteringAriaLabel": "Filter devices",
+      "searchFilterPlaceholder": "Find devices",
+      "matchCount": "{{count}} match",
+      "matchCount_other": "{{count}} matches",
+      "allTypes": "All types",
+      "allStatuses": "All statuses",
+      "typeFilterLabel": "Filter by type",
+      "statusFilterLabel": "Filter by status"
+    },
+    "pagination": {
+      "nextPageLabel": "Next page",
+      "previousPageLabel": "Previous page",
+      "pageLabel": "Page {{pageNumber}} of all pages"
+    }
+  },
+  "deviceType": {
+    "CAR": "Car",
+    "TIMER": "Timer"
+  },
+  "carType": {
+    "DEEPRACER": "AWS DeepRacer",
+    "DEEPRACER_CUSTOM": "AWS DeepRacer (custom console)",
+    "DEEPRACER_RPI": "Raspberry Pi car"
+  },
+  "status": {
+    "ONLINE": "Online",
+    "OFFLINE": "Offline",
+    "PENDING": "Pending"
+  },
+  "unassignedFleet": "Unassigned",
+  "unauthorized": {
+    "header": "Access denied",
+    "message": "You do not have permission to manage devices."
+  },
+  "wizard": {
+    "title": "Activate device",
+    "steps": {
+      "type": { "title": "Device type", "description": "Choose the kind of device to activate." },
+      "fleet": { "title": "Fleet", "description": "Assign the device to a fleet (optional)." },
+      "configure": { "title": "Configure", "description": "Name the device and set optional local options." },
+      "params": { "title": "Get activation command", "description": "Run this command on the device." },
+      "wait": { "title": "Wait for online", "description": "The device appears once it registers." }
+    },
+    "typeLabel": "Device type",
+    "nameLabel": "Device name",
+    "namePlaceholder": "e.g. car-01",
+    "fleetLabel": "Fleet",
+    "noFleet": "No fleet",
+    "ssidLabel": "Hidden Wi-Fi SSID (optional)",
+    "wifiPasswordLabel": "Wi-Fi password (optional)",
+    "consolePasswordLabel": "Device console password (optional)",
+    "communityConsoleLabel": "Install community console",
+    "localFlagsNote": "These values are passed to the local activation script only — they are never sent to or stored by the service.",
+    "runCommandLabel": "Run on the device (as root)",
+    "ssmOnlyLabel": "SSM registration only",
+    "copyCommand": "Copy command",
+    "copied": "Copied",
+    "expiresAt": "Activation code expires {{expiresAt}}",
+    "waitingForDevice": "Waiting for the device to register…",
+    "deviceOnline": "{{name}} is online and registered.",
+    "detectedCarType": "Detected car type: {{carType}}",
+    "detectingCarType": "Detecting car type…",
+    "viewDevice": "View device",
+    "activateButton": "Create activation",
+    "next": "Next",
+    "previous": "Previous",
+    "cancel": "Cancel",
+    "finish": "Done",
+    "activateSuccess": "Activation created. Run the command on the device.",
+    "activateError": "Failed to create the activation.",
+    "validation": {
+      "nameRequired": "Device name is required.",
+      "nameMaxLength": "Device name must be 64 characters or fewer.",
+      "deviceTypeRequired": "Device type is required."
+    }
+  },
+  "detail": {
+    "loadingText": "Loading device",
+    "notFound": "Device not found.",
+    "backButton": "Back to devices",
+    "actionsHeader": "Actions",
+    "detailsHeader": "Details",
+    "restartButton": "Restart service",
+    "stopButton": "Emergency stop",
+    "colorButton": "Change color",
+    "changeFleetButton": "Change fleet",
+    "deleteButton": "Delete device",
+    "stopOfflineTooltip": "Emergency stop is only available when the car is online.",
+    "stopCarsOnlyTooltip": "Emergency stop is only available for cars.",
+    "deleteInEventTooltip": "This device's fleet is assigned to an event and cannot be deleted.",
+    "colorModalTitle": "Change taillight color",
+    "colorLabel": "Color",
+    "changeFleetModalTitle": "Change fleet",
+    "fleetLabel": "Fleet",
+    "unassignedOption": "Unassigned",
+    "stopConfirmTitle": "Emergency stop",
+    "stopConfirmMessage": "Immediately stop {{name}}? The car's motors will be disabled.",
+    "deleteConfirmTitle": "Delete device",
+    "deleteConfirmMessage": "Permanently delete {{name}} and deregister it from Systems Manager?",
+    "restartDispatched": "Restart command sent to {{name}}.",
+    "restartError": "Failed to send the restart command.",
+    "stopDispatched": "Emergency stop sent to {{name}}.",
+    "stopError": "Failed to send the emergency stop command.",
+    "colorDispatched": "Color change sent to {{name}}.",
+    "commandResultSuccess": "Device command completed ({{status}}).",
+    "commandResultStatus": "Device command finished with status: {{status}}.",
+    "colorError": "Failed to send the color change command.",
+    "fleetChangeSuccess": "Fleet updated for {{name}}.",
+    "fleetChangeError": "Failed to update the device's fleet.",
+    "deleteSuccess": "Device {{name}} deleted.",
+    "deleteError": "Failed to delete the device.",
+    "confirm": "Confirm",
+    "cancel": "Cancel"
+  },
+  "color": {
+    "RED": "Red",
+    "GREEN": "Green",
+    "BLUE": "Blue",
+    "YELLOW": "Yellow",
+    "CYAN": "Cyan",
+    "MAGENTA": "Magenta",
+    "WHITE": "White"
+  }
+}

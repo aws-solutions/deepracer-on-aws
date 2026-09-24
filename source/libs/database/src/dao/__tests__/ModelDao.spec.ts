@@ -3,6 +3,8 @@
 
 import { randomUUID } from 'node:crypto';
 
+import { ModelStatus } from '@deepracer-indy/typescript-server-client';
+
 import { DEFAULT_MAX_QUERY_RESULTS } from '../../constants/defaults.js';
 import { DynamoDBItemAttribute } from '../../constants/itemAttributes.js';
 import { RESOURCE_ID_REGEX } from '../../constants/regex.js';
@@ -53,6 +55,100 @@ describe('ModelDao', () => {
           [DynamoDBItemAttribute.UPDATED_AT]: expect.any(String),
         });
       }
+    });
+  });
+
+  describe('setOptimizationFailed()', () => {
+    it('should set optimizationStatus to FAILED when currently IN_PROGRESS', async () => {
+      const profileId = generateResourceId();
+      const created = await modelDao.create({
+        ...TEST_CREATE_MODEL_PARAMS,
+        profileId,
+        optimizationStatus: 'IN_PROGRESS',
+      });
+
+      await modelDao.setOptimizationFailed({ modelId: created.modelId, profileId });
+
+      const loaded = await modelDao.load({ modelId: created.modelId, profileId });
+      expect(loaded.optimizationStatus).toBe('FAILED');
+    });
+
+    it('should throw when optimizationStatus is not IN_PROGRESS', async () => {
+      const profileId = generateResourceId();
+      const created = await modelDao.create({
+        ...TEST_CREATE_MODEL_PARAMS,
+        profileId,
+        optimizationStatus: 'OPTIMIZED',
+      });
+
+      await expect(modelDao.setOptimizationFailed({ modelId: created.modelId, profileId })).rejects.toThrow();
+    });
+
+    it('should throw when model does not exist', async () => {
+      await expect(
+        modelDao.setOptimizationFailed({ modelId: generateResourceId(), profileId: generateResourceId() }),
+      ).rejects.toThrow();
+    });
+  });
+
+  describe('transitionStatus()', () => {
+    it('should move the model to the new status and set statusMessage', async () => {
+      const profileId = generateResourceId();
+      const created = await modelDao.create({
+        ...TEST_CREATE_MODEL_PARAMS,
+        profileId,
+        status: ModelStatus.WAITING_FOR_CAPACITY,
+      });
+
+      await modelDao.transitionStatus(
+        { modelId: created.modelId, profileId },
+        {
+          from: ModelStatus.WAITING_FOR_CAPACITY,
+          to: ModelStatus.WAITING_FOR_CAPACITY,
+          statusMessage: 'no capacity',
+        },
+      );
+
+      await expect(modelDao.load({ modelId: created.modelId, profileId })).resolves.toMatchObject({
+        status: ModelStatus.WAITING_FOR_CAPACITY,
+        statusMessage: 'no capacity',
+      });
+    });
+
+    it('should clear statusMessage when none is supplied', async () => {
+      const profileId = generateResourceId();
+      const created = await modelDao.create({
+        ...TEST_CREATE_MODEL_PARAMS,
+        profileId,
+        status: ModelStatus.WAITING_FOR_CAPACITY,
+        statusMessage: 'no capacity',
+      });
+
+      await modelDao.transitionStatus(
+        { modelId: created.modelId, profileId },
+        { from: ModelStatus.WAITING_FOR_CAPACITY, to: ModelStatus.QUEUED },
+      );
+
+      const loaded = await modelDao.load({ modelId: created.modelId, profileId });
+      expect(loaded.status).toBe(ModelStatus.QUEUED);
+      expect(loaded.statusMessage).toBeUndefined();
+    });
+
+    it('should throw ConditionalCheckFailedException when the model is no longer in the from status', async () => {
+      const profileId = generateResourceId();
+      const created = await modelDao.create({
+        ...TEST_CREATE_MODEL_PARAMS,
+        profileId,
+        status: ModelStatus.QUEUED,
+      });
+
+      // This is the concurrency gate: the loser of a concurrent retry must not send a message.
+      await expect(
+        modelDao.transitionStatus(
+          { modelId: created.modelId, profileId },
+          { from: ModelStatus.WAITING_FOR_CAPACITY, to: ModelStatus.QUEUED },
+        ),
+      ).rejects.toMatchObject({ cause: { name: 'ConditionalCheckFailedException' } });
     });
   });
 });

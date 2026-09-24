@@ -21,14 +21,14 @@ import {
 import { logger } from '@deepracer-indy/utils';
 
 import type { HandlerContext } from '../types/apiGatewayHandlerContext.js';
-import { getApiGatewayHandler } from '../utils/apiGateway.js';
+import { getApiGatewayHandler, isUserAdmin } from '../utils/apiGateway.js';
 import { instrumentOperation } from '../utils/instrumentation/instrumentOperation.js';
 
 export const DeleteLeaderboardOperation: Operation<
   DeleteLeaderboardServerInput,
   DeleteLeaderboardServerOutput,
   HandlerContext
-> = async (input) => {
+> = async (input, context) => {
   const leaderboardId = input.leaderboardId as ResourceId;
 
   const leaderboard = await leaderboardDao.load({ leaderboardId });
@@ -37,8 +37,25 @@ export const DeleteLeaderboardOperation: Operation<
   const openTime = new Date(leaderboard.openTime);
   const closeTime = new Date(leaderboard.closeTime);
 
-  if (currentTime >= openTime && currentTime <= closeTime) {
-    throw new BadRequestError({ message: 'Unable to delete an open leaderboard.' });
+  const isActiveCommunityRace = !leaderboard.isLive && currentTime >= openTime && currentTime <= closeTime;
+
+  if (isActiveCommunityRace) {
+    // Only admins may delete an active (open) community race.
+    const admin = await isUserAdmin(context.profileId);
+    if (!admin) {
+      throw new BadRequestError({ message: 'Unable to delete an open leaderboard.' });
+    }
+
+    // Non-destructive delete: remove the leaderboard record only.
+    // Existing submissions and rankings are preserved to protect participant data.
+    await leaderboardDao.delete({ leaderboardId });
+
+    logger.info('Admin deleted active community race', {
+      leaderboardId,
+      adminProfileId: context.profileId,
+    });
+
+    return {} satisfies DeleteLeaderboardServerOutput;
   }
 
   if (leaderboard.isLive) {

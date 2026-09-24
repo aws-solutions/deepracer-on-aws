@@ -16,6 +16,7 @@ import {
   CreateEvaluationServerInput,
   CreateEvaluationServerOutput,
   BadRequestError,
+  ModelSource,
   ModelStatus,
   JobStatus,
   RaceType,
@@ -61,6 +62,10 @@ export const CreateEvaluationOperation: Operation<
 
   if (modelItem.status !== ModelStatus.READY) {
     throw new BadRequestError({ message: 'Model is not ready for evaluation.' });
+  }
+
+  if (modelItem.modelSource === ModelSource.IMPORTED_PHYSICAL) {
+    throw new BadRequestError({ message: 'Physical models cannot be evaluated in the simulator.' });
   }
 
   const profileQuotaUsage = await usageQuotaHelper.loadProfileComputeUsage(profileId);

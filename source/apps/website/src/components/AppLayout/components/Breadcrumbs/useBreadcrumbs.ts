@@ -6,18 +6,26 @@ import { skipToken } from '@reduxjs/toolkit/query';
 import { useTranslation } from 'react-i18next';
 
 import { AUTH_PAGE_IDS, PageId, pages } from '../../../../constants/pages.js';
+import { useTimekeepingContext } from '../../../../hooks/useTimekeepingContext.js';
+import { useGetEventQuery } from '../../../../services/deepRacer/eventsApi.js';
 import { useGetLeaderboardQuery } from '../../../../services/deepRacer/leaderboardsApi.js';
 import { useGetModelQuery } from '../../../../services/deepRacer/modelsApi.js';
 import { getPageDetailsByPathname, getPath } from '../../../../utils/pageUtils.js';
 
 export const useBreadcrumbs = (currentPageDetails: ReturnType<typeof getPageDetailsByPathname>) => {
   const { t } = useTranslation('breadcrumbs');
+  const { selectedEventId, selectedLeaderboardId } = useTimekeepingContext();
+  const isTimekeepingPage = currentPageDetails?.pageId === PageId.TIMEKEEPING;
 
   const modelId = currentPageDetails?.params?.modelId ?? '';
-  const leaderboardId = currentPageDetails?.params?.leaderboardId ?? '';
+  const leaderboardId =
+    currentPageDetails?.params?.leaderboardId ?? (isTimekeepingPage ? (selectedLeaderboardId ?? '') : '');
+  const eventId = currentPageDetails?.params?.eventId ?? (isTimekeepingPage ? (selectedEventId ?? '') : '');
+  const instanceId = currentPageDetails?.params?.instanceId ?? '';
 
   const { currentData: model } = useGetModelQuery(modelId ? { modelId } : skipToken);
   const { currentData: leaderboard } = useGetLeaderboardQuery(leaderboardId ? { leaderboardId } : skipToken);
+  const { currentData: event } = useGetEventQuery(eventId ? { eventId } : skipToken);
 
   if (
     !currentPageDetails ||
@@ -29,6 +37,28 @@ export const useBreadcrumbs = (currentPageDetails: ReturnType<typeof getPageDeta
 
   const { pageId: currentPageId } = currentPageDetails;
 
+  if (isTimekeepingPage) {
+    const timekeepingBreadcrumbs: BreadcrumbGroupProps.Item[] = [
+      { text: t('home'), href: getPath(PageId.HOME) },
+      { text: t(PageId.TIMEKEEPING), href: getPath(PageId.TIMEKEEPING) },
+    ];
+
+    if (event) {
+      timekeepingBreadcrumbs.push({
+        text: event.name,
+        href: getPath(PageId.EVENT_DETAIL, { eventId }),
+      });
+    }
+    if (leaderboard) {
+      timekeepingBreadcrumbs.push({
+        text: leaderboard.name,
+        href: getPath(PageId.RACE_DETAILS, { leaderboardId }),
+      });
+    }
+
+    return timekeepingBreadcrumbs;
+  }
+
   const currentPagePathNoLeadingSlash = pages[currentPageId].path.slice(1); // /models/:modelId -> models/:modelId
   const currentPagePathParts = currentPagePathNoLeadingSlash.split('/'); // models/:modelId -> ["models", ":modelId"]
 
@@ -36,7 +66,7 @@ export const useBreadcrumbs = (currentPageDetails: ReturnType<typeof getPageDeta
     { text: t('home'), href: getPath(PageId.HOME) },
     ...currentPagePathParts.map((part, index) => {
       if (part.startsWith(':')) {
-        const param = part.slice(1) as keyof typeof currentPageDetails.params;
+        const param = part.slice(1);
         switch (param) {
           case 'modelId':
             if (!model) return null;
@@ -49,6 +79,12 @@ export const useBreadcrumbs = (currentPageDetails: ReturnType<typeof getPageDeta
             return {
               text: leaderboard.name,
               href: getPath(PageId.RACE_DETAILS, { leaderboardId }),
+            };
+          case 'eventId':
+            if (!event) return null;
+            return {
+              text: event.name,
+              href: getPath(PageId.EVENT_DETAIL, { eventId }),
             };
           default:
             return null;
@@ -65,7 +101,7 @@ export const useBreadcrumbs = (currentPageDetails: ReturnType<typeof getPageDeta
 
         return {
           text: t(currentPartPageId),
-          href: getPath(currentPartPageId, { modelId, leaderboardId }),
+          href: getPath(currentPartPageId, { modelId, leaderboardId, eventId, instanceId }),
         };
       }
     }),

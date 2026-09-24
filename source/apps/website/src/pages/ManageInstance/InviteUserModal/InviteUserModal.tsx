@@ -7,6 +7,7 @@ import Modal from '@cloudscape-design/components/modal';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useForm, useWatch } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import * as Yup from 'yup';
 
 import InputField from '#components/FormFields/InputField';
@@ -23,13 +24,16 @@ interface InviteFormValues {
   email: string;
 }
 
-const validationSchema = Yup.object().shape({
-  email: Yup.string().email('Please enter a valid email address').required('Email address is required'),
-});
-
 const InviteUserModal = ({ isOpen, setIsOpen }: InviteUserModalProps) => {
+  const { t } = useTranslation('manageInstance');
   const dispatch = useAppDispatch();
   const [createProfile, { isLoading: isCreatingProfile }] = useCreateProfileMutation();
+
+  const validationSchema = Yup.object().shape({
+    email: Yup.string()
+      .email(t('inviteUserModal.validation.emailInvalid'))
+      .required(t('inviteUserModal.validation.emailRequired')),
+  });
 
   const initialValues: InviteFormValues = {
     email: '',
@@ -64,7 +68,7 @@ const InviteUserModal = ({ isOpen, setIsOpen }: InviteUserModalProps) => {
 
         dispatch(
           displaySuccessNotification({
-            content: `User invitation sent to ${formValues.email}`,
+            content: t('inviteUserModal.notifications.success', { email: formValues.email }),
           }),
         );
 
@@ -74,7 +78,7 @@ const InviteUserModal = ({ isOpen, setIsOpen }: InviteUserModalProps) => {
         console.error('Failed to invite user');
         dispatch(
           displayErrorNotification({
-            content: 'Failed to invite user. Please try again.',
+            content: t('inviteUserModal.notifications.error'),
           }),
         );
       }
@@ -82,16 +86,22 @@ const InviteUserModal = ({ isOpen, setIsOpen }: InviteUserModalProps) => {
   };
 
   return (
-    <Modal onDismiss={handleClose} visible={isOpen} closeAriaLabel="Close modal" size="medium" header="Invite user">
+    <Modal
+      onDismiss={handleClose}
+      visible={isOpen}
+      closeAriaLabel="Close modal"
+      size="medium"
+      header={t('inviteUserModal.header')}
+    >
       <form onSubmit={handleFormSubmit(handleSubmit)}>
         <Form
           actions={
             <SpaceBetween size="xs" direction="horizontal">
               <Button formAction="none" onClick={handleClose}>
-                Cancel
+                {t('inviteUserModal.buttons.cancel')}
               </Button>
               <Button formAction="submit" variant="primary" disabled={!hasEmail} loading={isCreatingProfile}>
-                Invite
+                {t('inviteUserModal.buttons.invite')}
               </Button>
             </SpaceBetween>
           }
@@ -100,9 +110,9 @@ const InviteUserModal = ({ isOpen, setIsOpen }: InviteUserModalProps) => {
             <InputField
               control={control}
               name="email"
-              label="Email address"
-              description="Enter the email address of the user you want to invite."
-              placeholder="Enter email address"
+              label={t('inviteUserModal.email.label')}
+              description={t('inviteUserModal.email.description')}
+              placeholder={t('inviteUserModal.email.placeholder')}
               type="email"
             />
           </SpaceBetween>

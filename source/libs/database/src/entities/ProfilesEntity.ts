@@ -27,6 +27,9 @@ export const ProfilesEntity = new Entity(
       [DynamoDBItemAttribute.EMAIL_ADDRESS]: {
         type: 'string',
       },
+      [DynamoDBItemAttribute.COUNTRY_CODE]: {
+        type: 'string',
+      },
       [DynamoDBItemAttribute.PROFILE_ID]: {
         type: CustomAttributeType<ResourceId>('string'),
         default: () => generateResourceId(),

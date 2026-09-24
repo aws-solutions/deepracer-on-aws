@@ -67,10 +67,98 @@ describe('validateLiveEventTime', () => {
   });
 });
 
+describe('createRaceValidationSchema — startDate/startTime for an active-race admin edit', () => {
+  it('rejects a past startDate by default (creating or editing a not-yet-started race)', async () => {
+    const { createRaceValidationSchema } = await import('../validation');
+    await expect(
+      createRaceValidationSchema().validateAt('startDate', { isLive: false, startDate: '2020-01-01' }),
+    ).rejects.toThrow();
+  });
+
+  it('accepts a past startDate when isActiveRaceAdminEdit is true', async () => {
+    const { createRaceValidationSchema } = await import('../validation');
+    const result = await createRaceValidationSchema(true).validateAt('startDate', {
+      isLive: false,
+      startDate: '2020-01-01',
+    });
+    expect(result).toBe('2020-01-01');
+  });
+
+  it('rejects a past startTime by default', async () => {
+    const { createRaceValidationSchema } = await import('../validation');
+    await expect(
+      createRaceValidationSchema().validateAt('startTime', {
+        isLive: false,
+        startDate: '2020-01-01',
+        startTime: '00:00',
+      }),
+    ).rejects.toThrow();
+  });
+
+  it('accepts a past startTime when isActiveRaceAdminEdit is true', async () => {
+    const { createRaceValidationSchema } = await import('../validation');
+    const result = await createRaceValidationSchema(true).validateAt('startTime', {
+      isLive: false,
+      startDate: '2020-01-01',
+      startTime: '00:00',
+    });
+    expect(result).toBe('00:00');
+  });
+
+  it('still requires startDate/startTime to be present when isActiveRaceAdminEdit is true', async () => {
+    const { createRaceValidationSchema } = await import('../validation');
+    await expect(
+      createRaceValidationSchema(true).validateAt('startDate', { isLive: false, startDate: '' }),
+    ).rejects.toThrow();
+  });
+
+  it('rejects an endTime that is after the past startTime but still before now, when isActiveRaceAdminEdit is true', async () => {
+    // The past start's own future-check is suppressed in this mode, so validateEndTime's
+    // end > start check alone would let this through — validateEndTimeIsInFuture must catch it.
+    const { createRaceValidationSchema } = await import('../validation');
+    await expect(
+      createRaceValidationSchema(true).validateAt('endTime', {
+        isLive: false,
+        startDate: '2020-01-01',
+        startTime: '00:00',
+        endDate: '2020-01-01',
+        endTime: '01:00',
+      }),
+    ).rejects.toThrow();
+  });
+
+  it('accepts an endTime in the future when isActiveRaceAdminEdit is true', async () => {
+    const { createRaceValidationSchema } = await import('../validation');
+    const result = await createRaceValidationSchema(true).validateAt('endTime', {
+      isLive: false,
+      startDate: '2020-01-01',
+      startTime: '00:00',
+      endDate: '2099-01-01',
+      endTime: '10:00',
+    });
+    expect(result).toBe('10:00');
+  });
+
+  it('does not require endTime to be in the future when isActiveRaceAdminEdit is false', async () => {
+    // Without isActiveRaceAdminEdit, startTime is itself required to be in the future, so
+    // end > start already transitively implies end > now — validateEndTimeIsInFuture must
+    // not additionally run and reject a genuinely-past endTime with the wrong message here.
+    const { createRaceValidationSchema } = await import('../validation');
+    const result = await createRaceValidationSchema(false).validateAt('endTime', {
+      isLive: false,
+      startDate: '2099-01-01',
+      startTime: '00:00',
+      endDate: '2099-01-01',
+      endTime: '01:00',
+    });
+    expect(result).toBe('01:00');
+  });
+});
+
 describe('maxLap validation', () => {
   it('passes when maxLap >= minLap', async () => {
     const { createRaceValidationSchema } = await import('../validation');
-    const result = await createRaceValidationSchema.validateAt('maxLap', {
+    const result = await createRaceValidationSchema().validateAt('maxLap', {
       maxLap: '5',
       minLap: '3',
       ranking: 'BEST_LAP_TIME',
@@ -81,7 +169,7 @@ describe('maxLap validation', () => {
   it('fails when maxLap < minLap', async () => {
     const { createRaceValidationSchema } = await import('../validation');
     await expect(
-      createRaceValidationSchema.validateAt('maxLap', {
+      createRaceValidationSchema().validateAt('maxLap', {
         maxLap: '2',
         minLap: '5',
         ranking: 'BEST_LAP_TIME',
@@ -91,7 +179,7 @@ describe('maxLap validation', () => {
 
   it('passes when maxLap === minLap for TOTAL_TIME', async () => {
     const { createRaceValidationSchema } = await import('../validation');
-    const result = await createRaceValidationSchema.validateAt('maxLap', {
+    const result = await createRaceValidationSchema().validateAt('maxLap', {
       maxLap: '5',
       minLap: '5',
       ranking: 'TOTAL_TIME',
@@ -102,7 +190,7 @@ describe('maxLap validation', () => {
   it('fails when maxLap !== minLap for TOTAL_TIME', async () => {
     const { createRaceValidationSchema } = await import('../validation');
     await expect(
-      createRaceValidationSchema.validateAt('maxLap', {
+      createRaceValidationSchema().validateAt('maxLap', {
         maxLap: '5',
         minLap: '3',
         ranking: 'TOTAL_TIME',

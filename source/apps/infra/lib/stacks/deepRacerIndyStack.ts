@@ -1,21 +1,38 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import path from 'node:path';
+
 import { DEFAULT_NAMESPACE } from '@deepracer-indy/config/src/defaults/commonDefaults.js';
-import { Stack, Duration, CfnParameter, Fn, CfnCondition, CfnRule, Token, CfnOutput } from 'aws-cdk-lib';
+import { Stack, Duration, CfnParameter, Fn, CfnCondition, CfnRule, Token, CfnOutput, ArnFormat } from 'aws-cdk-lib';
+import { Alarm, ComparisonOperator, TreatMissingData } from 'aws-cdk-lib/aws-cloudwatch';
 import { ComputeType } from 'aws-cdk-lib/aws-codebuild';
+import { EventBus, Rule } from 'aws-cdk-lib/aws-events';
+import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { Queue, QueueEncryption } from 'aws-cdk-lib/aws-sqs';
 import { Construct } from 'constructs';
 
+import { getModelOptimizerFunctionName } from '#constants/lambdaNames.js';
+import { addCfnGuardSuppression } from '#constructs/common/cfnGuardHelper.js';
+import { LogGroupCategory } from '#constructs/common/logGroupsHelper.js';
 import { readManifest } from '#constructs/common/manifestReader.js';
+import { NodeLambdaFunction } from '#constructs/common/nodeLambdaFunction.js';
 import { SesProductionAccessCheck } from '#constructs/ses/sesProductionAccessCheck.js';
 import { UsageFunctions } from '#constructs/usage/usageFunctions.js';
 
 import { ApiStack } from './apiStack.js';
+import { DeviceManagementStack } from './deviceManagementStack.js';
 import { EcrStack } from './ecrStack.js';
+import { EventManagementStack } from './eventManagementStack.js';
+import { GatewayStack } from './gatewayStack.js';
+import { ModelManagementStack } from './modelManagementStack.js';
+import { RealTimeRolesStack } from './realTimeRolesStack.js';
 import { SolutionStackProps } from './solutionStackProps.js';
+import { resolveImageSource } from './utils/helpers.js';
 import { UserIdentity } from '../constructs/auth/userIdentity.js';
 import { UserRolePolicies } from '../constructs/auth/userRolePolicies.js';
+import { BulkInviteWorkflow } from '../constructs/bulk-invite/bulkInviteWorkflow.js';
 import { applyDrTag } from '../constructs/common/taggingHelper.js';
 import { LiveRaceEvents } from '../constructs/live-race/liveRaceEvents.js';
 import { LiveRaceWorkflow } from '../constructs/live-race-workflow/liveRaceWorkflow.js';
@@ -115,12 +132,40 @@ export class DeepRacerIndyStack extends Stack {
     const { dynamoDBTable } = new DynamoDBTable(this, 'DynamoDBTable', {
       namespace: namespaceParam.valueAsString,
     });
-    const { modelStorageBucket, virtualModelBucket, uploadBucket } = new S3Bucket(this, 'S3Bucket');
+    const { modelStorageBucket, virtualModelBucket, uploadBucket, deviceLogsBucket } = new S3Bucket(this, 'S3Bucket');
 
-    const publicEcrRegistory = this.node.getContext('PUBLIC_ECR_REGISTRY');
-    const simAppRepoName = this.node.getContext('SIMAPP_REPO_NAME');
-    const validationRewardRepoName = this.node.getContext('REWARD_VALIDATION_REPO_NAME');
-    const modelValidationRepoName = this.node.getContext('MODEL_VALIDATION_REPO_NAME');
+    // Default registry/repo-name context values (see cdk.json). Each image can independently
+    // redirect to a custom source by setting BOTH its OVERRIDE_*_REPO_NAME context value and
+    // OVERRIDE_PUBLIC_ECR_REGISTRY — images that don't set their own override stay pinned to
+    // the public AWS Solutions gallery, even if other images are redirected.
+    const defaultEcrRegistry = this.node.getContext('PUBLIC_ECR_REGISTRY');
+    const overrideEcrRegistry = this.node.tryGetContext('OVERRIDE_PUBLIC_ECR_REGISTRY');
+
+    const { repoName: simAppRepoName, registry: simAppRegistry } = resolveImageSource({
+      defaultRegistry: defaultEcrRegistry,
+      overrideRegistry: overrideEcrRegistry,
+      defaultRepoName: this.node.getContext('SIMAPP_REPO_NAME'),
+      overrideRepoName: this.node.tryGetContext('OVERRIDE_SIMAPP_REPO_NAME'),
+    });
+    const { repoName: validationRewardRepoName, registry: validationRewardRegistry } = resolveImageSource({
+      defaultRegistry: defaultEcrRegistry,
+      overrideRegistry: overrideEcrRegistry,
+      defaultRepoName: this.node.getContext('REWARD_VALIDATION_REPO_NAME'),
+      overrideRepoName: this.node.tryGetContext('OVERRIDE_REWARD_VALIDATION_REPO_NAME'),
+    });
+    const { repoName: modelValidationRepoName, registry: modelValidationRegistry } = resolveImageSource({
+      defaultRegistry: defaultEcrRegistry,
+      overrideRegistry: overrideEcrRegistry,
+      defaultRepoName: this.node.getContext('MODEL_VALIDATION_REPO_NAME'),
+      overrideRepoName: this.node.tryGetContext('OVERRIDE_MODEL_VALIDATION_REPO_NAME'),
+    });
+    const { repoName: modelOptimizerRepoName, registry: modelOptimizerRegistry } = resolveImageSource({
+      defaultRegistry: defaultEcrRegistry,
+      overrideRegistry: overrideEcrRegistry,
+      defaultRepoName: this.node.getContext('MODEL_OPTIMIZER_REPO_NAME'),
+      overrideRepoName: this.node.tryGetContext('OVERRIDE_MODEL_OPTIMIZER_REPO_NAME'),
+    });
+
     const { version: solutionVersion } = readManifest();
 
     // Create ECR nested stack with multiple repositories (one per image)
@@ -131,22 +176,28 @@ export class DeepRacerIndyStack extends Stack {
       imageConfigs: [
         // DeepRacer simulation application images with custom repository names
         {
-          publicImageUri: `${publicEcrRegistory}/${simAppRepoName}`,
+          publicImageUri: `${simAppRegistry}/${simAppRepoName}`,
           imageTag: solutionVersion,
           repositoryId: simAppRepoName,
           privateRepositoryName: `${namespace}-${simAppRepoName}`,
         },
         {
-          publicImageUri: `${publicEcrRegistory}/${validationRewardRepoName}`,
+          publicImageUri: `${validationRewardRegistry}/${validationRewardRepoName}`,
           imageTag: solutionVersion,
           repositoryId: validationRewardRepoName,
           privateRepositoryName: `${namespace}-${validationRewardRepoName}`,
         },
         {
-          publicImageUri: `${publicEcrRegistory}/${modelValidationRepoName}`,
+          publicImageUri: `${modelValidationRegistry}/${modelValidationRepoName}`,
           imageTag: solutionVersion,
           repositoryId: modelValidationRepoName,
           privateRepositoryName: `${namespace}-${modelValidationRepoName}`,
+        },
+        {
+          publicImageUri: `${modelOptimizerRegistry}/${modelOptimizerRepoName}`,
+          imageTag: solutionVersion,
+          repositoryId: modelOptimizerRepoName,
+          privateRepositoryName: `${namespace}-${modelOptimizerRepoName}`,
         },
       ],
       projectNamePrefix: 'DeepRacerIndy-ImageDownloader',
@@ -161,6 +212,15 @@ export class DeepRacerIndyStack extends Stack {
 
     if (!simAppRepository) {
       throw new Error('Could not find SimApp repository in ECR stack');
+    }
+
+    // Find the Model Optimizer repository
+    const modelOptimizerMapping = ecrStack.imageRepositoryMappings.find(
+      (mapping) => mapping.repositoryId === modelOptimizerRepoName,
+    );
+
+    if (!modelOptimizerMapping) {
+      throw new Error('Could not find Model Optimizer repository in ECR stack');
     }
 
     const { userExecutionVpc, userExecutionSecurityGroup } = new VpcConstruct(this, 'Vpc');
@@ -186,6 +246,7 @@ export class DeepRacerIndyStack extends Stack {
       modelStorageBucket,
       uploadBucket,
       virtualModelBucket,
+      deviceLogsBucket,
       ecrStack,
       userExecutionVpc,
       userExecutionSecurityGroup,
@@ -193,7 +254,89 @@ export class DeepRacerIndyStack extends Stack {
       namespace,
     });
 
-    const { api, workflowJobQueue } = apiStack;
+    const { workflowJobQueue } = apiStack;
+
+    // ── Epic nested stacks ─────────────────────────────────────────────────────
+    // Create in dependency order. Stacks with no epic-to-epic deps can be
+    // created in any order relative to each other.
+    const eventManagementStack = new EventManagementStack(this, 'EventManagement', {
+      namespace,
+      dynamoDBTable,
+      userPool,
+      globalSettings,
+      // Physically owned by EcrStack and not relocatable — see EcrStack.encryptionKey.
+      encryptionKey: ecrStack.encryptionKey,
+    });
+
+    const modelManagementStack = new ModelManagementStack(this, 'ModelManagement', {
+      namespace,
+      dynamoDBTable,
+      modelStorageBucket,
+      uploadBucket,
+      userPool,
+      encryptionKey: ecrStack.encryptionKey,
+      modelOptimizerRepositoryArn: modelOptimizerMapping.repository.repositoryArn,
+      modelOptimizerRepositoryName: modelOptimizerMapping.repository.repositoryName,
+      modelOptimizerImageTag: modelOptimizerMapping.imageTag,
+      importModelJobQueueUrl: apiStack.apiConstruct.importModelJobQueue.queueUrl,
+      importModelJobQueueArn: apiStack.apiConstruct.importModelJobQueue.queueArn,
+    });
+
+    // ECR dependency: ModelManagement uses the optimizer image from EcrStack
+    modelManagementStack.node.addDependency(ecrStack);
+
+    // Cross-stack: importModelDispatcher (ApiStack) -> Model Optimizer (ModelManagement)
+    // Uses shared constant (not a CDK token) to avoid bidirectional nested stack dependency.
+    const optimizerFunctionName = getModelOptimizerFunctionName(namespace);
+    apiStack.apiConstruct.importModelWorkflow.importModelDispatcherFunction.addEnvironment(
+      'MODEL_OPTIMIZER_FUNCTION_NAME',
+      optimizerFunctionName,
+    );
+    apiStack.apiConstruct.importModelWorkflow.importModelDispatcherFunction.addToRolePolicy(
+      new PolicyStatement({
+        actions: ['lambda:InvokeFunction'],
+        resources: [
+          Stack.of(this).formatArn({
+            service: 'lambda',
+            resource: 'function',
+            resourceName: optimizerFunctionName,
+            arnFormat: ArnFormat.COLON_RESOURCE_NAME,
+          }),
+        ],
+      }),
+    );
+
+    const realTimeRolesStack = new RealTimeRolesStack(this, 'RealTimeRoles', {
+      namespace,
+      dynamoDBTable,
+      userPool,
+      encryptionKey: ecrStack.encryptionKey,
+    });
+
+    const deviceManagementStack = new DeviceManagementStack(this, 'DeviceManagement', {
+      namespace,
+      dynamoDBTable,
+      userPool,
+      encryptionKey: ecrStack.encryptionKey,
+    });
+
+    // ── API Gateway ────────────────────────────────────────────────────────────
+    // Created AFTER every stack that owns API-backed Lambda functions, because it
+    // consumes their handler ARNs and owns all of their invoke permissions. The props
+    // type is mapped over StackKey, so coverage is checked by the compiler.
+    const gatewayStack = new GatewayStack(this, 'Gateway', {
+      namespace,
+      encryptionKey: ecrStack.encryptionKey,
+      handlerArns: {
+        core: apiStack.handlerArns,
+        eventManagement: eventManagementStack.handlerArns,
+        modelManagement: modelManagementStack.handlerArns,
+        realTimeRoles: realTimeRolesStack.handlerArns,
+        deviceManagement: deviceManagementStack.handlerArns,
+      },
+    });
+
+    const { api } = gatewayStack;
 
     new SesProductionAccessCheck(this, 'SesProductionAccessCheck', {
       namespace,
@@ -239,6 +382,19 @@ export class DeepRacerIndyStack extends Stack {
       liveRaceWorkflow.stateMachine.stateMachineArn,
     );
     liveRaceWorkflow.stateMachine.grantStartExecution(apiStack.apiConstruct.apiFunctions.LaunchLiveRace);
+
+    // ── Bulk invite (Epic 6) — same pattern as LaunchLiveRace above ─────────
+    const bulkInviteWorkflow = new BulkInviteWorkflow(this, 'BulkInviteWorkflow', {
+      namespace,
+      dynamoDBTable,
+      userPool,
+    });
+    const bulkInviteTrigger = apiStack.apiConstruct.apiFunctions.BulkInviteUser;
+    bulkInviteTrigger.addEnvironment('BULK_INVITE_STATE_MACHINE_ARN', bulkInviteWorkflow.stateMachine.stateMachineArn);
+    // Drives the trigger's pre-flight email-quota check: non-SES deployments are capped at
+    // the Cognito daily email limit (the handler defaults COGNITO_DAILY_EMAIL_LIMIT to 50).
+    bulkInviteTrigger.addEnvironment('EMAIL_DELIVERY_METHOD', emailDeliveryMethodParam.valueAsString);
+    bulkInviteWorkflow.stateMachine.grantStartExecution(bulkInviteTrigger);
     apiStack.apiConstruct.apiFunctions.ClearLiveLeaderboard.addToRolePolicy(
       new PolicyStatement({
         actions: ['states:StopExecution'],
@@ -250,18 +406,37 @@ export class DeepRacerIndyStack extends Stack {
 
     const attachPolicyFn = apiStack.apiConstruct.apiFunctions.AttachLiveRacePolicy;
 
+    // Create the event bus first so we can pass its resolved name to LiveRaceEvents
+    // rather than duplicating the string literal in two places.
+    const raceEventBus = new EventBus(this, 'RaceEventBus', {
+      eventBusName: `${namespace}-deepracer-events`,
+    });
+
     const liveRaceEvents = new LiveRaceEvents(this, 'LiveRaceEvents', {
       namespace,
       dynamoDBTable,
       attachPolicyFunctionName: attachPolicyFn.functionName,
+      devicePrunerFunction: deviceManagementStack.devicePrunerFunction,
+      raceEventBusName: raceEventBus.eventBusName,
     });
 
     attachPolicyFn.addEnvironment('IOT_POLICY_NAME', liveRaceEvents.spectatorPolicyName);
+    attachPolicyFn.addEnvironment('IOT_PUBLISH_POLICY_NAME', liveRaceEvents.facilitatorPolicyName);
+    attachPolicyFn.addEnvironment('USER_POOL_ID', userPool.userPoolId);
     attachPolicyFn.addToRolePolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
-        actions: ['iot:AttachPolicy'],
+        actions: ['iot:AttachPolicy', 'iot:DetachPolicy'],
         resources: ['*'],
+      }),
+    );
+    // Group lookup for policy branching: ListUsers maps the auth-provider sub to a username,
+    // AdminListGroupsForUser returns the caller's groups.
+    attachPolicyFn.addToRolePolicy(
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        actions: ['cognito-idp:AdminListGroupsForUser', 'cognito-idp:ListUsers'],
+        resources: [userPool.userPoolArn],
       }),
     );
 
@@ -276,6 +451,32 @@ export class DeepRacerIndyStack extends Stack {
       solutionVersion,
       iotEndpoint: liveRaceEvents.iotEndpoint,
     });
+
+    // The public leaderboard page fetches public/leaderboards/{id}.json through the website's
+    // own CloudFront distribution, so the broadcast handler must write there — not to
+    // modelStorageBucket, which isn't behind CloudFront and would be unreachable by that fetch.
+    liveRaceEvents.liveBroadcastHandler.addEnvironment('PUBLIC_LEADERBOARD_BUCKET', website.s3Bucket.bucketName);
+    liveRaceEvents.liveBroadcastHandler.addToRolePolicy(
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        actions: ['s3:PutObject', 's3:DeleteObject'],
+        resources: [website.s3Bucket.arnForObjects('public/leaderboards/*')],
+      }),
+    );
+
+    // Lets AddTrackToEvent pre-create the public leaderboard placeholder for a new track —
+    // see addTrackToEvent.ts / publicLeaderboardS3.ts for why.
+    eventManagementStack.addTrackToEventFunction.addEnvironment(
+      'PUBLIC_LEADERBOARD_BUCKET',
+      website.s3Bucket.bucketName,
+    );
+    eventManagementStack.addTrackToEventFunction.addToRolePolicy(
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        actions: ['s3:PutObject'],
+        resources: [website.s3Bucket.arnForObjects('public/leaderboards/*')],
+      }),
+    );
 
     const hasCustomDomain = new CfnCondition(this, 'HasCustomDomain', {
       expression: Fn.conditionNot(Fn.conditionEquals(customDomainParam.valueAsString, '')),
@@ -313,6 +514,14 @@ export class DeepRacerIndyStack extends Stack {
 
     new LogInsights(this, 'LogInsights', {
       namespace,
+      // Epic constructs expose their shared API log groups explicitly so root can
+      // include them in the LogInsights query definitions.
+      additionalLogGroups: [
+        ...eventManagementStack.logGroups,
+        ...modelManagementStack.logGroups,
+        ...realTimeRolesStack.logGroups,
+        ...deviceManagementStack.logGroups,
+      ],
     });
 
     new MetricsInfra(this, 'MetricsInfra', {
@@ -322,9 +531,47 @@ export class DeepRacerIndyStack extends Stack {
       namespace,
     });
 
+    // ── Race Stats rebuild (EventBridge-triggered) ─────────────────────────────
+    const statsRebuildFn = new NodeLambdaFunction(this, 'StatsRebuildFunction', {
+      entry: path.join(__dirname, '../../../../libs/lambda/src/race-management/statsRebuild.ts'),
+      functionName: 'RaceManagement-StatsRebuildFn',
+      logGroupCategory: LogGroupCategory.DEFAULT,
+      namespace,
+      timeout: Duration.seconds(60),
+      reservedConcurrentExecutions: 1,
+    });
+
+    dynamoDBTable.grantReadWriteData(statsRebuildFn);
+
+    const statsRebuildDlq = new Queue(this, 'StatsRebuildDlq', {
+      queueName: `${namespace}-RaceManagement-StatsRebuildDLQ`,
+      encryption: QueueEncryption.SQS_MANAGED,
+      enforceSSL: true,
+    });
+    // SQS_MANAGED (SSE-SQS) is required here because this queue is an EventBridge target DLQ.
+    // EventBridge writes failed invocations directly to the DLQ; with KMS_MANAGED the AWS-managed
+    // key policy cannot be edited to grant events.amazonaws.com kms:GenerateDataKey, so failed
+    // events would be silently dropped instead of landing in the DLQ.
+    addCfnGuardSuppression(statsRebuildDlq, ['SQS_QUEUE_KMS_MASTER_KEY_ID_RULE']);
+
+    const statsRebuildDlqAlarm = new Alarm(this, 'StatsRebuildDlqAlarm', {
+      metric: statsRebuildDlq.metricApproximateNumberOfMessagesVisible(),
+      threshold: 0,
+      comparisonOperator: ComparisonOperator.GREATER_THAN_THRESHOLD,
+      evaluationPeriods: 1,
+      treatMissingData: TreatMissingData.NOT_BREACHING,
+      alarmDescription: 'Stats rebuild DLQ has messages — race-submitted events failed after retries',
+    });
+
+    new Rule(this, 'RaceSubmittedRule', {
+      eventBus: raceEventBus,
+      eventPattern: { source: [`deepracer.${namespace}`], detailType: ['race-submitted'] },
+      targets: [new LambdaFunction(statsRebuildFn, { deadLetterQueue: statsRebuildDlq, retryAttempts: 2 })],
+    });
+
     new MonitoringDashboard(this, 'MonitoringDashboard', {
       namespace,
-      api: apiStack.api,
+      api,
       dynamoDBTable,
       queues: [apiStack.workflowJobQueue],
       alarms: {
@@ -332,15 +579,26 @@ export class DeepRacerIndyStack extends Stack {
           userIdentity.preSignUpErrorAlarm,
           userIdentity.postSignUpErrorAlarm,
           apiStack.apiConstruct.assetPackagingDLQAlarm,
+          apiStack.apiConstruct.workflowJobDeadLetterQueueAlarm,
           apiStack.apiConstruct.importModelWorkflow.lambdaErrorsAlarm,
           liveRaceWorkflow.workflowErrorsAlarm,
           liveRaceWorkflow.streamDlqAlarm,
+          statsRebuildDlqAlarm,
+          ...bulkInviteWorkflow.alarms,
+          // Epic nested stacks contribute their alarms via EpicStack.alarms.
+          ...eventManagementStack.alarms,
+          ...modelManagementStack.alarms,
+          ...realTimeRolesStack.alarms,
+          ...deviceManagementStack.alarms,
         ],
         emailAlarms: userIdentity.sesAlarms,
       },
       isSesEnabled,
     });
 
+    // MUST be last: applyDrTag does an eager node.findAll() walk rather than
+    // registering an Aspect, so anything constructed after this call is untagged and
+    // silently drops out of the ResourceGroup.
     applyDrTag(this, namespace);
 
     new CfnOutput(this, 'ApiEndpoint', {

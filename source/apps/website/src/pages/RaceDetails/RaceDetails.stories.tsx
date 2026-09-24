@@ -42,6 +42,10 @@ export const OALeaderboard: Story = {
       client.on(GetModelCommand).resolves({ model: mockModel });
       client.on(ListModelsCommand).resolves({ models: [mockModel] });
     },
+    routing: {
+      componentRoute: '/races/:leaderboardId',
+      initialRouteEntries: ['/races/race-oa-123'],
+    },
   },
 };
 
@@ -54,6 +58,10 @@ export const TTLeaderboard: Story = {
       client.on(GetProfileCommand).resolves({ profile: mockProfileNoAvatar });
       client.on(GetModelCommand).resolves({ model: mockModel });
       client.on(ListModelsCommand).resolves({ models: [mockModel] });
+    },
+    routing: {
+      componentRoute: '/races/:leaderboardId',
+      initialRouteEntries: ['/races/race-tt-123'],
     },
   },
 };

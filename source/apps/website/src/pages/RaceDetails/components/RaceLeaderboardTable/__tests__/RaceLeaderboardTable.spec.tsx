@@ -5,7 +5,7 @@ import createWrapper from '@cloudscape-design/components/test-utils/dom';
 import { Leaderboard, Ranking, TimingMethod } from '@deepracer-indy/typescript-client';
 import { describe, it, expect } from 'vitest';
 
-import { render } from '#utils/testUtils';
+import { render, screen, fireEvent, waitFor } from '#utils/testUtils';
 
 import RaceLeaderboardTable from '../RaceLeaderboardTable';
 
@@ -126,5 +126,54 @@ describe('<RaceLeaderboardTable />', () => {
     const table = createWrapper(container).findTable();
     const firstRowCells = table?.findBodyCell(1, 5);
     expect(firstRowCells?.getElement().textContent).toBe('5');
+  });
+});
+
+describe('<RaceLeaderboardTable /> video column', () => {
+  const videoUrl = 'https://example.com/video.mp4';
+  const rankingsWithVideo: Ranking[] = [{ ...mockRankings[0], videoUrl }];
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('disables the video actions when a ranking has no video', () => {
+    render(<RaceLeaderboardTable rankings={mockRankings} leaderboard={mockLeaderboard} />);
+
+    expect(screen.getAllByRole('button', { name: 'Watch video' })[0]).toBeDisabled();
+    expect(screen.getAllByRole('button', { name: 'Download video' })[0]).toBeDisabled();
+  });
+
+  it('opens the video modal when the play button is clicked', () => {
+    render(<RaceLeaderboardTable rankings={rankingsWithVideo} leaderboard={mockLeaderboard} />);
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Watch video' })[0]);
+
+    const video = document.querySelector('video');
+    expect(video).toBeInTheDocument();
+    expect(video).toHaveAttribute('src', videoUrl);
+  });
+
+  it('fetches the video when the download button is clicked', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue({ ok: true, blob: () => Promise.resolve(new Blob()) } as Response);
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+
+    render(<RaceLeaderboardTable rankings={rankingsWithVideo} leaderboard={mockLeaderboard} />);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Download video' })[0]);
+
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledWith(videoUrl));
+  });
+
+  it('does not throw when the download request fails', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: false, status: 403 } as Response);
+
+    render(<RaceLeaderboardTable rankings={rankingsWithVideo} leaderboard={mockLeaderboard} />);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Download video' })[0]);
+
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledWith(videoUrl));
   });
 });

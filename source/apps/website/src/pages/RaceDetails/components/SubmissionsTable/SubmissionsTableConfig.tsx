@@ -7,8 +7,9 @@ import CollectionPreferences, {
   CollectionPreferencesProps,
 } from '@cloudscape-design/components/collection-preferences';
 import Link from '@cloudscape-design/components/link';
+import SpaceBetween from '@cloudscape-design/components/space-between';
 import { TableProps } from '@cloudscape-design/components/table';
-import { Leaderboard, Submission } from '@deepracer-indy/typescript-client';
+import { JobStatus, Leaderboard, Submission } from '@deepracer-indy/typescript-client';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -20,12 +21,14 @@ import { millisToMinutesAndSeconds } from '#utils/dateTimeUtils.js';
 import { getPath } from '#utils/pageUtils.js';
 
 import { isEnterRaceDisabled } from '../../raceDetailsHelpers';
+import { buildVideoFilename, useVideoDownload, type SelectedVideo } from '../videoDownload';
 
 enum SubmissionsTableColumn {
   MODEL_NAME = 'Model name',
   STATUS = 'Status',
   TIME = 'Time',
   DATE = 'Date submitted to race',
+  VIDEO = 'Video',
 }
 
 export const useSubmissionsTableConfig = (
@@ -35,6 +38,8 @@ export const useSubmissionsTableConfig = (
 ) => {
   const { t } = useTranslation('raceDetails');
   const navigate = useNavigate();
+  const [selectedVideo, setSelectedVideo] = useState<SelectedVideo | null>(null);
+  const handleVideoDownload = useVideoDownload();
 
   const pageSizeOptions: CollectionPreferencesProps.PageSizeOption[] = [
     { value: 10, label: t('submissionsTable.collectionPreferences.pageSizeOptionsLabel', { count: 10 }) },
@@ -125,8 +130,38 @@ export const useSubmissionsTableConfig = (
         cell: (e) => e.submittedAt.toLocaleString(),
         sortingComparator: (item1, item2) => item1.submittedAt.getTime() - item2.submittedAt.getTime(),
       },
+      {
+        id: SubmissionsTableColumn.VIDEO,
+        header: t('submissionsTable.header.video'),
+        cell: (e) => {
+          const available = e.status === JobStatus.COMPLETED && !!e.videoUrl;
+          return (
+            <SpaceBetween direction="horizontal" size="xs">
+              <Button
+                variant="link"
+                iconName="play"
+                ariaLabel={t('videoModal.watchVideo')}
+                disabled={!available}
+                onClick={() => setSelectedVideo({ url: e.videoUrl, title: `${e.modelName} #${e.submissionNumber}` })}
+              />
+              <Button
+                variant="link"
+                iconName="download"
+                ariaLabel={t('videoModal.downloadVideo')}
+                disabled={!available}
+                onClick={() =>
+                  handleVideoDownload(
+                    e.videoUrl,
+                    buildVideoFilename(leaderboard.name, e.modelName, e.submissionNumber, e.submittedAt),
+                  )
+                }
+              />
+            </SpaceBetween>
+          );
+        },
+      },
     ],
-    [navigate, t],
+    [navigate, t, setSelectedVideo, leaderboard, handleVideoDownload],
   );
 
   const SubmissionsTablePreferences = () => (
@@ -161,6 +196,10 @@ export const useSubmissionsTableConfig = (
             id: SubmissionsTableColumn.DATE,
             label: t('submissionsTable.header.date'),
           },
+          {
+            id: SubmissionsTableColumn.VIDEO,
+            label: t('submissionsTable.header.video'),
+          },
         ],
       }}
     />
@@ -175,5 +214,7 @@ export const useSubmissionsTableConfig = (
     SubmissionsTablePreferences,
     filteredItemsCount,
     filterProps,
+    selectedVideo,
+    setSelectedVideo,
   };
 };

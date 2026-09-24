@@ -27,6 +27,7 @@ import LiveRace from './LiveRace';
 vi.mock('#hooks/useLiveRaceMqtt', () => ({
   useLiveRaceMqtt: vi.fn((_leaderboardId: string, _options: unknown) => ({
     connectionStatus: ConnectionStatus.CONNECTED,
+    publishCountdown: vi.fn().mockResolvedValue(false),
   })),
   ConnectionStatus: {
     CONNECTING: 'CONNECTING',
@@ -304,7 +305,7 @@ describe('<LiveRace />', () => {
             timestamp: '2026-01-01T00:00:00Z',
           });
         }, 0);
-        return { connectionStatus: ConnectionStatus.CONNECTED };
+        return { connectionStatus: ConnectionStatus.CONNECTED, publishCountdown: vi.fn().mockResolvedValue(false) };
       });
 
       render(<LiveRace />, {
@@ -1038,7 +1039,7 @@ describe('<LiveRace />', () => {
       const mockUseLiveRaceMqtt = vi.mocked(useLiveRaceMqtt);
       mockUseLiveRaceMqtt.mockImplementation((_id, options) => {
         capturedOnReconnect = (options as { onReconnect: () => void }).onReconnect;
-        return { connectionStatus: ConnectionStatus.CONNECTED };
+        return { connectionStatus: ConnectionStatus.CONNECTED, publishCountdown: vi.fn().mockResolvedValue(false) };
       });
 
       render(<LiveRace />, {
@@ -1075,7 +1076,7 @@ describe('<LiveRace />', () => {
       const mockUseLiveRaceMqtt = vi.mocked(useLiveRaceMqtt);
       mockUseLiveRaceMqtt.mockImplementation((_id, options) => {
         capturedOnEvent = (options as { onEvent: (e: unknown) => void }).onEvent;
-        return { connectionStatus: ConnectionStatus.CONNECTED };
+        return { connectionStatus: ConnectionStatus.CONNECTED, publishCountdown: vi.fn().mockResolvedValue(false) };
       });
 
       render(<LiveRace />, {
@@ -1279,7 +1280,7 @@ describe('<LiveRace />', () => {
       let capturedOnReconnect: (() => void) | null = null;
       vi.mocked(useLiveRaceMqtt).mockImplementation((_id, options) => {
         capturedOnReconnect = (options as { onReconnect: () => void }).onReconnect;
-        return { connectionStatus: ConnectionStatus.CONNECTED };
+        return { connectionStatus: ConnectionStatus.CONNECTED, publishCountdown: vi.fn().mockResolvedValue(false) };
       });
 
       render(<LiveRace />, {
@@ -1327,7 +1328,7 @@ describe('<LiveRace />', () => {
       let capturedOnReconnect: (() => void) | null = null;
       vi.mocked(useLiveRaceMqtt).mockImplementation((_id, options) => {
         capturedOnReconnect = (options as { onReconnect: () => void }).onReconnect;
-        return { connectionStatus: ConnectionStatus.CONNECTED };
+        return { connectionStatus: ConnectionStatus.CONNECTED, publishCountdown: vi.fn().mockResolvedValue(false) };
       });
 
       render(<LiveRace />, {
@@ -1437,7 +1438,7 @@ describe('<LiveRace />', () => {
       let capturedOnEvent: ((e: unknown) => void) | null = null;
       vi.mocked(useLiveRaceMqtt).mockImplementation((_id, options) => {
         capturedOnEvent = (options as { onEvent: (e: unknown) => void }).onEvent;
-        return { connectionStatus: ConnectionStatus.CONNECTED };
+        return { connectionStatus: ConnectionStatus.CONNECTED, publishCountdown: vi.fn().mockResolvedValue(false) };
       });
 
       render(<LiveRace />, {

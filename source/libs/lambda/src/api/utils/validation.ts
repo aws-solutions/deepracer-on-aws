@@ -113,3 +113,17 @@ export const validateRacerComputeLimits = (
     throw new BadRequestError({ message: 'Total number of models for the month exceeded.' });
   }
 };
+
+/**
+ * Model-count-only quota check for operations that consume no compute minutes
+ * (e.g. physical model import). Treats undefined and -1 as unlimited.
+ */
+export const validateModelCountLimit = (profileQuotaUsage: ProfileQuotaUsage) => {
+  if (
+    profileQuotaUsage.maxModelCount !== undefined &&
+    profileQuotaUsage.maxModelCount !== -1 &&
+    profileQuotaUsage.modelCount >= profileQuotaUsage.maxModelCount
+  ) {
+    throw new BadRequestError({ message: 'Total number of models for the month exceeded.' });
+  }
+};

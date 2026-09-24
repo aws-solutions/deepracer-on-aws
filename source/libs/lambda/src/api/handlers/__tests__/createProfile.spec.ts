@@ -8,23 +8,43 @@ import {
   CognitoIdentityProviderClient,
   ListUsersCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
-import { BadRequestError, InternalFailureError } from '@deepracer-indy/typescript-server-client';
+import { BadRequestError, InternalFailureError, NotAuthorizedError } from '@deepracer-indy/typescript-server-client';
 import { mockClient } from 'aws-sdk-client-mock';
 
 import { UserGroups } from '../../../cognito/handlers/common/constants.js';
 import { TEST_OPERATION_CONTEXT } from '../../constants/testConstants.js';
 import { CreateProfileOperation } from '../createProfile.js';
 
+vi.mock('../../utils/apiGateway.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../utils/apiGateway.js')>();
+  return { ...actual, isUserAdmin: (...args: unknown[]) => mockIsUserAdmin(...args) };
+});
+
+const mockIsUserAdmin = vi.fn().mockResolvedValue(true);
+
 describe('CreateProfile', () => {
   const cognitoMock = mockClient(CognitoIdentityProviderClient);
 
   beforeEach(() => {
     cognitoMock.reset();
+    mockIsUserAdmin.mockResolvedValue(true);
     process.env.USER_POOL_ID = 'us-east-1_testpool';
   });
 
   afterEach(() => {
     delete process.env.USER_POOL_ID;
+  });
+
+  it('should reject non-administrators before performing Cognito operations', async () => {
+    mockIsUserAdmin.mockResolvedValue(false);
+
+    await expect(
+      CreateProfileOperation({ emailAddress: 'test@example.com' }, TEST_OPERATION_CONTEXT),
+    ).rejects.toStrictEqual(new NotAuthorizedError({ message: 'Only administrators can create profiles.' }));
+
+    expect(cognitoMock.commandCalls(ListUsersCommand)).toHaveLength(0);
+    expect(cognitoMock.commandCalls(AdminCreateUserCommand)).toHaveLength(0);
+    expect(cognitoMock.commandCalls(AdminAddUserToGroupCommand)).toHaveLength(0);
   });
 
   it('should create profile successfully', async () => {

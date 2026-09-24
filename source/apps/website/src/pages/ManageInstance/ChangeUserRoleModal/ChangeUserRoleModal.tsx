@@ -5,29 +5,37 @@ import Button from '@cloudscape-design/components/button';
 import Modal from '@cloudscape-design/components/modal';
 import Select from '@cloudscape-design/components/select';
 import SpaceBetween from '@cloudscape-design/components/space-between';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { useAppDispatch } from '#hooks/useAppDispatch';
 import { useUpdateGroupMembershipMutation } from '#services/deepRacer/profileApi';
 import { displayErrorNotification, displaySuccessNotification } from '#store/notifications/notificationsSlice';
 
-import { roleOptions } from './constants';
+import { getRoleOptions } from './constants';
 import { getCurrentRole } from './helpers';
 import { ChangeUserRoleModalProps } from './types';
 
 const ChangeUserRoleModal = ({ isOpen, setIsOpen, selectedUser, onClearSelection }: ChangeUserRoleModalProps) => {
+  const { t } = useTranslation('manageInstance');
   const dispatch = useAppDispatch();
   const [updateGroupMembership, { isLoading: isUpdatingRole }] = useUpdateGroupMembershipMutation();
 
-  const [selectedRole, setSelectedRole] = useState(getCurrentRole(selectedUser));
+  // Memoized on `t` so the array reference is stable across renders (as long as the language
+  // doesn't change) — getCurrentRole() returns an option FROM this array, and `selectedRole`
+  // state holds an option also drawn from this array, so `selectedRole === getCurrentRole(...)`
+  // object-identity comparisons below continue to work correctly.
+  const roleOptions = useMemo(() => getRoleOptions(t), [t]);
+
+  const [selectedRole, setSelectedRole] = useState(getCurrentRole(selectedUser, roleOptions));
 
   useEffect(() => {
-    setSelectedRole(getCurrentRole(selectedUser));
-  }, [selectedUser]);
+    setSelectedRole(getCurrentRole(selectedUser, roleOptions));
+  }, [selectedUser, roleOptions]);
 
   const handleClose = () => {
     setIsOpen(false);
-    setSelectedRole(getCurrentRole(selectedUser));
+    setSelectedRole(getCurrentRole(selectedUser, roleOptions));
   };
 
   const handleChangeRole = async () => {
@@ -43,7 +51,10 @@ const ChangeUserRoleModal = ({ isOpen, setIsOpen, selectedUser, onClearSelection
 
       dispatch(
         displaySuccessNotification({
-          content: `User ${selectedUser.alias}'s role has been changed to ${selectedRole.label}. Please allow 1-2 minutes for this change to take effect.`,
+          content: t('changeUserRoleModal.notifications.success', {
+            alias: selectedUser.alias,
+            role: selectedRole.label,
+          }),
         }),
       );
 
@@ -53,7 +64,7 @@ const ChangeUserRoleModal = ({ isOpen, setIsOpen, selectedUser, onClearSelection
       console.error('Failed to change user role');
       dispatch(
         displayErrorNotification({
-          content: 'Failed to change user role. Please try again.',
+          content: t('changeUserRoleModal.notifications.error'),
         }),
       );
     }
@@ -65,7 +76,7 @@ const ChangeUserRoleModal = ({ isOpen, setIsOpen, selectedUser, onClearSelection
       visible={isOpen}
       closeAriaLabel="Close modal"
       size="medium"
-      header="Change user role"
+      header={t('changeUserRoleModal.header')}
     >
       <SpaceBetween size="m">
         <div>
@@ -73,29 +84,26 @@ const ChangeUserRoleModal = ({ isOpen, setIsOpen, selectedUser, onClearSelection
             selectedOption={selectedRole}
             onChange={({ detail }) => setSelectedRole(detail.selectedOption as typeof selectedRole)}
             options={roleOptions}
-            placeholder="Select a role"
+            placeholder={t('changeUserRoleModal.rolePlaceholder')}
             disabled={isUpdatingRole}
           />
           <div style={{ marginTop: '8px', color: '#5f6b7a' }}>
-            Please note the following when changing a user's role:
+            {t('changeUserRoleModal.warning.intro')}
             <ul>
-              <li>
-                If the user whose role you are updating has a current session, they will need to log out and log back in
-                for their role change to take effect.
-              </li>
-              <li>A successful role change will take 1-2 minutes to propagate and reflect in the Users table.</li>
+              <li>{t('changeUserRoleModal.warning.sessionLogout')}</li>
+              <li>{t('changeUserRoleModal.warning.propagationDelay')}</li>
             </ul>
           </div>
         </div>
         <SpaceBetween size="xs" direction="horizontal">
-          <Button onClick={handleClose}>Cancel</Button>
+          <Button onClick={handleClose}>{t('changeUserRoleModal.buttons.cancel')}</Button>
           <Button
             variant="primary"
             onClick={handleChangeRole}
             loading={isUpdatingRole}
-            disabled={!selectedRole || selectedRole === getCurrentRole(selectedUser)}
+            disabled={!selectedRole || selectedRole === getCurrentRole(selectedUser, roleOptions)}
           >
-            Change
+            {t('changeUserRoleModal.buttons.change')}
           </Button>
         </SpaceBetween>
       </SpaceBetween>

@@ -48,6 +48,9 @@ export const RankingsEntity = new Entity(
             required: true,
           },
           [DynamoDBItemAttribute.AVATAR]: AVATAR_ATTRIBUTE,
+          [DynamoDBItemAttribute.COUNTRY_CODE]: {
+            type: 'string',
+          },
         },
       },
     },

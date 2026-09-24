@@ -43,9 +43,27 @@ structure Model with [BaseModel] {
 
     trainingVideoStreamUrl: Url
 
+    @documentation(
+        """
+        Status of packaging the model's assets for export/download. Shares the ModelStatus enum
+        with `status`, but only a subset of values apply here (for example READY, ERROR, QUEUED).
+        WAITING_FOR_CAPACITY is specific to training dispatch and is never set on this field."""
+    )
     packagingStatus: ModelStatus
 
     importErrorMessage: String
+
+    @documentation(
+        """
+        Human-readable explanation of the current status. Set when a training job is
+        WAITING_FOR_CAPACITY to describe which SageMaker quota is exhausted, or that capacity
+        could not be verified."""
+    )
+    statusMessage: String
+
+    optimizationStatus: OptimizationStatus
+
+    modelSource: ModelSource
 }
 
 list ModelList {
@@ -219,14 +237,33 @@ list RewardFunctionErrorList {
 
 enum ModelStatus {
     DELETING
+
     ERROR
+
     EVALUATING
+
     IMPORTING
+
     QUEUED
+
     READY
+
     STOPPING
+
     SUBMITTING
+
     TRAINING
+
+    @documentation(
+        """
+        The training job cannot be dispatched because one or both SageMaker training quotas are
+        exhausted. No workflow message is queued; the user must retry via RetryTraining.
+
+        Applies only to the `status` field's model-lifecycle meaning. This value is never set on
+        `packagingStatus`, which tracks asset packaging/export and is unrelated to training
+        dispatch capacity."""
+    )
+    WAITING_FOR_CAPACITY
 }
 
 enum JobStatus {
@@ -244,6 +281,13 @@ enum JobStatus {
     QUEUED
 
     STOPPING
+
+    @documentation(
+        """
+        The job cannot be dispatched because one or both SageMaker training quotas are exhausted.
+        No workflow message is queued; the user must retry via RetryTraining."""
+    )
+    WAITING_FOR_CAPACITY
 }
 
 enum LiveEventStatus {

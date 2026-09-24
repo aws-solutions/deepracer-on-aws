@@ -6,6 +6,35 @@ import { DeepRacerIndyAppConfig } from '@deepracer-indy/config/src/types/appConf
 
 export const SAGEMAKER_COMPLETED_JOB_STATUSES: string[] = [TrainingJobStatus.COMPLETED, TrainingJobStatus.STOPPED];
 
+/** Service code used for every SageMaker Service Quotas lookup. */
+export const SAGEMAKER_SERVICE_CODE = 'sagemaker';
+
+/**
+ * Service Quotas code for "Number of instances across all training jobs".
+ *
+ * This quota is independent of the per-instance-type training quota, and it counts instances used
+ * by every training job in the account — including jobs the customer created outside this solution.
+ * Effective training concurrency is the lower of the two quotas, so raising only the instance-type
+ * quota may not change it.
+ */
+export const TOTAL_TRAINING_INSTANCE_QUOTA_CODE = 'L-00C91CB5';
+
+/** SageMaker training-job statuses that still hold instance capacity. */
+export const SAGEMAKER_ACTIVE_JOB_STATUSES: TrainingJobStatus[] = [
+  TrainingJobStatus.IN_PROGRESS,
+  TrainingJobStatus.STOPPING,
+];
+
+/**
+ * Maximum number of concurrent DescribeTrainingJob calls issued while summing instance usage.
+ * DescribeTrainingJob has a low fixed request rate, so usage accounting must not fan out
+ * unboundedly over an account with many active jobs.
+ */
+export const DESCRIBE_TRAINING_JOB_CONCURRENCY = 5;
+
+/** SageMaker error name returned when a training job is rejected for lack of quota. */
+export const RESOURCE_LIMIT_EXCEEDED_ERROR_NAME = 'ResourceLimitExceeded';
+
 export const TrainingInstanceQuotaCode: { [T in DeepRacerIndyAppConfig['sageMaker']['instanceType']]: string } = {
   'ml.c4.2xlarge': 'L-C5B4EE09',
   'ml.c4.4xlarge': 'L-505634D0',

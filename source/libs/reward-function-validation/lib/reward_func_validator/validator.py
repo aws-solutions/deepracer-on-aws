@@ -1,6 +1,10 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+# SECURITY: This validator executes user-supplied reward function code with AST-based restrictions.
+# Compensating controls: WAF managed rules block known malicious payloads, Lambda runs in a VPC with
+# no internet egress, and the execution role follows least-privilege (no access beyond this function).
+
 import os
 import sys
 

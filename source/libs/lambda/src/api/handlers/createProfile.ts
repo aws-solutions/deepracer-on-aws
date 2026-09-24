@@ -1,119 +1,46 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import {
-  AdminAddUserToGroupCommand,
-  AdminCreateUserCommand,
-  AdminDeleteUserCommand,
-  ListUsersCommand,
-} from '@aws-sdk/client-cognito-identity-provider';
 import type { Operation } from '@aws-smithy/server-common';
-import { generateResourceId } from '@deepracer-indy/database';
 import {
   BadRequestError,
   CreateProfileServerInput,
   CreateProfileServerOutput,
   getCreateProfileHandler,
   InternalFailureError,
+  NotAuthorizedError,
 } from '@deepracer-indy/typescript-server-client';
 import { logger } from '@deepracer-indy/utils';
 
-import { UserGroups } from '../../cognito/handlers/common/constants.js';
-import { cognitoClient } from '../../utils/clients/cognitoClient.js';
 import type { HandlerContext } from '../types/apiGatewayHandlerContext.js';
-import { getApiGatewayHandler } from '../utils/apiGateway.js';
+import { getApiGatewayHandler, isUserAdmin } from '../utils/apiGateway.js';
+import {
+  addUserToRacerGroup,
+  createRacerCognitoUser,
+  deleteCognitoUser,
+  userExistsByEmail,
+} from '../utils/cognitoUserManagement.js';
 import { instrumentOperation } from '../utils/instrumentation/instrumentOperation.js';
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
-async function CheckUserExists(userPoolId: string, emailAddress: string): Promise<boolean> {
-  logger.info(`Checking if user exists with email: ${emailAddress}`);
-  try {
-    const response = await cognitoClient.send(
-      new ListUsersCommand({
-        UserPoolId: userPoolId,
-        Filter: `email = "${emailAddress}"`,
-      }),
-    );
-    return (response.Users?.length ?? 0) > 0;
-  } catch (error) {
-    if (error instanceof Error) {
-      logger.error(JSON.stringify(error, Object.getOwnPropertyNames(error)));
-    }
-    throw new InternalFailureError({ message: 'Unable to verify user. Please try again.' });
+const logError = (error: unknown): void => {
+  if (error instanceof Error) {
+    logger.error(JSON.stringify(error, Object.getOwnPropertyNames(error)));
   }
-}
-
-async function CreateUser(userPoolId: string, username: string, emailAddress: string) {
-  logger.info(`Creating user with username: ${username}  emailAddress: ${emailAddress}} userPoolId: ${userPoolId}`);
-  try {
-    await cognitoClient.send(
-      new AdminCreateUserCommand({
-        UserPoolId: userPoolId,
-        Username: username,
-        DesiredDeliveryMediums: ['EMAIL'],
-        UserAttributes: [
-          {
-            Name: 'email',
-            Value: emailAddress,
-          },
-          {
-            Name: 'email_verified',
-            Value: 'true',
-          },
-        ],
-      }),
-    );
-  } catch (error) {
-    if (error instanceof Error) {
-      logger.error(JSON.stringify(error, Object.getOwnPropertyNames(error)));
-    }
-    throw new InternalFailureError({ message: 'Unable to create profile. Please try again.' });
-  }
-}
-
-async function AddUserToGroup(userPoolId: string, username: string) {
-  logger.info(`Adding user to group: ${UserGroups.RACERS} userPoolId: ${userPoolId} username: ${username}`);
-  try {
-    await cognitoClient.send(
-      new AdminAddUserToGroupCommand({
-        UserPoolId: userPoolId,
-        Username: username,
-        GroupName: UserGroups.RACERS,
-      }),
-    );
-  } catch (error) {
-    if (error instanceof Error) {
-      logger.error(JSON.stringify(error, Object.getOwnPropertyNames(error)));
-      await DeleteUser(userPoolId, username);
-      throw new InternalFailureError({ message: 'Unable to add user to Group. Please try again.' });
-    }
-  }
-}
-
-async function DeleteUser(userPoolId: string, username: string) {
-  logger.info(`Deleting user with username: ${username} userPoolId: ${userPoolId}`);
-  try {
-    await cognitoClient.send(
-      new AdminDeleteUserCommand({
-        UserPoolId: userPoolId,
-        Username: username,
-      }),
-    );
-  } catch (error) {
-    if (error instanceof Error) {
-      logger.error(JSON.stringify(error, Object.getOwnPropertyNames(error)));
-      throw new InternalFailureError({ message: 'Unable to delete user. Please try again.' });
-    }
-  }
-}
+};
 
 export const CreateProfileOperation: Operation<
   CreateProfileServerInput,
   CreateProfileServerOutput,
   HandlerContext
-> = async (input) => {
+> = async (input, context) => {
   const { emailAddress } = input;
+
+  if (!(await isUserAdmin(context.profileId))) {
+    logger.warn('Admin auth failure', { action: 'ADMIN_AUTH_FAILURE', profileId: context.profileId });
+    throw new NotAuthorizedError({ message: 'Only administrators can create profiles.' });
+  }
 
   const userPoolId = process.env.USER_POOL_ID;
   if (!userPoolId) {
@@ -124,17 +51,38 @@ export const CreateProfileOperation: Operation<
     throw new BadRequestError({ message: 'Invalid email address format.' });
   }
 
-  // Check if user already exists
-  const userExists = await CheckUserExists(userPoolId, emailAddress);
+  let userExists: boolean;
+  try {
+    userExists = await userExistsByEmail(userPoolId, emailAddress);
+  } catch (error) {
+    logError(error);
+    throw new InternalFailureError({ message: 'Unable to verify user. Please try again.' });
+  }
   if (userExists) {
     throw new BadRequestError({ message: 'A user with this email address already exists.' });
   }
 
-  const username = generateResourceId();
+  let username: string;
+  try {
+    username = await createRacerCognitoUser(userPoolId, emailAddress);
+  } catch (error) {
+    logError(error);
+    throw new InternalFailureError({ message: 'Unable to create profile. Please try again.' });
+  }
 
-  await CreateUser(userPoolId, username, emailAddress);
-
-  await AddUserToGroup(userPoolId, username);
+  try {
+    await addUserToRacerGroup(userPoolId, username);
+  } catch (error) {
+    logError(error);
+    // Roll back the just-created user so a failed group assignment does not leave an orphan.
+    try {
+      await deleteCognitoUser(userPoolId, username);
+    } catch (deleteError) {
+      logError(deleteError);
+      throw new InternalFailureError({ message: 'Unable to delete user. Please try again.' });
+    }
+    throw new InternalFailureError({ message: 'Unable to add user to Group. Please try again.' });
+  }
 
   return {
     message: 'Profile created successfully. Check your email for login instructions.',

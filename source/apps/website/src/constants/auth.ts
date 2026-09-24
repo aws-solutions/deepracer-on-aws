@@ -3,6 +3,7 @@
 
 export enum AuthState {
   SIGNIN = 'SignIn',
+  SIGN_UP = 'SignUp',
   VERIFY_EMAIL = 'VerifyEmail',
   FORGOT_PASSWORD_REQUEST = 'ForgotPasswordRequest',
   FORGOT_PASSWORD_RESET = 'ForgotPasswordReset',
@@ -13,6 +14,7 @@ export interface AuthValues {
   emailAddress: string;
   password: string;
   racerAlias: string;
+  countryCode?: string;
 }
 
 export interface SignInValues {

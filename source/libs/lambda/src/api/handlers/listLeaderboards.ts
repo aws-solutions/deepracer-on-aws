@@ -43,6 +43,9 @@ export const ListLeaderboardsOperation: Operation<
     liveEventStatus: leaderboardItem.liveEventStatus,
     maxResets: leaderboardItem.maxResets,
     submissionPeriodOpen: leaderboardItem.submissionPeriodOpen,
+    eventId: leaderboardItem.eventId,
+    fleetId: leaderboardItem.fleetId,
+    trackType: leaderboardItem.trackType,
   }));
 
   return { leaderboards, token: cursor ?? undefined } satisfies ListLeaderboardsServerOutput;

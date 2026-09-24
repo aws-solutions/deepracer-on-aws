@@ -31,6 +31,7 @@
     "aws-iot-device-sdk-v2": "1.26.0",
     "hls.js": "^1.5.15",
     "humanize-duration": "^3.32.1",
+    "i18n-iso-countries": "^7.14.0",
     "i18next": "^24.2.2",
     "i18next-intervalplural-postprocessor": "^3.0.0",
     "nanoid": "^5.1.2",

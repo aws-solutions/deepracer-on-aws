@@ -9,7 +9,13 @@ import { type Mock, vi } from 'vitest';
 
 import { cognitoClient } from '#utils/clients/cognitoClient.js';
 
-import { getCognitoUserId, getApiGatewayHandler, isUserAdmin, isUserAdminOrFacilitator } from '../apiGateway';
+import {
+  getCognitoUserId,
+  getApiGatewayHandler,
+  isUserAdmin,
+  isUserAdminOrFacilitator,
+  isUserMemberOf,
+} from '../apiGateway';
 
 class MockListUsersCommand {
   constructor(public input: unknown) {}
@@ -133,6 +139,41 @@ describe('getCognitoUserId', () => {
 
     await expect(getCognitoUserId('cognito-idp.us-east-1.amazonaws.com/us-east-1_abc123,test-user')).rejects.toThrow(
       'Failed to get username',
+    );
+  });
+});
+
+describe('isUserMemberOf', () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env = { ...originalEnv };
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+  });
+
+  it('should return true when the user belongs to any requested group', async () => {
+    process.env.USER_POOL_ID = 'us-east-1_test123';
+    (cognitoClient.send as Mock).mockResolvedValueOnce({
+      Groups: [{ GroupName: UserGroups.COMMENTATORS }],
+    });
+
+    await expect(isUserMemberOf('testuser' as ResourceId, [UserGroups.ADMIN, UserGroups.COMMENTATORS])).resolves.toBe(
+      true,
+    );
+  });
+
+  it('should return false when the user belongs to none of the requested groups', async () => {
+    process.env.USER_POOL_ID = 'us-east-1_test123';
+    (cognitoClient.send as Mock).mockResolvedValueOnce({
+      Groups: [{ GroupName: UserGroups.RACERS }],
+    });
+
+    await expect(isUserMemberOf('testuser' as ResourceId, [UserGroups.ADMIN, UserGroups.COMMENTATORS])).resolves.toBe(
+      false,
     );
   });
 });

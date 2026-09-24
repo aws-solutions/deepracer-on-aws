@@ -1,7 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { DeleteModelCommand } from '@deepracer-indy/typescript-client';
+import { DeleteModelCommand, RetryTrainingCommand } from '@deepracer-indy/typescript-client';
 import { composeStories } from '@storybook/react';
 import { userEvent, within } from '@storybook/test';
 
@@ -9,6 +9,11 @@ import i18n from '#i18n';
 import { POLLING_INTERVAL_TIME } from '#pages/ModelDetails/constants';
 import * as ModelDetailsStories from '#pages/ModelDetails/ModelDetails.stories';
 import { mockDeepRacerClient, screen, waitFor } from '#utils/testUtils';
+
+let mockDispatch = vi.fn();
+vi.mock('#hooks/useAppDispatch', () => ({
+  useAppDispatch: () => mockDispatch,
+}));
 
 const {
   ModelNotFound,
@@ -18,10 +23,17 @@ const {
   DeleteModalOpens,
   DeleteModelFails,
   WithSubmissionSuccess,
+  PhysicalModelReady,
+  PhysicalModelImporting,
+  PhysicalModelError,
+  ModelWaitingForCapacity,
+  RetryTrainingModalOpens,
+  RetryTrainingSucceeds,
+  RetryTrainingStillWaiting,
+  RetryTrainingFails,
   ...stories
 } = composeStories(ModelDetailsStories);
 
-let mockDispatch = vi.fn();
 describe('<ModelDetails />', () => {
   it('should render a model not found message for missing model', async () => {
     await ModelNotFound.run();
@@ -82,9 +94,6 @@ describe('ButtonDropdown actions', () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     mockDispatch = vi.fn();
     vi.clearAllMocks();
-    vi.mock('#hooks/useAppDispatch', () => ({
-      useAppDispatch: () => mockDispatch,
-    }));
   });
 
   afterEach(() => {
@@ -309,6 +318,132 @@ describe('Delete modal', () => {
         payload: expect.objectContaining({
           content: expect.stringContaining('Failed to delete model'),
         }),
+      }),
+    );
+  });
+});
+
+describe('Physical model conditionals', () => {
+  it('should show Physical badge for physical model', async () => {
+    await PhysicalModelReady.run();
+    expect(await screen.findByText('Physical')).toBeInTheDocument();
+  });
+
+  it('should hide Evaluation tab for physical model', async () => {
+    await PhysicalModelReady.run();
+    expect(await screen.findByRole('tab', { name: i18n.t('modelDetails:tabs.training') })).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: i18n.t('modelDetails:tabs.evaluation') })).not.toBeInTheDocument();
+  });
+
+  it('should render importing state for physical model', async () => {
+    await PhysicalModelImporting.run();
+    expect(await screen.findByText(i18n.t('common:modelStatus.IMPORTING'))).toBeInTheDocument();
+  });
+
+  it('should render error state for physical model', async () => {
+    await PhysicalModelError.run();
+    expect(await screen.findByText(i18n.t('common:modelStatus.ERROR'))).toBeInTheDocument();
+  });
+});
+
+describe('WAITING_FOR_CAPACITY and Retry training', () => {
+  beforeEach(() => {
+    mockDeepRacerClient.reset();
+    mockDispatch = vi.fn();
+  });
+
+  it('should display warning status and the capacity-waiting alert with the status message', async () => {
+    await ModelWaitingForCapacity.run();
+
+    expect((await screen.findAllByText(i18n.t('common:modelStatus.WAITING_FOR_CAPACITY'))).length).toBeGreaterThan(0);
+    expect(await screen.findByText(i18n.t('modelDetails:capacityWaiting.header'))).toBeInTheDocument();
+    expect(screen.getByText('Training capacity is not available. Please try again later.')).toBeInTheDocument();
+  });
+
+  it('should show the Retry training button only for a waiting model', async () => {
+    await ModelWaitingForCapacity.run();
+
+    // Two matches: the header action button (gated by isWaitingForCapacity) plus the modal's
+    // always-mounted confirm button. A ready model (below) has only the latter.
+    const buttons = await screen.findAllByRole('button', { name: i18n.t('modelDetails:buttons.retryTraining') });
+    expect(buttons.length).toBe(2);
+  });
+
+  it('should not show the Retry training button for a ready model', async () => {
+    await stories.TrainingCompleted.run();
+
+    // Only the retry-training Modal's always-mounted (hidden) confirm button remains; the header
+    // action button is gated by isWaitingForCapacity and must not render for a ready model.
+    await waitFor(() => {
+      expect(screen.getAllByRole('button', { name: i18n.t('modelDetails:buttons.retryTraining') })).toHaveLength(1);
+    });
+  });
+
+  it('should open the retry-training confirmation modal when Retry training is clicked', async () => {
+    await RetryTrainingModalOpens.run();
+
+    const modal = screen.getByRole('dialog', { name: i18n.t('modelDetails:retryTrainingModal.header') });
+    expect(modal).toBeInTheDocument();
+  });
+
+  it('should close the modal without retrying when Cancel is clicked', async () => {
+    await RetryTrainingModalOpens.run();
+
+    const modal = screen.getByRole('dialog', { name: i18n.t('modelDetails:retryTrainingModal.header') });
+    await userEvent.click(within(modal).getByText(i18n.t('modelDetails:retryTrainingModal.cancelButton')));
+
+    expect(modal.className).toContain('hidden');
+    expect(mockDeepRacerClient.commandCalls(RetryTrainingCommand)).toHaveLength(0);
+  });
+
+  it('should dispatch a success notification and close the modal when retry queues the job', async () => {
+    await RetryTrainingSucceeds.run();
+
+    const modal = screen.getByRole('dialog', { name: i18n.t('modelDetails:retryTrainingModal.header') });
+    await userEvent.click(
+      within(modal).getByRole('button', { name: i18n.t('modelDetails:retryTrainingModal.confirmButton') }),
+    );
+
+    await waitFor(() => expect(mockDeepRacerClient.commandCalls(RetryTrainingCommand)).toHaveLength(1));
+    expect(modal.className).toContain('hidden');
+    expect(mockDispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'notifications/displaySuccessNotification',
+        payload: expect.objectContaining({ content: 'Training job dispatched successfully.' }),
+      }),
+    );
+  });
+
+  it('should dispatch an info notification when retry reports capacity is still unavailable', async () => {
+    await RetryTrainingStillWaiting.run();
+
+    const modal = screen.getByRole('dialog', { name: i18n.t('modelDetails:retryTrainingModal.header') });
+    await userEvent.click(
+      within(modal).getByRole('button', { name: i18n.t('modelDetails:retryTrainingModal.confirmButton') }),
+    );
+
+    await waitFor(() => expect(mockDeepRacerClient.commandCalls(RetryTrainingCommand)).toHaveLength(1));
+    expect(mockDispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'notifications/displayInfoNotification',
+        payload: expect.objectContaining({ content: 'Training capacity is still not available.' }),
+      }),
+    );
+  });
+
+  it('should dispatch an error notification when the retry request fails', async () => {
+    await RetryTrainingFails.run();
+
+    const modal = screen.getByRole('dialog', { name: i18n.t('modelDetails:retryTrainingModal.header') });
+    await userEvent.click(
+      within(modal).getByRole('button', { name: i18n.t('modelDetails:retryTrainingModal.confirmButton') }),
+    );
+
+    await waitFor(() => expect(mockDeepRacerClient.commandCalls(RetryTrainingCommand)).toHaveLength(1));
+    expect(mockDispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'notifications/displayErrorNotification',
+        payload: expect.objectContaining({ content: i18n.t('modelDetails:notifications.retryTrainingError') }),
       }),
     );
   });

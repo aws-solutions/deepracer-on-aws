@@ -12,6 +12,7 @@ import EditRace from './EditRace';
 import i18n from '../../i18n/index.js';
 
 const mockUseGetLeaderboardQuery = vi.fn();
+const mockUseListLiveQueueItemsQuery = vi.fn();
 
 vi.mock('aws-amplify/auth', () => ({
   fetchAuthSession: vi.fn(),
@@ -19,6 +20,7 @@ vi.mock('aws-amplify/auth', () => ({
 
 vi.mock('#services/deepRacer/leaderboardsApi.js', () => ({
   useGetLeaderboardQuery: () => mockUseGetLeaderboardQuery(),
+  useListLiveQueueItemsQuery: () => mockUseListLiveQueueItemsQuery(),
   useCreateLeaderboardMutation: () => [vi.fn(), { isLoading: false }],
   useEditLeaderboardMutation: () => [vi.fn(), { isLoading: false }],
 }));
@@ -44,6 +46,7 @@ vi.mock('react-router-dom', async () => {
 describe('<EditRace />', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseListLiveQueueItemsQuery.mockReturnValue({ data: { items: [] } });
   });
 
   describe('Loading and Error States', () => {
@@ -81,7 +84,11 @@ describe('<EditRace />', () => {
 
       render(<EditRace />);
 
-      expect(screen.getByText('Loading...')).toBeInTheDocument();
+      // The admin-membership check (used to gate isActiveRaceAdminEdit) never resolves,
+      // so EditRace must stay on its own loading spinner rather than rendering the form —
+      // otherwise the form would briefly render unlocked before the check resolves.
+      expect(screen.queryByText(i18n.t('createRace:addRaceDetails.nameOfRacingEvent'))).not.toBeInTheDocument();
+      expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
     });
 
     it('should show unauthorized message if user is not a race facilitator or admin', async () => {
@@ -350,6 +357,208 @@ describe('<EditRace />', () => {
 
       const tile = screen.getByLabelText(i18n.t('createRace:addRaceDetails.liveRace'));
       expect(tile).toHaveAttribute('aria-disabled', 'true');
+    });
+
+    it('should disable scoring fields when queue has submissions', async () => {
+      mockUseListLiveQueueItemsQuery.mockReturnValue({
+        data: { items: [{ submissionId: 'sub-1', status: 'PENDING' }] },
+      });
+
+      render(<EditRace />);
+
+      await waitFor(() => {
+        expect(screen.getByText(i18n.t('createRace:addRaceDetails.raceCustom'))).toBeInTheDocument();
+      });
+
+      const expandButton = screen.getByText(i18n.t('createRace:addRaceDetails.raceCustom'));
+      expandButton.click();
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(i18n.t('createRace:addRaceDetails.rankingMethod'))).toBeDisabled();
+      });
+      expect(screen.getByLabelText(i18n.t('createRace:addRaceDetails.maximumLaps'))).toBeDisabled();
+
+      expect(
+        screen.getAllByText(i18n.t('createRace:addRaceDetails.validationErrors.scoringLockedByQueue')).length,
+      ).toBeGreaterThanOrEqual(1);
+    });
+
+    it('should not disable scoring fields when queue is empty', async () => {
+      mockUseListLiveQueueItemsQuery.mockReturnValue({ data: { items: [] } });
+
+      render(<EditRace />);
+
+      await waitFor(() => {
+        expect(screen.getByText(i18n.t('createRace:addRaceDetails.raceCustom'))).toBeInTheDocument();
+      });
+
+      const expandButton = screen.getByText(i18n.t('createRace:addRaceDetails.raceCustom'));
+      expandButton.click();
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(i18n.t('createRace:addRaceDetails.rankingMethod'))).not.toBeDisabled();
+      });
+      expect(screen.getByLabelText(i18n.t('createRace:addRaceDetails.maximumLaps'))).not.toBeDisabled();
+
+      expect(
+        screen.queryByText(i18n.t('createRace:addRaceDetails.validationErrors.scoringLockedByQueue')),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe('community race date/time editing', () => {
+    it('should display openTime/closeTime in local time, not UTC', async () => {
+      mockUseGetLeaderboardQuery.mockReturnValue({
+        data: {
+          ...mockLeaderboardTTFuture,
+          openTime: new Date(2026, 8, 1, 23, 50), // Sept 1, 2026, 23:50 local
+          closeTime: new Date(2026, 8, 1, 23, 54), // Sept 1, 2026, 23:54 local
+        },
+        isLoading: false,
+        isUninitialized: false,
+      });
+      (fetchAuthSession as Mock).mockResolvedValue({
+        tokens: { accessToken: { payload: { 'cognito:groups': ['dr-admins'] } } },
+      });
+
+      render(<EditRace />);
+
+      await waitFor(() => {
+        expect(screen.getByText(i18n.t('createRace:addRaceDetails.description'))).toBeInTheDocument();
+      });
+
+      // Regardless of the browser's UTC offset, the form must show the same local
+      // date/time that was constructed above — not the UTC-shifted value.
+      expect(screen.getByDisplayValue('23:50')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('23:54')).toBeInTheDocument();
+    });
+  });
+
+  describe('active community race admin editing', () => {
+    const activeCommunityRace = {
+      ...mockLeaderboardTTFuture,
+      isLive: false,
+      openTime: new Date(Date.now() - 60 * 60 * 1000), // started 1h ago
+      closeTime: new Date(Date.now() + 60 * 60 * 1000), // closes in 1h
+    };
+
+    it('locks the race name and start date/time, and shows the locked-field notice, for an admin', async () => {
+      mockUseGetLeaderboardQuery.mockReturnValue({
+        data: activeCommunityRace,
+        isLoading: false,
+        isUninitialized: false,
+      });
+      (fetchAuthSession as Mock).mockResolvedValue({
+        tokens: { accessToken: { payload: { 'cognito:groups': ['dr-admins'] } } },
+      });
+
+      render(<EditRace />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(i18n.t('createRace:addRaceDetails.validationErrors.lockedForActiveRace')),
+        ).toBeInTheDocument();
+      });
+
+      expect(screen.getByLabelText(i18n.t('createRace:addRaceDetails.nameOfRacingEvent'))).toBeDisabled();
+    });
+
+    it('does not show the queue-locked scoring notice for an active-race admin edit', async () => {
+      // scoringLockedByQueue is specific to the live-race "submissions already queued" reason —
+      // an active COMMUNITY race locks the same fields for a different reason (lockedForActiveRace,
+      // already asserted above) and must not also show this unrelated/misleading message.
+      mockUseGetLeaderboardQuery.mockReturnValue({
+        data: activeCommunityRace,
+        isLoading: false,
+        isUninitialized: false,
+      });
+      (fetchAuthSession as Mock).mockResolvedValue({
+        tokens: { accessToken: { payload: { 'cognito:groups': ['dr-admins'] } } },
+      });
+
+      render(<EditRace />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(i18n.t('createRace:addRaceDetails.validationErrors.lockedForActiveRace')),
+        ).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByText(i18n.t('createRace:addRaceDetails.validationErrors.scoringLockedByQueue')),
+      ).not.toBeInTheDocument();
+    });
+
+    it('does not show a false-positive invalid state on the end time field', async () => {
+      // The active race's start time is, by definition, already in the past — isDateRangeInvalid's
+      // stale-start-time check must not be applied to endTime in this mode, or the field would
+      // show an error state regardless of the (valid) end time the admin actually set.
+      mockUseGetLeaderboardQuery.mockReturnValue({
+        data: activeCommunityRace,
+        isLoading: false,
+        isUninitialized: false,
+      });
+      (fetchAuthSession as Mock).mockResolvedValue({
+        tokens: { accessToken: { payload: { 'cognito:groups': ['dr-admins'] } } },
+      });
+
+      render(<EditRace />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(i18n.t('createRace:addRaceDetails.validationErrors.lockedForActiveRace')),
+        ).toBeInTheDocument();
+      });
+
+      const timeInputs = screen.getAllByRole('textbox').filter((el) => el.getAttribute('name') === 'endTime');
+      expect(timeInputs).toHaveLength(1);
+      expect(timeInputs[0]).not.toHaveAttribute('aria-invalid', 'true');
+    });
+
+    it('does not lock fields (or show the notice) for a race that has not started yet', async () => {
+      mockUseGetLeaderboardQuery.mockReturnValue({
+        data: mockLeaderboardTTFuture,
+        isLoading: false,
+        isUninitialized: false,
+      });
+      (fetchAuthSession as Mock).mockResolvedValue({
+        tokens: { accessToken: { payload: { 'cognito:groups': ['dr-admins'] } } },
+      });
+
+      render(<EditRace />);
+
+      await waitFor(() => {
+        expect(screen.getByText(i18n.t('createRace:addRaceDetails.description'))).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByText(i18n.t('createRace:addRaceDetails.validationErrors.lockedForActiveRace')),
+      ).not.toBeInTheDocument();
+      expect(screen.getByLabelText(i18n.t('createRace:addRaceDetails.nameOfRacingEvent'))).not.toBeDisabled();
+    });
+
+    it('does not lock fields for a race-facilitator (non-admin) editing an active race', async () => {
+      // Non-admins can't reach this form for an active race at all (RaceDetails disables the
+      // Edit button per raceDetailsHelpers.isEditDisabled) — this verifies EditRace itself
+      // doesn't lock fields it shouldn't in the unexpected case of a direct navigation.
+      mockUseGetLeaderboardQuery.mockReturnValue({
+        data: activeCommunityRace,
+        isLoading: false,
+        isUninitialized: false,
+      });
+      (fetchAuthSession as Mock).mockResolvedValue({
+        tokens: { accessToken: { payload: { 'cognito:groups': ['dr-race-facilitators'] } } },
+      });
+
+      render(<EditRace />);
+
+      await waitFor(() => {
+        expect(screen.getByText(i18n.t('createRace:addRaceDetails.description'))).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByText(i18n.t('createRace:addRaceDetails.validationErrors.lockedForActiveRace')),
+      ).not.toBeInTheDocument();
     });
   });
 });

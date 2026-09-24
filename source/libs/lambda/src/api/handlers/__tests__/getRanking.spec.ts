@@ -26,6 +26,12 @@ describe('GetRanking operation', () => {
       submittedAt: new Date(personalRanking.createdAt),
       videoUrl: personalRanking.submissionVideoS3Location,
     });
+    expect(s3Helper.getPresignedUrl).toHaveBeenCalledWith(
+      personalRanking.submissionVideoS3Location,
+      undefined,
+      undefined,
+      'video/mp4',
+    );
   });
 
   it('should return empty object if ranking does not exist', async () => {

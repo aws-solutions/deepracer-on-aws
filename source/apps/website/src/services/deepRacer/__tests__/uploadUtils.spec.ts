@@ -6,7 +6,7 @@ import { Upload } from '@aws-sdk/lib-storage';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
-import { getDeepRacerFileType, uploadModelFiles } from '#services/deepRacer/uploadUtils';
+import { getDeepRacerFileType, uploadModelFiles, uploadPhysicalModelArchive } from '#services/deepRacer/uploadUtils';
 
 vi.mock('@aws-sdk/client-s3');
 vi.mock('@aws-sdk/lib-storage');
@@ -199,5 +199,93 @@ describe('uploadModelFiles', () => {
     mockUpload.done.mockRejectedValueOnce(new Error('Network error'));
 
     await expect(uploadModelFiles(files)).rejects.toThrow('Failed to upload files. Please try again later.');
+  });
+});
+
+describe('uploadPhysicalModelArchive', () => {
+  const mockS3Client = { send: vi.fn() };
+
+  interface MockUpload {
+    done: Mock;
+    on: Mock;
+  }
+
+  let mockUpload: MockUpload;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUpload = {
+      done: vi.fn().mockResolvedValue({}),
+      on: vi.fn().mockReturnThis(),
+    };
+    vi.mocked(S3Client).mockImplementation(function () {
+      return mockS3Client as unknown as S3Client;
+    } as unknown as typeof S3Client);
+    vi.mocked(Upload).mockImplementation(function () {
+      return mockUpload as unknown as Upload;
+    } as unknown as typeof Upload);
+    vi.mocked(fetchAuthSession).mockResolvedValue({
+      credentials: { accessKeyId: 'test', secretAccessKey: 'test', sessionToken: 'test' },
+    } as never);
+  });
+
+  it('returns S3 key with correct prefix and profile ID', async () => {
+    const file = new File(['content'], 'model.tar.gz', { type: 'application/gzip' });
+    const result = await uploadPhysicalModelArchive(file, 'profile-001');
+
+    expect(result).toMatch(/^uploads\/physical-models\/profile-001\/[a-f0-9-]+\.tar\.gz$/);
+  });
+
+  it('calls onProgress with 100 after upload completes', async () => {
+    const onProgress = vi.fn();
+    const file = new File(['content'], 'model.tar.gz', { type: 'application/gzip' });
+
+    await uploadPhysicalModelArchive(file, 'profile-001', onProgress);
+
+    expect(onProgress).toHaveBeenCalledWith(100);
+  });
+
+  it('registers httpUploadProgress handler', async () => {
+    const file = new File(['content'], 'model.tar.gz', { type: 'application/gzip' });
+    await uploadPhysicalModelArchive(file, 'profile-001', vi.fn());
+
+    expect(mockUpload.on).toHaveBeenCalledWith('httpUploadProgress', expect.any(Function));
+  });
+
+  it('throws user-friendly error on access denied', async () => {
+    mockUpload.done.mockRejectedValue(new Error('Access denied'));
+    const file = new File(['content'], 'model.tar.gz', { type: 'application/gzip' });
+
+    await expect(uploadPhysicalModelArchive(file, 'profile-001')).rejects.toThrow(
+      'You do not have permission to upload files',
+    );
+  });
+
+  it('throws generic error on unknown failure', async () => {
+    mockUpload.done.mockRejectedValue(new Error('Network timeout'));
+    const file = new File(['content'], 'model.tar.gz', { type: 'application/gzip' });
+
+    await expect(uploadPhysicalModelArchive(file, 'profile-001')).rejects.toThrow('Failed to upload model archive');
+  });
+
+  it('throws auth error when credentials are missing', async () => {
+    vi.mocked(fetchAuthSession).mockResolvedValue({ credentials: undefined } as never);
+    const file = new File(['content'], 'model.tar.gz', { type: 'application/gzip' });
+
+    await expect(uploadPhysicalModelArchive(file, 'profile-001')).rejects.toThrow('Authentication failed');
+  });
+
+  it('uses application/gzip content type', async () => {
+    const file = new File(['content'], 'model.tar.gz', { type: 'application/gzip' });
+    await uploadPhysicalModelArchive(file, 'profile-001');
+
+    expect(Upload).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: expect.objectContaining({
+          ContentType: 'application/gzip',
+          Bucket: 'test-bucket',
+        }),
+      }),
+    );
   });
 });

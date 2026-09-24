@@ -1,7 +1,14 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { DeletePolicyCommand, DetachPolicyCommand, IoTClient, ListTargetsForPolicyCommand } from '@aws-sdk/client-iot';
+import {
+  DeletePolicyCommand,
+  DeletePolicyVersionCommand,
+  DetachPolicyCommand,
+  IoTClient,
+  ListPolicyVersionsCommand,
+  ListTargetsForPolicyCommand,
+} from '@aws-sdk/client-iot';
 import type {
   CloudFormationCustomResourceCreateEvent,
   CloudFormationCustomResourceDeleteEvent,
@@ -42,12 +49,20 @@ describe('onEventHandler', () => {
     expect(iotMock.calls()).toHaveLength(0);
   });
 
-  it('detaches all principals across pages', async () => {
+  it('detaches all principals across pages and deletes non-default policy versions', async () => {
     iotMock
       .on(ListTargetsForPolicyCommand)
       .resolvesOnce({ targets: ['arn:a', 'arn:b'], nextMarker: 'page2' })
       .resolvesOnce({ targets: ['arn:c'] });
     iotMock.on(DetachPolicyCommand).resolves({});
+    iotMock.on(ListPolicyVersionsCommand).resolves({
+      policyVersions: [
+        { versionId: '3', isDefaultVersion: true },
+        { versionId: '2', isDefaultVersion: false },
+        { versionId: '1', isDefaultVersion: false },
+      ],
+    });
+    iotMock.on(DeletePolicyVersionCommand).resolves({});
 
     await onEventHandler({
       ...baseEvent,
@@ -60,7 +75,23 @@ describe('onEventHandler', () => {
     expect(listCalls[0].args[0].input).toMatchObject({ policyName: 'test-SpectatorIoTPolicy', marker: undefined });
     expect(listCalls[1].args[0].input).toMatchObject({ policyName: 'test-SpectatorIoTPolicy', marker: 'page2' });
     expect(iotMock.commandCalls(DetachPolicyCommand)).toHaveLength(3);
+    expect(iotMock.commandCalls(DeletePolicyVersionCommand)).toHaveLength(2);
     expect(iotMock.commandCalls(DeletePolicyCommand)).toHaveLength(0);
+  });
+
+  it('skips version deletion when only default version exists', async () => {
+    iotMock.on(ListTargetsForPolicyCommand).resolves({ targets: [] });
+    iotMock.on(ListPolicyVersionsCommand).resolves({
+      policyVersions: [{ versionId: '1', isDefaultVersion: true }],
+    });
+
+    await onEventHandler({
+      ...baseEvent,
+      RequestType: 'Delete',
+      PhysicalResourceId: 'id',
+    } as CloudFormationCustomResourceDeleteEvent);
+
+    expect(iotMock.commandCalls(DeletePolicyVersionCommand)).toHaveLength(0);
   });
 
   it('is idempotent when ListTargetsForPolicy throws ResourceNotFoundException', async () => {
@@ -85,6 +116,7 @@ describe('onEventHandler', () => {
     iotMock
       .on(DetachPolicyCommand, { target: 'arn:b' })
       .rejectsOnce(Object.assign(new Error('unauth'), { name: 'UnauthorizedException' }));
+    iotMock.on(ListPolicyVersionsCommand).resolves({ policyVersions: [{ versionId: '1', isDefaultVersion: true }] });
 
     await expect(
       onEventHandler({

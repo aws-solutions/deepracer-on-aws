@@ -11,10 +11,26 @@
     "columnHeader": {
       "modelName": "Model name",
       "modelDescription": "Model description",
+      "type": "Type",
       "status": "Status",
+      "carOptimized": "Car optimized",
       "agentAlgorithm": "Agent algorithm",
       "creationTime": "Creation time",
       "sensors": "Sensors"
+    },
+    "carOptimized": {
+      "complete": "Optimized",
+      "inProgress": "In progress",
+      "failed": "Failed",
+      "failedInfoTitle": "Optimization Error",
+      "notOptimized": "Not optimized",
+      "optimizedInfo": "Model has been converted to hardware-specific formats (OpenVINO, TFLite) and is ready for deployment to a physical car.",
+      "notOptimizedInfo": "Model has not been optimized yet. Optimization is required before deploying to a physical car. Select the model and choose \"Optimize for car\" to start.",
+      "inProgressInfo": "Model is being converted to hardware-specific formats. This typically takes a few minutes."
+    },
+    "modelType": {
+      "physical": "Physical",
+      "virtual": "Virtual"
     },
     "emptySubtitle": "No models to display.",
     "emptyTitle": "No models",
@@ -53,6 +69,9 @@
     "editModelNameButton": "Edit model name",
     "manageTagsButton": "Manage tags",
     "importModelButton": "Import model",
+    "importVirtualButton": "Import virtual model",
+    "importPhysicalButton": "Import physical model",
+    "importDisabledQuotaExceeded": "Monthly model limit reached. Contact your admin to increase the limit.",
     "deleteModal": {
       "header": "You're about to permanently delete your model",
       "deleteButton": "Delete",

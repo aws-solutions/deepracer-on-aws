@@ -18,6 +18,7 @@ import {
   CreateSubmissionServerOutput,
   BadRequestError,
   ModelStatus,
+  ModelSource,
   JobStatus,
   LiveEventStatus,
 } from '@deepracer-indy/typescript-server-client';
@@ -48,6 +49,11 @@ export const CreateSubmissionOperation: Operation<
   // Validate model exists and is in READY state
   if (modelItem.status !== ModelStatus.READY) {
     throw new BadRequestError({ message: 'Model is not in a submittable state.' });
+  }
+
+  // Physical models cannot participate in virtual races
+  if (modelItem.modelSource === ModelSource.IMPORTED_PHYSICAL) {
+    throw new BadRequestError({ message: 'Physical models cannot participate in virtual races.' });
   }
 
   if (leaderboardItem.isLive) {

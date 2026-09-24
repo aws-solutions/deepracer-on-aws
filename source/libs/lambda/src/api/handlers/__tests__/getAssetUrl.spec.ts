@@ -18,6 +18,7 @@ import {
 import {
   AssetType,
   BadRequestError,
+  InternalFailureError,
   JobStatus,
   ModelStatus,
   NotFoundError,
@@ -316,7 +317,7 @@ describe('GetAssetUrlOperation', () => {
   });
 
   describe('getPhysicalModelAssetUrl', () => {
-    it('should return physical model URL', async () => {
+    it('should return physical model URL from modelArtifactS3Location (trained models)', async () => {
       const result = await getAssetUrlOperation.getPhysicalModelAssetUrl(TEST_MODEL_ITEM);
 
       expect(result).toBe(mockPresignedUrl);
@@ -327,13 +328,46 @@ describe('GetAssetUrlOperation', () => {
       );
     });
 
-    it('should throw NotFoundError when physical model artifact is missing', async () => {
+    it('should return URL from optimized archive for imported physical models', async () => {
+      process.env.MODEL_DATA_BUCKET_NAME = 'test-model-bucket';
+      const importedModel = {
+        ...TEST_MODEL_ITEM,
+        assetS3Locations: { ...TEST_MODEL_ITEM.assetS3Locations, modelArtifactS3Location: undefined },
+        optimizedArtifactsS3Prefix: 'p1/models/model-1/optimized/',
+      };
+
+      const result = await getAssetUrlOperation.getPhysicalModelAssetUrl(importedModel);
+
+      expect(result).toBe(mockPresignedUrl);
+      expect(s3Helper.getPresignedUrl).toHaveBeenCalledWith(
+        's3://test-model-bucket/p1/models/model-1/optimized/original-model.tar.gz',
+        300,
+        `physicalmodel-${importedModel.name}.tar.gz`,
+      );
+      delete process.env.MODEL_DATA_BUCKET_NAME;
+    });
+
+    it('should throw NotFoundError when neither artifact location nor optimized prefix exists', async () => {
       const modelWithoutArtifact = {
         ...TEST_MODEL_ITEM,
         assetS3Locations: { ...TEST_MODEL_ITEM.assetS3Locations, modelArtifactS3Location: undefined },
+        optimizedArtifactsS3Prefix: undefined,
       };
 
       await expect(getAssetUrlOperation.getPhysicalModelAssetUrl(modelWithoutArtifact)).rejects.toThrow(NotFoundError);
+    });
+
+    it('should throw InternalFailureError when MODEL_DATA_BUCKET_NAME is not configured', async () => {
+      delete process.env.MODEL_DATA_BUCKET_NAME;
+      const importedModel = {
+        ...TEST_MODEL_ITEM,
+        assetS3Locations: { ...TEST_MODEL_ITEM.assetS3Locations, modelArtifactS3Location: undefined },
+        optimizedArtifactsS3Prefix: 'p1/models/model-1/optimized/',
+      };
+
+      await expect(getAssetUrlOperation.getPhysicalModelAssetUrl(importedModel)).rejects.toThrow(
+        new InternalFailureError({ message: 'Service configuration error.' }),
+      );
     });
   });
 

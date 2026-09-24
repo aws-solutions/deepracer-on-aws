@@ -38,7 +38,7 @@ export const ListSubmissionsOperation: Operation<
       status: submissionItem.status,
       submissionNumber: submissionItem.submissionNumber,
       submittedAt: new Date(submissionItem.createdAt),
-      videoUrl: await s3Helper.getPresignedUrl(submissionItem.assetS3Locations.primaryVideoS3Location),
+      videoUrl: await s3Helper.getPresignedVideoUrl(submissionItem.assetS3Locations.primaryVideoS3Location),
     })),
   );
 

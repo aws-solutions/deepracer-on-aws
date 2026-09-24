@@ -52,6 +52,10 @@ describe('ListEvaluations operation', () => {
             : undefined,
       });
     });
+    // Any presigned video URL must be signed with the video/mp4 content type.
+    vi.mocked(s3Helper.getPresignedUrl).mock.calls.forEach((call) => {
+      expect(call[3]).toBe('video/mp4');
+    });
   });
 
   it('should return a list of evaluations on success with token', async () => {

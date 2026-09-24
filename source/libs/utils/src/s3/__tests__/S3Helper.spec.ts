@@ -152,6 +152,44 @@ describe('S3Helper', () => {
         { expiresIn: mockExpiresIn },
       );
     });
+
+    it('should include ResponseContentType when contentType is provided', async () => {
+      const mockExpiresIn = 300;
+      vi.mocked(getSignedUrl).mockResolvedValueOnce(mockPresignedUrl);
+
+      await s3Helper.getPresignedUrl(mockS3Uri, mockExpiresIn, undefined, 'video/mp4');
+
+      expect(getSignedUrl).toHaveBeenCalledWith(
+        s3Client,
+        expect.objectContaining({
+          input: expect.objectContaining({
+            Bucket: mockBucket,
+            Key: mockKey,
+            ResponseContentType: 'video/mp4',
+          }),
+        }),
+        { expiresIn: mockExpiresIn },
+      );
+    });
+
+    it('getPresignedVideoUrl signs the URL with the video/mp4 content type', async () => {
+      vi.mocked(getSignedUrl).mockResolvedValueOnce(mockPresignedUrl);
+
+      const result = await s3Helper.getPresignedVideoUrl(mockS3Uri);
+
+      expect(result).toEqual(mockPresignedUrl);
+      expect(getSignedUrl).toHaveBeenCalledWith(
+        s3Client,
+        expect.objectContaining({
+          input: expect.objectContaining({
+            Bucket: mockBucket,
+            Key: mockKey,
+            ResponseContentType: 'video/mp4',
+          }),
+        }),
+        { expiresIn: s3Helper.DEFAULT_PRESIGNED_URL_EXPIRE_TIME },
+      );
+    });
   });
 
   describe('writeToS3()', () => {
@@ -354,6 +392,31 @@ describe('S3Helper', () => {
       mockS3Client.on(DeleteObjectsCommand).rejects(mockError);
 
       await expect(s3Helper.deleteS3Location(mockS3Uri)).rejects.toThrow(mockError);
+    });
+
+    it('should return early without calling DeleteObjects when no objects exist at the prefix', async () => {
+      mockS3Client.on(ListObjectsV2Command).resolves({
+        Contents: [],
+        $metadata: {},
+      });
+
+      await s3Helper.deleteS3Location(mockS3Uri);
+
+      expect(mockS3Client).toHaveReceivedCommandWith(ListObjectsV2Command, {
+        Bucket: mockBucket,
+        Prefix: mockKey,
+      });
+      expect(mockS3Client).not.toHaveReceivedCommand(DeleteObjectsCommand);
+    });
+
+    it('should return early when Contents is undefined (empty prefix)', async () => {
+      mockS3Client.on(ListObjectsV2Command).resolves({
+        $metadata: {},
+      });
+
+      await s3Helper.deleteS3Location(mockS3Uri);
+
+      expect(mockS3Client).not.toHaveReceivedCommand(DeleteObjectsCommand);
     });
   });
 });

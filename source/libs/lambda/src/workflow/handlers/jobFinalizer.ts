@@ -61,7 +61,8 @@ class JobFinalizer implements WorkflowTaskHandler {
       await kinesisVideoStreamHelper.deleteStream(videoStream.arn);
     }
 
-    // If training job was not created we can exit early.
+    // If training job was not created we can exit early. This also covers the capacity-waiting path:
+    // no SageMaker job exists, so there is nothing to stop, describe, or account for.
     if (!trainingJob?.name) {
       return workflowContext;
     }
@@ -108,9 +109,16 @@ class JobFinalizer implements WorkflowTaskHandler {
 
     try {
       logger.info('Writing training logs to S3');
+      const timestamp = new Date().toISOString();
 
-      const trainingLogsS3Location = s3PathHelper.getLogsS3Location(modelId, profileId, jobName, 'training');
-      const simulationLogsS3Location = s3PathHelper.getLogsS3Location(modelId, profileId, jobName, 'simulation');
+      const trainingLogsS3Location = s3PathHelper.getLogsS3Location(modelId, profileId, jobName, 'training', timestamp);
+      const simulationLogsS3Location = s3PathHelper.getLogsS3Location(
+        modelId,
+        profileId,
+        jobName,
+        'simulation',
+        timestamp,
+      );
 
       await waitForAll([
         cloudWatchLogsHelper.writeLogStreamToS3(TRAINING_TRAINING_LOG_GROUP, jobName, trainingLogsS3Location),
@@ -159,6 +167,13 @@ class JobFinalizer implements WorkflowTaskHandler {
     const currentJob = await workflowHelper.getJob({ jobName, modelId, profileId, leaderboardId });
     if (currentJob.status === JobStatus.CANCELED) {
       logger.info('Job was canceled, preserving CANCELED status');
+      return;
+    }
+
+    if (workflowContext.capacityWaiting || currentJob.status === JobStatus.WAITING_FOR_CAPACITY) {
+      // Cleanup already ran in finalizeJob. Overwriting the status here would turn a retryable
+      // capacity wait into a COMPLETED or ERROR job.
+      logger.info('Job is waiting for SageMaker capacity, preserving WAITING_FOR_CAPACITY status');
       return;
     }
 
@@ -322,7 +337,7 @@ class JobFinalizer implements WorkflowTaskHandler {
           submissionId: submissionItem.submissionId,
           submissionNumber: submissionItem.submissionNumber,
           submissionVideoS3Location: submissionItem.assetS3Locations.primaryVideoS3Location,
-          userProfile: { alias: profileItem.alias, avatar: profileItem.avatar },
+          userProfile: { alias: profileItem.alias, avatar: profileItem.avatar, countryCode: profileItem.countryCode },
         });
         await leaderboardDao.update({ leaderboardId }, { participantCount: leaderboardItem.participantCount + 1 });
       } else if (rankingScore < rankingItem.rankingScore) {
@@ -342,7 +357,7 @@ class JobFinalizer implements WorkflowTaskHandler {
             submissionId: submissionItem.submissionId,
             submissionNumber: submissionItem.submissionNumber,
             submissionVideoS3Location: submissionItem.assetS3Locations.primaryVideoS3Location,
-            userProfile: { alias: profileItem.alias, avatar: profileItem.avatar },
+            userProfile: { alias: profileItem.alias, avatar: profileItem.avatar, countryCode: profileItem.countryCode },
           },
         );
       } else {

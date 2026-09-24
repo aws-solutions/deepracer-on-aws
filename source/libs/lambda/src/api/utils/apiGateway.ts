@@ -21,46 +21,52 @@ import type { HandlerContext } from '../types/apiGatewayHandlerContext.js';
  * 2. Invoke the ServiceHandler
  * 3. Convert the output of ServiceHandler into the result (APIGatewayProxyResult) expected by APIGateway
  */
-export function getApiGatewayHandler(handler: ServiceHandler<HandlerContext>): APIGatewayProxyHandler {
-  return instrumentHandler(async (event: APIGatewayProxyEvent, _lambdaContext) => {
-    const cognitoAuthProvider = event.requestContext.identity.cognitoAuthenticationProvider;
-    if (!cognitoAuthProvider) {
-      throw new Error('Missing authentication provider');
-    }
-    const profileId: ResourceId = await getCognitoUserId(cognitoAuthProvider);
+export function getApiGatewayHandler(
+  handler: ServiceHandler<HandlerContext>,
+  options: { logEvent?: boolean } = {},
+): APIGatewayProxyHandler {
+  return instrumentHandler(
+    async (event: APIGatewayProxyEvent, _lambdaContext) => {
+      const cognitoAuthProvider = event.requestContext.identity.cognitoAuthenticationProvider;
+      if (!cognitoAuthProvider) {
+        throw new Error('Missing authentication provider');
+      }
+      const profileId: ResourceId = await getCognitoUserId(cognitoAuthProvider);
 
-    const operationName = event.requestContext.operationName;
+      const operationName = event.requestContext.operationName;
 
-    // Add operation as default dimension to all metrics
-    metrics.setDefaultDimensions({ Operation: operationName });
+      // Add operation as default dimension to all metrics
+      metrics.setDefaultDimensions({ Operation: operationName });
 
-    // Append these values to all logs
-    logger.appendKeys({
-      profileId,
-      operationName,
-      apiGatewayExtendedRequestId: event.requestContext.extendedRequestId,
-      sourceIpAddress: event.requestContext.identity.sourceIp,
-    });
+      // Append these values to all logs
+      logger.appendKeys({
+        profileId,
+        operationName,
+        apiGatewayExtendedRequestId: event.requestContext.extendedRequestId,
+        sourceIpAddress: event.requestContext.identity.sourceIp,
+      });
 
-    // Extract anything from the APIGateway requestContext needed in the operation handler
-    const handlerContext: HandlerContext = {
-      profileId,
-      operationName,
-    };
+      // Extract anything from the APIGateway requestContext needed in the operation handler
+      const handlerContext: HandlerContext = {
+        profileId,
+        operationName,
+      };
 
-    const httpRequest = convertEvent(event);
-    const httpResponse = await handler.handle(httpRequest, handlerContext);
+      const httpRequest = convertEvent(event);
+      const httpResponse = await handler.handle(httpRequest, handlerContext);
 
-    httpResponse.headers['Access-Control-Allow-Origin'] = '*';
-    httpResponse.headers['Access-Control-Expose-Headers'] = [
-      'x-amzn-RequestId',
-      'x-amzn-ErrorType',
-      'x-amzn-ErrorMessage',
-      'Date',
-    ].join(',');
+      httpResponse.headers['Access-Control-Allow-Origin'] = '*';
+      httpResponse.headers['Access-Control-Expose-Headers'] = [
+        'x-amzn-RequestId',
+        'x-amzn-ErrorType',
+        'x-amzn-ErrorMessage',
+        'Date',
+      ].join(',');
 
-    return convertVersion1Response(httpResponse);
-  });
+      return convertVersion1Response(httpResponse);
+    },
+    { logEvent: options.logEvent ?? true },
+  );
 }
 
 /**
@@ -119,12 +125,15 @@ async function getUserGroups(profileId: ResourceId): Promise<string[]> {
   }
 }
 
-export async function isUserAdmin(profileId: ResourceId): Promise<boolean> {
+export async function isUserMemberOf(profileId: ResourceId, groupsToCheck: UserGroups[]): Promise<boolean> {
   const groups = await getUserGroups(profileId);
-  return groups.includes(UserGroups.ADMIN);
+  return groupsToCheck.some((group) => groups.includes(group));
+}
+
+export async function isUserAdmin(profileId: ResourceId): Promise<boolean> {
+  return isUserMemberOf(profileId, [UserGroups.ADMIN]);
 }
 
 export async function isUserAdminOrFacilitator(profileId: ResourceId): Promise<boolean> {
-  const groups = await getUserGroups(profileId);
-  return [UserGroups.ADMIN, UserGroups.RACE_FACILITATORS].some((g) => groups.includes(g));
+  return isUserMemberOf(profileId, [UserGroups.ADMIN, UserGroups.RACE_FACILITATORS]);
 }

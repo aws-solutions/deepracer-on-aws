@@ -10,7 +10,7 @@ import Header from '@cloudscape-design/components/header';
 import Select, { SelectProps } from '@cloudscape-design/components/select';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import Spinner from '@cloudscape-design/components/spinner';
-import { ModelStatus } from '@deepracer-indy/typescript-client';
+import { ModelSource, ModelStatus } from '@deepracer-indy/typescript-client';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -39,7 +39,10 @@ const EnterRace = () => {
 
   const submittedModelIds = new Set(queueData?.items?.map((i) => i.modelId));
   const eligibleModels = models.filter(
-    (item) => item.status === ModelStatus.READY && !submittedModelIds.has(item.modelId),
+    (item) =>
+      item.status === ModelStatus.READY &&
+      item.modelSource !== ModelSource.IMPORTED_PHYSICAL &&
+      !submittedModelIds.has(item.modelId),
   );
 
   if (isGetLeaderboardUninitialized || isLeaderboardLoading) {

@@ -1,8 +1,17 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import { EventBridgeClient, PutEventsCommand } from '@aws-sdk/client-eventbridge';
 import { IoTDataPlaneClient, PublishCommand } from '@aws-sdk/client-iot-data-plane';
-import { leaderboardDao, liveQueueItemDao, rankingDao, type ResourceId } from '@deepracer-indy/database';
+import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  eventDao,
+  lapDao,
+  leaderboardDao,
+  liveQueueItemDao,
+  rankingDao,
+  type ResourceId,
+} from '@deepracer-indy/database';
 import { LiveEventStatus } from '@deepracer-indy/typescript-client';
 import type { DynamoDBRecord } from 'aws-lambda';
 import { mockClient } from 'aws-sdk-client-mock';
@@ -15,19 +24,30 @@ import {
   buildEventsForLeaderboard,
   buildEventsForSubmission,
   publishToIoT,
+  publishLeaderboardToS3,
   handler,
 } from '../liveBroadcastHandler.js';
 
-vi.mock('@deepracer-indy/database', () => ({
-  leaderboardDao: { get: vi.fn() },
-  liveQueueItemDao: { getQueue: vi.fn() },
-  rankingDao: { listByRank: vi.fn() },
-}));
+vi.mock('@deepracer-indy/database', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@deepracer-indy/database')>();
+  return {
+    ...actual,
+    eventDao: { get: vi.fn().mockResolvedValue(undefined) },
+    leaderboardDao: { get: vi.fn(), listByEventId: vi.fn() },
+    liveQueueItemDao: { getQueue: vi.fn() },
+    rankingDao: { listByRank: vi.fn() },
+    lapDao: { listByRun: vi.fn().mockResolvedValue({ data: [], cursor: null }) },
+  };
+});
 
 const mockIoTClient = mockClient(IoTDataPlaneClient);
+const mockS3Client = mockClient(S3Client);
+const mockEventBridgeClient = mockClient(EventBridgeClient);
 
 const mockRankingDao = vi.mocked(rankingDao);
 const mockLeaderboardDao = vi.mocked(leaderboardDao);
+const mockLapDao = vi.mocked(lapDao);
+const mockEventDao = vi.mocked(eventDao);
 
 const makeDDBRecord = (
   pk: string,
@@ -850,5 +870,580 @@ describe('handler integration', () => {
     const result = await handler(event as never);
     expect(result).toEqual({ batchItemFailures: [] });
     expect(mockLeaderboardDao.get).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('handler integration - physical routing', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockIoTClient.reset();
+    mockIoTClient.on(PublishCommand).resolves({});
+  });
+
+  const decodePayload = (payload: unknown): Record<string, unknown> => {
+    if (typeof payload === 'string') return JSON.parse(payload);
+    if (payload instanceof Uint8Array) return JSON.parse(Buffer.from(payload).toString());
+    return {};
+  };
+
+  it('publishes RACE_STATUS_CHANGED to the race topic for a physical Event record', async () => {
+    mockLeaderboardDao.listByEventId.mockResolvedValue({
+      data: [{ leaderboardId: 'track-1' }],
+      cursor: null,
+    } as never);
+    const event = {
+      Records: [
+        makeDDBRecord(
+          'events',
+          'event#evt-1',
+          'MODIFY',
+          { eventStatus: { S: 'IN_PROGRESS' } },
+          { eventStatus: { S: 'OPEN' } },
+        ),
+      ],
+    };
+
+    const result = await handler(event as never);
+
+    expect(result).toEqual({ batchItemFailures: [] });
+    const calls = mockIoTClient.commandCalls(PublishCommand);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].args[0].input.topic).toBe('deepracer/test/race/evt-1/track-1');
+    expect(decodePayload(calls[0].args[0].input.payload)).toMatchObject({
+      eventType: 'RACE_STATUS_CHANGED',
+      eventId: 'evt-1',
+      trackId: 'track-1',
+      status: 'IN_PROGRESS',
+    });
+  });
+
+  it('fans out RACE_STATUS_CHANGED to every track on a multi-track event', async () => {
+    mockLeaderboardDao.listByEventId.mockResolvedValue({
+      data: [{ leaderboardId: 'track-1' }, { leaderboardId: 'track-2' }],
+      cursor: null,
+    } as never);
+    const event = {
+      Records: [
+        makeDDBRecord(
+          'events',
+          'event#evt-1',
+          'MODIFY',
+          { eventStatus: { S: 'IN_PROGRESS' } },
+          { eventStatus: { S: 'OPEN' } },
+        ),
+      ],
+    };
+
+    const result = await handler(event as never);
+
+    expect(result).toEqual({ batchItemFailures: [] });
+    const calls = mockIoTClient.commandCalls(PublishCommand);
+    expect(calls).toHaveLength(2);
+    expect(calls.map((c) => c.args[0].input.topic)).toEqual([
+      'deepracer/test/race/evt-1/track-1',
+      'deepracer/test/race/evt-1/track-2',
+    ]);
+  });
+
+  it('publishes RUN_STARTED to the race topic for a physical Run when the leaderboard has an eventId', async () => {
+    mockLeaderboardDao.get.mockResolvedValue({ isLive: true, eventId: 'evt-9' } as never);
+    const event = {
+      Records: [
+        makeDDBRecord(
+          'leaderboard_lb-1',
+          'run_run-1',
+          'MODIFY',
+          {
+            runId: { S: 'run-1' },
+            runStatus: { S: 'IN_PROGRESS' },
+            profileId: { S: 'racer-1' },
+          },
+          { runStatus: { S: 'READY' } },
+        ),
+      ],
+    };
+
+    const result = await handler(event as never);
+
+    expect(result).toEqual({ batchItemFailures: [] });
+    const calls = mockIoTClient.commandCalls(PublishCommand);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].args[0].input.topic).toBe('deepracer/test/race/evt-9/lb-1');
+    expect(decodePayload(calls[0].args[0].input.payload)).toMatchObject({
+      eventType: 'RUN_STARTED',
+      eventId: 'evt-9',
+      trackId: 'lb-1',
+      racerId: 'racer-1',
+    });
+  });
+
+  it('publishes LEADERBOARD_UPDATED to the race topic for a physical Ranking, and hydrates S3', async () => {
+    mockLeaderboardDao.get.mockResolvedValue({
+      isLive: true,
+      eventId: 'evt-9',
+      name: 'Track 1',
+      leaderBoardFooter: 'Presented by Acme Racing',
+    } as never);
+    mockRankingDao.listByRank.mockResolvedValue({
+      data: [{ rankingScore: 10000, userProfile: { alias: 'Alice', countryCode: 'US' } }],
+      cursor: null,
+    } as never);
+    const event = {
+      Records: [makeDDBRecord('leaderboard_lb-1', 'profile_p1#ranking', 'MODIFY', { rankingScore: { N: '10000' } })],
+    };
+
+    const result = await handler(event as never);
+
+    expect(result).toEqual({ batchItemFailures: [] });
+    const calls = mockIoTClient.commandCalls(PublishCommand);
+    // A physical ranking change publishes the per-track LEADERBOARD_UPDATED and also triggers the
+    // combined-leaderboard push, so expect both the per-track and the combined topic.
+    const perTrackCall = calls.find((c) => c.args[0].input.topic === 'deepracer/test/race/evt-9/lb-1');
+    expect(perTrackCall).toBeDefined();
+    expect(decodePayload(perTrackCall?.args[0].input.payload)).toMatchObject({
+      eventType: 'LEADERBOARD_UPDATED',
+      eventId: 'evt-9',
+      rankings: [expect.objectContaining({ country: 'US' })],
+    });
+
+    const combinedCall = calls.find((c) => c.args[0].input.topic === 'deepracer/test/race/evt-9/combined');
+    expect(combinedCall).toBeDefined();
+    expect(decodePayload(combinedCall?.args[0].input.payload)).toMatchObject({
+      eventType: 'LEADERBOARD_UPDATED',
+      eventId: 'evt-9',
+      trackId: 'combined',
+      rankings: [expect.objectContaining({ country: 'US' })],
+    });
+
+    // A LEADERBOARD_UPDATED physical event must also hydrate the per-track S3 leaderboard, the
+    // same as the virtual path already does — otherwise a fresh page load of the public
+    // leaderboard shows no results until a live IoT event happens to land while a tab is open.
+    const s3Calls = mockS3Client.commandCalls(PutObjectCommand);
+    const perTrackS3Call = s3Calls.find((c) => c.args[0].input.Key === 'public/leaderboards/lb-1.json');
+    expect(perTrackS3Call).toBeDefined();
+    const body = JSON.parse(perTrackS3Call?.args[0].input.Body as string);
+    expect(body).toMatchObject({ leaderboardId: 'lb-1', name: 'Track 1', footer: 'Presented by Acme Racing' });
+    expect(body.rankings).toEqual([
+      expect.objectContaining({ rank: 1, participantName: 'Alice', bestLapTimeMilliseconds: 10000 }),
+    ]);
+  });
+
+  it('does not let an S3 publish failure block the IoT broadcast for a physical Ranking', async () => {
+    mockLeaderboardDao.get.mockResolvedValue({ isLive: true, eventId: 'evt-9', name: 'Track 1' } as never);
+    mockRankingDao.listByRank.mockResolvedValue({
+      data: [{ rankingScore: 10000, userProfile: { alias: 'Alice' } }],
+      cursor: null,
+    } as never);
+    mockS3Client.on(PutObjectCommand).rejects(new Error('S3 unavailable'));
+    const event = {
+      Records: [makeDDBRecord('leaderboard_lb-1', 'profile_p1#ranking', 'MODIFY', { rankingScore: { N: '10000' } })],
+    };
+
+    const result = await handler(event as never);
+
+    // The batch item must not be marked as failed — an S3 hydration failure is a secondary
+    // artifact and must never affect the real-time IoT broadcast that already completed.
+    expect(result).toEqual({ batchItemFailures: [] });
+    const calls = mockIoTClient.commandCalls(PublishCommand);
+    expect(calls.find((c) => c.args[0].input.topic === 'deepracer/test/race/evt-9/lb-1')).toBeDefined();
+  });
+
+  it('falls through to the virtual path when the leaderboard has no eventId', async () => {
+    mockLeaderboardDao.get.mockResolvedValue({ isLive: true, liveEventStatus: LiveEventStatus.IN_PROGRESS } as never);
+    mockRankingDao.listByRank.mockResolvedValue({
+      data: [{ rankingScore: 10000, userProfile: { alias: 'Alice' } }],
+      cursor: null,
+    } as never);
+    const event = {
+      Records: [
+        makeDDBRecord('leaderboard_lb-1', 'profile_p1#ranking', 'MODIFY', {
+          rankingScore: { N: '10000' },
+          profileId: { S: 'p1' },
+        }),
+      ],
+    };
+
+    const result = await handler(event as never);
+
+    expect(result).toEqual({ batchItemFailures: [] });
+    const calls = mockIoTClient.commandCalls(PublishCommand);
+    expect(calls.length).toBeGreaterThan(0);
+    for (const call of calls) {
+      expect(call.args[0].input.topic).not.toContain('/race/');
+    }
+  });
+
+  it('records a batch item failure when physical processing throws', async () => {
+    mockLeaderboardDao.get.mockResolvedValue({ isLive: true, eventId: 'evt-9' } as never);
+    mockRankingDao.listByRank.mockRejectedValue(new Error('ranking query failed'));
+    const event = {
+      Records: [
+        makeDDBRecord(
+          'leaderboard_lb-1',
+          'profile_p1#ranking',
+          'MODIFY',
+          { rankingScore: { N: '10000' } },
+          undefined,
+          'seq-42',
+        ),
+      ],
+    };
+
+    const result = await handler(event as never);
+
+    expect(result).toEqual({ batchItemFailures: [{ itemIdentifier: 'seq-42' }] });
+  });
+
+  const makeRemoveRecord = (
+    pk: string,
+    sk: string,
+    oldImage: Record<string, unknown>,
+    sequenceNumber: string,
+  ): DynamoDBRecord => ({
+    eventName: 'REMOVE',
+    dynamodb: {
+      SequenceNumber: sequenceNumber,
+      OldImage: { pk: { S: pk }, sk: { S: sk }, ...oldImage },
+    },
+  });
+
+  it('recomputes the combined leaderboard when a physical Ranking is removed (REMOVE has no NewImage)', async () => {
+    mockLeaderboardDao.get.mockResolvedValue({ isLive: true, eventId: 'evt-9' } as never);
+    const event = {
+      Records: [makeRemoveRecord('leaderboard_lb-1', 'profile_p1#ranking', {}, 'seq-remove-1')],
+    };
+
+    const result = await handler(event as never);
+
+    expect(result).toEqual({ batchItemFailures: [] });
+    expect(mockLeaderboardDao.get).toHaveBeenCalledWith({ leaderboardId: 'lb-1' });
+    expect(mockEventDao.get).toHaveBeenCalledWith({ eventId: 'evt-9' });
+    // No per-track broadcast for a deletion — only the combined-leaderboard recompute runs.
+    expect(mockIoTClient).not.toHaveReceivedCommand(PublishCommand);
+  });
+
+  it('publishes the combined leaderboard to S3 keyed by eventId with the event name', async () => {
+    // Self-contained: this describe resets mockIoTClient but not mockS3Client, so reset here.
+    mockS3Client.reset();
+    mockS3Client.on(PutObjectCommand).resolves({});
+    mockLeaderboardDao.get.mockResolvedValue({ isLive: true, eventId: 'evt-9' } as never);
+    mockEventDao.get.mockResolvedValue({
+      eventId: 'evt-9',
+      name: 'Madrid Summit',
+      combinedLeaderBoardFooter: 'Sponsored by Acme Corp',
+    } as never);
+    mockRankingDao.listByRank.mockResolvedValue({ data: [], cursor: null } as never);
+
+    const event = {
+      Records: [makeRemoveRecord('leaderboard_lb-1', 'profile_p1#ranking', {}, 'seq-remove-combined')],
+    };
+
+    await handler(event as never);
+
+    // The combined leaderboard is stored under leaderboardId = eventId, so it is published to
+    // public/leaderboards/{eventId}.json with the event name and combined footer as the display title/footer.
+    const combinedPut = mockS3Client
+      .commandCalls(PutObjectCommand)
+      .find((c) => c.args[0].input.Key === 'public/leaderboards/evt-9.json');
+    expect(combinedPut).toBeDefined();
+    const body = JSON.parse((combinedPut?.args[0].input.Body as string) ?? '{}');
+    expect(body.name).toBe('Madrid Summit');
+    expect(body.footer).toBe('Sponsored by Acme Corp');
+  });
+
+  it('falls through without recomputing when a removed Ranking belongs to a virtual (non-event) leaderboard', async () => {
+    mockLeaderboardDao.get.mockResolvedValue({ isLive: true } as never);
+    const event = {
+      Records: [makeRemoveRecord('leaderboard_lb-1', 'profile_p1#ranking', {}, 'seq-remove-2')],
+    };
+
+    const result = await handler(event as never);
+
+    expect(result).toEqual({ batchItemFailures: [] });
+    expect(mockEventDao.get).not.toHaveBeenCalled();
+  });
+
+  it('ignores REMOVE events for entities other than Ranking (e.g. LiveQueueItem)', async () => {
+    const event = {
+      Records: [makeRemoveRecord('leaderboard_lb-1#livequeueitem', 'submission_sub1', {}, 'seq-remove-3')],
+    };
+
+    const result = await handler(event as never);
+
+    expect(result).toEqual({ batchItemFailures: [] });
+    expect(mockEventDao.get).not.toHaveBeenCalled();
+  });
+
+  it('records a batch item failure when resolving the leaderboard for a Ranking REMOVE throws', async () => {
+    mockLeaderboardDao.get.mockRejectedValue(new Error('DDB unavailable'));
+    const event = {
+      Records: [makeRemoveRecord('leaderboard_lb-1', 'profile_p1#ranking', {}, 'seq-remove-4')],
+    };
+
+    const result = await handler(event as never);
+
+    expect(result).toEqual({ batchItemFailures: [{ itemIdentifier: 'seq-remove-4' }] });
+  });
+});
+
+describe('module startup env var guard', () => {
+  it('throws at module load when required env vars are missing', async () => {
+    const savedIot = process.env.IOT_ENDPOINT;
+    const savedPrefix = process.env.TOPIC_PREFIX;
+    const savedRace = process.env.RACE_TOPIC_PREFIX;
+    delete process.env.IOT_ENDPOINT;
+    delete process.env.TOPIC_PREFIX;
+    delete process.env.RACE_TOPIC_PREFIX;
+
+    await expect(import('../liveBroadcastHandler.js?missing-env=' + Date.now())).rejects.toThrow(
+      /Missing required environment variables/,
+    );
+
+    process.env.IOT_ENDPOINT = savedIot;
+    process.env.TOPIC_PREFIX = savedPrefix;
+    process.env.RACE_TOPIC_PREFIX = savedRace;
+  });
+});
+
+describe('publishToRaceTopic 128 KB boundary', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockIoTClient.reset();
+    mockIoTClient.on(PublishCommand).resolves({});
+    mockLeaderboardDao.get.mockResolvedValue({ isLive: true, eventId: 'evt-1' } as never);
+  });
+
+  it('throws when a physical event payload exceeds 128 KB', async () => {
+    const MAX = 128 * 1024;
+    // Build a ranking payload large enough to exceed the limit
+    const bigName = 'A'.repeat(MAX);
+    mockRankingDao.listByRank.mockResolvedValue({
+      data: [{ rankingScore: 10000, userProfile: { alias: bigName } }],
+      cursor: null,
+    } as never);
+    const event = {
+      Records: [makeDDBRecord('leaderboard_lb-1', 'profile_p1#ranking', 'MODIFY', { rankingScore: { N: '10000' } })],
+    };
+
+    const result = await handler(event as never);
+    expect(result.batchItemFailures).toHaveLength(1);
+  });
+});
+
+describe('resolveFromCache', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockIoTClient.reset();
+    mockIoTClient.on(PublishCommand).resolves({});
+    mockRankingDao.listByRank.mockResolvedValue({ data: [], cursor: null } as never);
+  });
+
+  it('serves the leaderboard from cache on the second lookup without calling the DAO again', async () => {
+    mockLeaderboardDao.get.mockResolvedValue({ isLive: true, eventId: 'evt-1' } as never);
+    const event = {
+      Records: [
+        makeDDBRecord('leaderboard_lb-cache', 'profile_p1#ranking', 'MODIFY', { rankingScore: { N: '10000' } }),
+        makeDDBRecord('leaderboard_lb-cache', 'profile_p2#ranking', 'MODIFY', { rankingScore: { N: '9000' } }),
+      ],
+    };
+
+    await handler(event as never);
+
+    // Two records for the same leaderboard — DAO should only be called once
+    expect(mockLeaderboardDao.get).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('publishLeaderboardToS3', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockS3Client.reset();
+    mockS3Client.on(PutObjectCommand).resolves({});
+    mockRankingDao.listByRank.mockResolvedValue({ data: [], cursor: null } as never);
+  });
+
+  it('writes full rankings JSON to the correct S3 key', async () => {
+    mockRankingDao.listByRank.mockResolvedValue({
+      data: [
+        { rankingScore: 10000, userProfile: { alias: 'Alice', countryCode: 'US' }, modelName: 'SpeedBot' },
+        { rankingScore: 11000, userProfile: { alias: 'Bob', countryCode: 'CA' }, modelName: 'FastBot' },
+      ],
+      cursor: null,
+    } as never);
+
+    await publishLeaderboardToS3('lb-1' as ResourceId);
+
+    const calls = mockS3Client.commandCalls(PutObjectCommand);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].args[0].input.Key).toBe('public/leaderboards/lb-1.json');
+    expect(calls[0].args[0].input.Bucket).toBe('test-public-leaderboard-bucket');
+    expect(calls[0].args[0].input.ContentType).toBe('application/json');
+
+    const body = JSON.parse(calls[0].args[0].input.Body as string);
+    expect(body.rankings).toHaveLength(2);
+    expect(body.rankings[0]).toMatchObject({ rank: 1, participantName: 'Alice', country: 'US', modelName: 'SpeedBot' });
+  });
+
+  it('includes the leaderboard name in the S3 body when provided', async () => {
+    mockRankingDao.listByRank.mockResolvedValue({ data: [], cursor: null } as never);
+
+    await publishLeaderboardToS3('lb-1' as ResourceId, 'Madrid Summit — Track A');
+
+    const body = JSON.parse(mockS3Client.commandCalls(PutObjectCommand)[0].args[0].input.Body as string);
+    expect(body.name).toBe('Madrid Summit — Track A');
+  });
+
+  it('omits the name field when no leaderboard name is provided', async () => {
+    await publishLeaderboardToS3('lb-1' as ResourceId);
+
+    const body = JSON.parse(mockS3Client.commandCalls(PutObjectCommand)[0].args[0].input.Body as string);
+    expect(body.name).toBeUndefined();
+  });
+
+  it('HTML-encodes unsafe chars in the leaderboard name, matching the other display fields', async () => {
+    await publishLeaderboardToS3('lb-1' as ResourceId, '<b>Madrid</b> & Friends');
+
+    const body = JSON.parse(mockS3Client.commandCalls(PutObjectCommand)[0].args[0].input.Body as string);
+    expect(body.name).toBe('&lt;b&gt;Madrid&lt;/b&gt; &amp; Friends');
+  });
+
+  it('includes the leaderboard footer in the S3 body when provided', async () => {
+    await publishLeaderboardToS3('lb-1' as ResourceId, 'Madrid Summit — Track A', 'Sponsored by Acme Corp');
+
+    const body = JSON.parse(mockS3Client.commandCalls(PutObjectCommand)[0].args[0].input.Body as string);
+    expect(body.footer).toBe('Sponsored by Acme Corp');
+  });
+
+  it('omits the footer field when no leaderboard footer is provided', async () => {
+    await publishLeaderboardToS3('lb-1' as ResourceId, 'Madrid Summit — Track A');
+
+    const body = JSON.parse(mockS3Client.commandCalls(PutObjectCommand)[0].args[0].input.Body as string);
+    expect(body.footer).toBeUndefined();
+  });
+
+  it('HTML-encodes unsafe chars in the leaderboard footer, matching the other display fields', async () => {
+    await publishLeaderboardToS3('lb-1' as ResourceId, 'Madrid Summit', '<script>alert(1)</script>');
+
+    const body = JSON.parse(mockS3Client.commandCalls(PutObjectCommand)[0].args[0].input.Body as string);
+    expect(body.footer).toBe('&lt;script&gt;alert(1)&lt;/script&gt;');
+  });
+
+  it('HTML-encodes unsafe chars in display fields rather than stripping them', async () => {
+    mockRankingDao.listByRank.mockResolvedValue({
+      data: [
+        {
+          rankingScore: 5000,
+          userProfile: { alias: '<script>alert(1)</script>', countryCode: 'US' },
+          modelName: 'A&B',
+        },
+      ],
+      cursor: null,
+    } as never);
+
+    await publishLeaderboardToS3('lb-1' as ResourceId);
+
+    const body = JSON.parse(mockS3Client.commandCalls(PutObjectCommand)[0].args[0].input.Body as string);
+    expect(body.rankings[0].participantName).toBe('&lt;script&gt;alert(1)&lt;/script&gt;');
+    expect(body.rankings[0].modelName).toBe('A&amp;B');
+  });
+
+  it('writes an empty rankings array when there are no entries', async () => {
+    await publishLeaderboardToS3('lb-empty' as ResourceId);
+
+    const body = JSON.parse(mockS3Client.commandCalls(PutObjectCommand)[0].args[0].input.Body as string);
+    expect(body.rankings).toHaveLength(0);
+  });
+
+  it('queries all rankings without maxResults cap (full list for S3)', async () => {
+    await publishLeaderboardToS3('lb-1' as ResourceId);
+    expect(mockRankingDao.listByRank).toHaveBeenCalledWith({ leaderboardId: 'lb-1', cursor: null });
+  });
+
+  it('follows pagination cursor until exhausted', async () => {
+    mockRankingDao.listByRank
+      .mockResolvedValueOnce({
+        data: [{ rankingScore: 1000, userProfile: { alias: 'Alice' }, modelName: 'A' }],
+        cursor: 'page2cursor',
+      } as never)
+      .mockResolvedValueOnce({
+        data: [{ rankingScore: 2000, userProfile: { alias: 'Bob' }, modelName: 'B' }],
+        cursor: null,
+      } as never);
+
+    await publishLeaderboardToS3('lb-1' as ResourceId);
+
+    expect(mockRankingDao.listByRank).toHaveBeenCalledTimes(2);
+    expect(mockRankingDao.listByRank).toHaveBeenNthCalledWith(2, { leaderboardId: 'lb-1', cursor: 'page2cursor' });
+
+    const body = JSON.parse(mockS3Client.commandCalls(PutObjectCommand)[0].args[0].input.Body as string);
+    expect(body.rankings).toHaveLength(2);
+    expect(body.rankings[0].participantName).toBe('Alice');
+    expect(body.rankings[1].participantName).toBe('Bob');
+  });
+
+  it('rejects on S3 PutObject failure (caller is responsible for swallowing)', async () => {
+    mockS3Client.on(PutObjectCommand).rejects(new Error('S3 throttle'));
+    await expect(publishLeaderboardToS3('lb-1' as ResourceId)).rejects.toThrow('S3 throttle');
+  });
+});
+
+describe('handler integration - EventBridge race-submitted', () => {
+  const runFinishedRecord = makeDDBRecord(
+    'leaderboard_lb-1',
+    'run_run-1',
+    'MODIFY',
+    { runId: { S: 'run-1' }, runStatus: { S: 'SUBMITTED' }, profileId: { S: 'racer-1' } },
+    { runStatus: { S: 'IN_PROGRESS' } },
+  );
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockIoTClient.reset();
+    mockIoTClient.on(PublishCommand).resolves({});
+    mockEventBridgeClient.reset();
+    mockEventBridgeClient.on(PutEventsCommand).resolves({ FailedEntryCount: 0, Entries: [] } as never);
+    mockLeaderboardDao.get.mockResolvedValue({ isLive: true, eventId: 'evt-1' } as never);
+    mockRankingDao.listByRank.mockResolvedValue({ data: [], cursor: null } as never);
+    mockLapDao.listByRun.mockResolvedValue({ data: [], cursor: null } as never);
+    mockEventDao.get.mockResolvedValue({ eventId: 'evt-1', raceFormat: 'BEST_LAP' } as never);
+    mockS3Client.reset();
+    mockS3Client.on(PutObjectCommand).resolves({});
+  });
+
+  it('emits race-submitted to EventBridge when a run transitions to SUBMITTED', async () => {
+    mockEventBridgeClient.on(PutEventsCommand).resolves({ FailedEntryCount: 0, Entries: [] } as never);
+
+    const result = await handler({ Records: [runFinishedRecord] } as never);
+
+    expect(result).toEqual({ batchItemFailures: [] });
+    const calls = mockEventBridgeClient.commandCalls(PutEventsCommand);
+    expect(calls).toHaveLength(1);
+    const entries = calls[0].args[0].input.Entries ?? [];
+    const entry = entries[0];
+    expect(entry.EventBusName).toBe('test-deepracer-events');
+    expect(entry.Source).toBe('deepracer.test');
+    expect(entry.DetailType).toBe('race-submitted');
+    expect(JSON.parse(entry.Detail ?? '{}')).toMatchObject({ eventId: 'evt-1', trackId: 'lb-1' });
+  });
+
+  it('logs an error but does not fail the batch when FailedEntryCount > 0', async () => {
+    mockEventBridgeClient.on(PutEventsCommand).resolves({
+      FailedEntryCount: 1,
+      Entries: [{ ErrorCode: 'ThrottlingException', ErrorMessage: 'Rate exceeded' }],
+    } as never);
+
+    const result = await handler({ Records: [runFinishedRecord] } as never);
+
+    // Non-fatal — batch item must still succeed regardless of EventBridge outcome
+    expect(result).toEqual({ batchItemFailures: [] });
+  });
+
+  it('logs an error but does not fail the batch when PutEvents throws', async () => {
+    mockEventBridgeClient.on(PutEventsCommand).rejects(new Error('network timeout'));
+
+    const result = await handler({ Records: [runFinishedRecord] } as never);
+
+    // Non-fatal — EventBridge failure must not affect the broadcast path
+    expect(result).toEqual({ batchItemFailures: [] });
   });
 });

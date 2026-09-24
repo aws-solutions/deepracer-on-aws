@@ -87,4 +87,11 @@ describe.skip('StaticWebsite', () => {
       expect(str).toContain('me-south-1');
     });
   });
+
+  describe('BucketDeployment pruning', () => {
+    it('excludes public/leaderboards/* from prune, so runtime-written leaderboard JSON survives future deploys', () => {
+      const str = JSON.stringify(template.toJSON());
+      expect(str).toContain('public/leaderboards/*');
+    });
+  });
 });

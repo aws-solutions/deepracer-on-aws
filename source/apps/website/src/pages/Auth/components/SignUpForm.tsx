@@ -32,12 +32,16 @@ const authValidationSchema = Yup.object().shape({
     .min(3, i18n.t('auth:aliasMinLength'))
     .max(20, i18n.t('auth:aliasMaxLength'))
     .matches(/^[a-zA-Z0-9_-]+$/, i18n.t('auth:aliasInvalidChars')),
+  countryCode: Yup.string()
+    .transform((value: string) => value?.toUpperCase())
+    .matches(/^[A-Z]{2}$/, { message: i18n.t('auth:countryInvalid'), excludeEmptyString: true }),
 });
 
 const initialAuthValues: AuthValues = {
   emailAddress: '',
   password: '',
   racerAlias: '',
+  countryCode: '',
 };
 
 const SignUpForm = () => {
@@ -61,6 +65,7 @@ const SignUpForm = () => {
         options: {
           userAttributes: {
             email: data.emailAddress,
+            ...(data.countryCode ? { 'custom:countryCode': data.countryCode.toUpperCase() } : {}),
           },
           clientMetadata: {
             racerAlias: data.racerAlias,
@@ -68,11 +73,12 @@ const SignUpForm = () => {
         },
       });
       navigate(getPath(PageId.VERIFY_EMAIL), { state: { username: newUserId } });
-    } catch {
+    } catch (err) {
       setIsLoadingSignUp(false);
+      const isSelfSignUpDisabled = err instanceof Error && err.name === 'NotAuthorizedException';
       dispatch(
         displayErrorNotification({
-          content: t('signupFailNotif'),
+          content: isSelfSignUpDisabled ? t('signupNotSupportedNotif') : t('signupFailNotif'),
         }),
       );
     }
@@ -97,6 +103,14 @@ const SignUpForm = () => {
             stretch
           />
           <InputField
+            type={'text'}
+            name="countryCode"
+            control={control}
+            label={t('country')}
+            constraintText={t('countryConstraint')}
+            stretch
+          />
+          <InputField
             type={showPassword ? 'text' : 'password'}
             name="password"
             control={control}
@@ -116,6 +130,7 @@ const SignUpForm = () => {
             <span>{t('signinLink')}</span>
             <Button
               variant="inline-link"
+              formAction="none"
               onClick={() => {
                 navigate(getPath(PageId.SIGN_IN));
               }}

@@ -2,9 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
+  eventDao,
   leaderboardDao,
   LeaderboardItem,
   liveQueueItemDao,
+  TEST_EVENT_ID,
+  TEST_EVENT_ITEM,
   TEST_ITEM_NOT_FOUND_ERROR,
   TEST_LEADERBOARD_ID,
   TEST_LIVE_QUEUE_ITEM,
@@ -12,6 +15,8 @@ import {
 } from '@deepracer-indy/database';
 import {
   BadRequestError,
+  ConflictError,
+  EventStatus,
   InternalFailureError,
   LeaderboardDefinition,
   LiveEventStatus,
@@ -23,6 +28,7 @@ import {
 } from '@deepracer-indy/typescript-server-client';
 
 import { TEST_OPERATION_CONTEXT } from '../../constants/testConstants.js';
+import * as apiGatewayUtils from '../../utils/apiGateway.js';
 import { EditLeaderboardOperation } from '../editLeaderboard.js';
 
 const TEST_FUTURE_TIMESTAMP_1 = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -160,6 +166,71 @@ describe('EditLeaderboard', () => {
     expect(output.leaderboard.participantCount).toEqual(mockUpdatedLeaderboard.participantCount);
   });
 
+  it('should update display metadata for an event track while its event is DRAFT', async () => {
+    const eventTrack: LeaderboardItem = {
+      ...TEST_FUTURE_LEADERBOARD_ITEM,
+      eventId: TEST_EVENT_ID,
+      openTime: new Date(0).toISOString(),
+      closeTime: new Date(0).toISOString(),
+    };
+    const updatedDefinition: LeaderboardDefinition = {
+      ...TEST_LEADERBOARD_DEFINITION,
+      name: 'Updated event track title',
+      openTime: new Date(0),
+      closeTime: new Date(0),
+      leaderBoardFooter: 'Updated event track footer',
+    };
+    const updatedTrack: LeaderboardItem = {
+      ...eventTrack,
+      name: updatedDefinition.name,
+      leaderBoardFooter: updatedDefinition.leaderBoardFooter,
+    };
+
+    vi.spyOn(leaderboardDao, 'load').mockResolvedValue(eventTrack);
+    vi.spyOn(eventDao, 'load').mockResolvedValue(TEST_EVENT_ITEM);
+    const partialUpdateSpy = vi.spyOn(leaderboardDao, 'partialUpdate').mockResolvedValue(updatedTrack);
+    const updateSpy = vi.spyOn(leaderboardDao, 'update');
+
+    const output = await EditLeaderboardOperation(
+      { leaderboardId: TEST_LEADERBOARD_ID, leaderboardDefinition: updatedDefinition },
+      TEST_OPERATION_CONTEXT,
+    );
+
+    expect(partialUpdateSpy).toHaveBeenCalledWith(
+      { leaderboardId: TEST_LEADERBOARD_ID },
+      {
+        name: updatedDefinition.name,
+        leaderBoardFooter: updatedDefinition.leaderBoardFooter,
+      },
+    );
+    expect(updateSpy).not.toHaveBeenCalled();
+    expect(output.leaderboard).toMatchObject({
+      name: updatedDefinition.name,
+      leaderBoardFooter: updatedDefinition.leaderBoardFooter,
+    });
+  });
+
+  it('should reject an event-track metadata edit when the event is not DRAFT', async () => {
+    const eventTrack: LeaderboardItem = {
+      ...TEST_FUTURE_LEADERBOARD_ITEM,
+      eventId: TEST_EVENT_ID,
+      openTime: new Date(0).toISOString(),
+      closeTime: new Date(0).toISOString(),
+    };
+
+    vi.spyOn(leaderboardDao, 'load').mockResolvedValue(eventTrack);
+    vi.spyOn(eventDao, 'load').mockResolvedValue({ ...TEST_EVENT_ITEM, eventStatus: EventStatus.OPEN });
+    const partialUpdateSpy = vi.spyOn(leaderboardDao, 'partialUpdate');
+
+    await expect(
+      EditLeaderboardOperation(
+        { leaderboardId: TEST_LEADERBOARD_ID, leaderboardDefinition: TEST_LEADERBOARD_DEFINITION },
+        TEST_OPERATION_CONTEXT,
+      ),
+    ).rejects.toStrictEqual(new ConflictError({ message: 'Cannot edit track: event is OPEN.' }));
+
+    expect(partialUpdateSpy).not.toHaveBeenCalled();
+  });
   it('should throw error if a request max and minimum laps are invalid', async () => {
     // Mock the load method to return an existing leaderboard
     vi.spyOn(leaderboardDao, 'load').mockResolvedValue(TEST_FUTURE_LEADERBOARD_ITEM);
@@ -274,6 +345,7 @@ describe('EditLeaderboard', () => {
       openTime: pastOpenTime.toISOString(),
     };
     vi.spyOn(leaderboardDao, 'load').mockResolvedValue(mockLeaderboard);
+    vi.spyOn(apiGatewayUtils, 'isUserAdmin').mockResolvedValue(false);
 
     return expect(
       EditLeaderboardOperation(
@@ -507,6 +579,221 @@ describe('EditLeaderboard', () => {
       );
 
       expect(output.leaderboard).toBeDefined();
+    });
+
+    describe('scoring field guard', () => {
+      const SCHEDULED_LIVE_LEADERBOARD: LeaderboardItem = {
+        ...LIVE_LEADERBOARD,
+        liveEventStatus: LiveEventStatus.SCHEDULED,
+      };
+
+      it('should reject scoring field changes when queue has submissions', async () => {
+        vi.spyOn(leaderboardDao, 'load').mockResolvedValue(SCHEDULED_LIVE_LEADERBOARD);
+        vi.spyOn(liveQueueItemDao, 'getQueue').mockResolvedValue([TEST_LIVE_QUEUE_ITEM]);
+
+        await expect(
+          EditLeaderboardOperation(
+            {
+              leaderboardId: TEST_LEADERBOARD_ID,
+              leaderboardDefinition: {
+                ...TEST_LEADERBOARD_DEFINITION,
+                timingMethod: TimingMethod.BEST_LAP_TIME,
+              },
+            },
+            TEST_OPERATION_CONTEXT,
+          ),
+        ).rejects.toBeInstanceOf(ConflictError);
+      });
+
+      it('should reject track config changes when queue has submissions', async () => {
+        vi.spyOn(leaderboardDao, 'load').mockResolvedValue(SCHEDULED_LIVE_LEADERBOARD);
+        vi.spyOn(liveQueueItemDao, 'getQueue').mockResolvedValue([TEST_LIVE_QUEUE_ITEM]);
+
+        await expect(
+          EditLeaderboardOperation(
+            {
+              leaderboardId: TEST_LEADERBOARD_ID,
+              leaderboardDefinition: {
+                ...TEST_LEADERBOARD_DEFINITION,
+                trackConfig: {
+                  trackId: TEST_LEADERBOARD_DEFINITION.trackConfig.trackId,
+                  trackDirection: TrackDirection.CLOCKWISE,
+                },
+              },
+            },
+            TEST_OPERATION_CONTEXT,
+          ),
+        ).rejects.toBeInstanceOf(ConflictError);
+      });
+
+      it('should allow operational edits when queue has submissions', async () => {
+        vi.spyOn(leaderboardDao, 'load').mockResolvedValue(SCHEDULED_LIVE_LEADERBOARD);
+        vi.spyOn(liveQueueItemDao, 'getQueue').mockResolvedValue([TEST_LIVE_QUEUE_ITEM]);
+        vi.spyOn(leaderboardDao, 'update').mockResolvedValue({
+          ...SCHEDULED_LIVE_LEADERBOARD,
+          name: 'Updated Name',
+        });
+
+        const output = await EditLeaderboardOperation(
+          {
+            leaderboardId: TEST_LEADERBOARD_ID,
+            leaderboardDefinition: {
+              ...TEST_LEADERBOARD_DEFINITION,
+              name: 'Updated Name',
+            },
+          },
+          TEST_OPERATION_CONTEXT,
+        );
+
+        expect(output.leaderboard).toBeDefined();
+        expect(leaderboardDao.update).toHaveBeenCalled();
+      });
+
+      it('should allow scoring field changes when queue is empty', async () => {
+        vi.spyOn(leaderboardDao, 'load').mockResolvedValue(SCHEDULED_LIVE_LEADERBOARD);
+        vi.spyOn(liveQueueItemDao, 'getQueue').mockResolvedValue([]);
+        vi.spyOn(leaderboardDao, 'update').mockResolvedValue({
+          ...SCHEDULED_LIVE_LEADERBOARD,
+          timingMethod: TimingMethod.BEST_LAP_TIME,
+        });
+
+        const output = await EditLeaderboardOperation(
+          {
+            leaderboardId: TEST_LEADERBOARD_ID,
+            leaderboardDefinition: {
+              ...TEST_LEADERBOARD_DEFINITION,
+              timingMethod: TimingMethod.BEST_LAP_TIME,
+            },
+          },
+          TEST_OPERATION_CONTEXT,
+        );
+
+        expect(output.leaderboard).toBeDefined();
+        expect(leaderboardDao.update).toHaveBeenCalled();
+      });
+
+      it('should reject raceType change when queue has submissions', async () => {
+        vi.spyOn(leaderboardDao, 'load').mockResolvedValue(SCHEDULED_LIVE_LEADERBOARD);
+        vi.spyOn(liveQueueItemDao, 'getQueue').mockResolvedValue([TEST_LIVE_QUEUE_ITEM]);
+
+        await expect(
+          EditLeaderboardOperation(
+            {
+              leaderboardId: TEST_LEADERBOARD_ID,
+              leaderboardDefinition: {
+                ...TEST_LEADERBOARD_DEFINITION,
+                raceType: RaceType.OBJECT_AVOIDANCE,
+                objectAvoidanceConfig: { numberOfObjects: 2 },
+              },
+            },
+            TEST_OPERATION_CONTEXT,
+          ),
+        ).rejects.toBeInstanceOf(ConflictError);
+      });
+
+      it('should reject resettingBehaviorConfig change when queue has submissions', async () => {
+        vi.spyOn(leaderboardDao, 'load').mockResolvedValue(SCHEDULED_LIVE_LEADERBOARD);
+        vi.spyOn(liveQueueItemDao, 'getQueue').mockResolvedValue([TEST_LIVE_QUEUE_ITEM]);
+
+        await expect(
+          EditLeaderboardOperation(
+            {
+              leaderboardId: TEST_LEADERBOARD_ID,
+              leaderboardDefinition: {
+                ...TEST_LEADERBOARD_DEFINITION,
+                resettingBehaviorConfig: { continuousLap: true, offTrackPenaltySeconds: 99 },
+              },
+            },
+            TEST_OPERATION_CONTEXT,
+          ),
+        ).rejects.toBeInstanceOf(ConflictError);
+      });
+
+      it('should reject minimumLaps change when queue has submissions', async () => {
+        vi.spyOn(leaderboardDao, 'load').mockResolvedValue(SCHEDULED_LIVE_LEADERBOARD);
+        vi.spyOn(liveQueueItemDao, 'getQueue').mockResolvedValue([TEST_LIVE_QUEUE_ITEM]);
+
+        await expect(
+          EditLeaderboardOperation(
+            {
+              leaderboardId: TEST_LEADERBOARD_ID,
+              leaderboardDefinition: {
+                ...TEST_LEADERBOARD_DEFINITION,
+                submissionTerminationConditions: {
+                  ...TEST_LEADERBOARD_DEFINITION.submissionTerminationConditions,
+                  minimumLaps: TEST_LEADERBOARD_DEFINITION.submissionTerminationConditions.minimumLaps + 1,
+                  maximumLaps: TEST_LEADERBOARD_DEFINITION.submissionTerminationConditions.maximumLaps + 1,
+                },
+              },
+            },
+            TEST_OPERATION_CONTEXT,
+          ),
+        ).rejects.toBeInstanceOf(ConflictError);
+      });
+
+      it('should reject maximumLaps change when queue has submissions', async () => {
+        vi.spyOn(leaderboardDao, 'load').mockResolvedValue(SCHEDULED_LIVE_LEADERBOARD);
+        vi.spyOn(liveQueueItemDao, 'getQueue').mockResolvedValue([TEST_LIVE_QUEUE_ITEM]);
+
+        await expect(
+          EditLeaderboardOperation(
+            {
+              leaderboardId: TEST_LEADERBOARD_ID,
+              leaderboardDefinition: {
+                ...TEST_LEADERBOARD_DEFINITION,
+                submissionTerminationConditions: {
+                  ...TEST_LEADERBOARD_DEFINITION.submissionTerminationConditions,
+                  maximumLaps: 99,
+                },
+              },
+            },
+            TEST_OPERATION_CONTEXT,
+          ),
+        ).rejects.toBeInstanceOf(ConflictError);
+      });
+
+      it('should reject maxTimeInMinutes change when queue has submissions', async () => {
+        vi.spyOn(leaderboardDao, 'load').mockResolvedValue(SCHEDULED_LIVE_LEADERBOARD);
+        vi.spyOn(liveQueueItemDao, 'getQueue').mockResolvedValue([TEST_LIVE_QUEUE_ITEM]);
+
+        await expect(
+          EditLeaderboardOperation(
+            {
+              leaderboardId: TEST_LEADERBOARD_ID,
+              leaderboardDefinition: {
+                ...TEST_LEADERBOARD_DEFINITION,
+                submissionTerminationConditions: {
+                  ...TEST_LEADERBOARD_DEFINITION.submissionTerminationConditions,
+                  maxTimeInMinutes: 99,
+                },
+              },
+            },
+            TEST_OPERATION_CONTEXT,
+          ),
+        ).rejects.toBeInstanceOf(ConflictError);
+      });
+
+      it('should not query queue for non-live races', async () => {
+        vi.spyOn(leaderboardDao, 'load').mockResolvedValue(TEST_FUTURE_LEADERBOARD_ITEM);
+        vi.spyOn(leaderboardDao, 'update').mockResolvedValue({
+          ...TEST_FUTURE_LEADERBOARD_ITEM,
+          timingMethod: TimingMethod.BEST_LAP_TIME,
+        });
+        const getQueueSpy = vi.spyOn(liveQueueItemDao, 'getQueue');
+
+        await EditLeaderboardOperation(
+          {
+            leaderboardId: TEST_LEADERBOARD_ID,
+            leaderboardDefinition: {
+              ...TEST_LEADERBOARD_DEFINITION,
+              timingMethod: TimingMethod.BEST_LAP_TIME,
+            },
+          },
+          TEST_OPERATION_CONTEXT,
+        );
+
+        expect(getQueueSpy).not.toHaveBeenCalled();
+      });
     });
   });
 });
