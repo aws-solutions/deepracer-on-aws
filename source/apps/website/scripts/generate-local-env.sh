@@ -73,7 +73,6 @@ window.EnvironmentConfig = {
   userPoolClientId: '${USER_POOL_CLIENT_ID}',
   identityPoolId: '${IDENTITY_POOL_ID}',
   region: '${REGION}',
-  uploadBucketName: '${UPLOAD_BUCKET}',
 };
 EOF
 
@@ -85,6 +84,5 @@ echo "  User Pool ID:      $USER_POOL_ID"
 echo "  User Pool Client:  $USER_POOL_CLIENT_ID"
 echo "  Identity Pool ID:  $IDENTITY_POOL_ID"
 echo "  Region:            $REGION"
-echo "  Upload Bucket:     $UPLOAD_BUCKET"
 echo ""
 echo "You can now run: pnpm nx serve website"
