@@ -74,9 +74,9 @@ Deploying this solution with the default parameters deploys the following compon
 
 1. An [Amazon DynamoDB Stream](https://aws.amazon.com/dynamodb/) captures item-level changes from the main table and delivers them to downstream Lambda consumers, enabling event-driven orchestration of live race evaluations and real-time broadcast of race state to spectators.
 
-1. A [AWS Lambda](https://aws.amazon.com/lambda/) Broadcast Handler (LiveBroadcastHandler) is triggered by the DynamoDB stream and detects relevant state changes — such as evaluation started/completed, leaderboard updates, and winner declarations — and publishes corresponding events to the IoT Core MQTT topic for the active race, delivering real-time updates to connected spectator browsers.
+1. A [AWS Lambda](https://aws.amazon.com/lambda/) Broadcast Handler (LiveBroadcastHandler) is triggered by the DynamoDB stream and detects relevant state changes — such as evaluation started/completed, leaderboard updates, and winner declarations — and publishes corresponding events to the IoT Core MQTT topic for the active race, delivering real-time updates to connected spectator browsers. When a run finishes it also emits a race-submitted event to the race event bus, which is what triggers the race statistics rebuild.
 
-1. [AWS IoT Core](https://aws.amazon.com/iot-core/) provides a managed WebSocket pub/sub channel for delivering live race state updates to spectator and participant browsers. Each live race uses a dedicated MQTT topic scoped by leaderboard ID. Spectators subscribe via WebSocket; the Broadcast Handler publishes via IAM-authorized HTTPS. IoT Core handles connection management, fan-out, and scaling without requiring a connections table or custom connect/disconnect handlers.
+1. [AWS IoT Core](https://aws.amazon.com/iot-core/) provides a managed WebSocket pub/sub channel for delivering live race state updates to spectator and participant browsers. Each live race uses a dedicated MQTT topic scoped by leaderboard ID. Spectators subscribe via WebSocket; the Broadcast Handler publishes via IAM-authorized HTTPS. IoT Core handles connection management, fan-out, and scaling without requiring a connections table or custom connect/disconnect handlers. The same channel also carries physical race events on a per-event topic tree, and device status and command results to the device management screens, so IoT Core is shared across features rather than scoped to live races.
 
 1. [AWS EventBridge Schedules](https://aws.amazon.com/eventbridge/) triggers the SafetyNet Lambda whenever a live race Step Functions execution reaches a terminal state (succeeded, failed, aborted, or timed out), ensuring the execution lock is cleared and pending evaluations are retriggered without manual intervention.
 
@@ -87,6 +87,50 @@ Deploying this solution with the default parameters deploys the following compon
 1. A [AWS Lambda](https://aws.amazon.com/lambda/) Stream Handler is triggered by the DynamoDB stream and is responsible for auto-starting a new Step Functions execution for a live race when one or more submissions with PENDING status exist in the queue, the race is IN_PROGRESS, autolaunch is enabled, and no execution is currently running. It acquires the execution lock via a conditional write before starting the execution.
 
 1. A [AWS Lambda](https://aws.amazon.com/lambda/) SafetyNet function is invoked by EventBridge when a live race Step Functions execution reaches any terminal state. It clears the execution lock with a conditional write, applies a backoff check if the execution has failed repeatedly, and touches a PENDING queue item to generate a DynamoDB stream event — retriggering the Stream Handler to start a new execution if items remain in the queue.
+
+1. A public leaderboard JSON file in the user interface assets bucket ([Amazon S3](https://aws.amazon.com/s3/)) holds the current standings for a live race and is served to spectators through CloudFront on a short cache TTL so results are not shown stale.
+
+1. [Amazon EventBridge](https://aws.amazon.com/eventbridge/) provides a custom event bus that receives a race-submitted event from the Broadcast Handler each time a run finishes, and routes it to the stats rebuild function.
+
+1. A stats rebuild [AWS Lambda](https://aws.amazon.com/lambda/) function recalculates aggregate race statistics in response to a race-submitted event, and is limited to one concurrent execution so that rebuilds are serialized.
+
+1. An [Amazon SQS](https://aws.amazon.com/sqs/) dead-letter queue catches race-submitted events that still fail once EventBridge has exhausted its retries, so a failed statistics rebuild is retained for inspection rather than dropped.
+
+1. An [Amazon SQS](https://aws.amazon.com/sqs/) dead-letter queue catches live race broadcast events that the Broadcast Handler fails to process, and raises an alarm as soon as any message arrives.
+
+1. [AWS Lambda](https://aws.amazon.com/lambda/) event management handlers are a set of functions that back the event endpoints, including creating an event, adding a track to an event, recording runs and laps, and deleting an event.
+
+1. [Amazon SQS](https://aws.amazon.com/sqs/) event delete queues (queue and DLQ) receive a cascade-delete request when an event is deleted, so dependent records are removed asynchronously rather than inside the API request.
+
+1. An event delete worker [AWS Lambda](https://aws.amazon.com/lambda/) function consumes the delete queue one message at a time and removes the laps, runs, rankings, and submissions belonging to a deleted event.
+
+1. [AWS Lambda](https://aws.amazon.com/lambda/) device management handlers are a set of functions that back the physical device endpoints, including activating, listing, updating, restarting, stopping, and deleting a device.
+
+1. [AWS Systems Manager](https://aws.amazon.com/systems-manager/) provides the hybrid activation that enrolls physical cars and timers as managed instances, and RunCommand for running commands on them.
+
+1. Physical devices (cars and timers) enroll themselves as managed instances using a hybrid activation code, and receive model deployments and control commands through Systems Manager.
+
+1. [Amazon EventBridge](https://aws.amazon.com/eventbridge/) rules capture Systems Manager managed instance state changes and invoke the state change handler so that device connectivity is tracked as it changes.
+
+1. An SSM state change handler [AWS Lambda](https://aws.amazon.com/lambda/) function records managed instance registration changes and command completion status against the matching device record, so the user interface reflects whether a car is online and how its last command finished.
+
+1. A device status poller [AWS Lambda](https://aws.amazon.com/lambda/) function runs on a five minute schedule, reads managed instance information from Systems Manager, and refreshes the stored status of each registered device.
+
+1. A device pruner [AWS Lambda](https://aws.amazon.com/lambda/) function deregisters Systems Manager managed instances when their device records expire through DynamoDB TTL. The Broadcast Handler consumes the DynamoDB stream, detects these TTL-driven removals, and asynchronously fans the expired instance ids out to the pruner.
+
+1. [Amazon GuardDuty](https://aws.amazon.com/guardduty/) malware protection scans model artifacts staged for transfer to a physical car and reports findings before the model is pushed to the device.
+
+1. A model optimizer [AWS Lambda](https://aws.amazon.com/lambda/) function, packaged as a container image, converts a trained model into the format required by physical DeepRacer cars.
+
+1. An [Amazon SQS](https://aws.amazon.com/sqs/) dead-letter queue catches optimization requests that the model optimizer fails to process, and a processor function marks the model's optimization status as failed so that it does not stay stuck in progress.
+
+1. [AWS Lambda](https://aws.amazon.com/lambda/) model transfer handlers are a set of functions that back the endpoints for packaging a model, importing a physical model, deploying a model to a car, and listing deployments.
+
+1. A push [AWS Step Functions](https://aws.amazon.com/step-functions/) state machine orchestrates transferring a model to a physical car by sending the command, polling for completion, and updating deployment status. A separate state machine handles bulk user creation, iterating over the submitted entries and finalizing the batch once every entry has been processed.
+
+1. [AWS Systems Manager](https://aws.amazon.com/systems-manager/) RunCommand runs the model download and installation commands on the target physical car as directed by the push state machine. The car is addressed by the managed instance id that hybrid activation assigned to it, so the same Systems Manager registration that tracks device status is what makes the push possible.
+
+1. A registration [AWS Lambda](https://aws.amazon.com/lambda/) function creates a Cognito user for a racer registered at an event by a facilitator, supporting walk-up registration without requiring the racer to sign up first.
 
 ## Package layout
 
