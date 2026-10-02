@@ -278,6 +278,25 @@ describe('<DeviceDetail />', () => {
       });
     });
 
+    it('opens the set car type modal with Confirm disabled for a device with no car type', async () => {
+      render(<DeviceDetail />);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: i18n.t('devices:detail.changeCarTypeButton') })).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: i18n.t('devices:detail.changeCarTypeButton') }));
+
+      await waitFor(() => {
+        expect(screen.getByText(i18n.t('devices:detail.carTypeDescription'))).toBeInTheDocument();
+      });
+
+      const confirmButton = screen.getByRole('button', { name: i18n.t('devices:detail.confirm') });
+      expect(confirmButton).toBeDisabled();
+      fireEvent.click(confirmButton);
+      expect(mockUpdateDevice).not.toHaveBeenCalled();
+    });
+
     it('shows delete confirmation modal and deletes on confirm', async () => {
       render(<DeviceDetail />);
 

@@ -1,7 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { Alert, AppLayout, Button, Header, SpaceBetween } from '@cloudscape-design/components';
+import { Alert, Button, ContentLayout, Header, SpaceBetween } from '@cloudscape-design/components';
 import { Profile, UserGroups } from '@deepracer-indy/typescript-client';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -73,59 +73,56 @@ const ManageInstance = () => {
 
   return (
     <>
-      <AppLayout
-        content={
-          <SpaceBetween size="l">
-            <Header
-              variant="h1"
-              actions={
-                <SpaceBetween direction="horizontal" size="xs">
-                  <Button onClick={() => setIsInstanceQuotasModalOpen(true)}>{t('page.actions.instanceQuotas')}</Button>
-                  <Button onClick={() => setIsNewUserQuotasModalOpen(true)}>{t('page.actions.newUserQuotas')}</Button>
-                </SpaceBetween>
-              }
-            >
-              {t('page.header')}
-            </Header>
-
-            <UsageSummary profiles={profiles.data} />
-
-            <ProfilesTable
-              profiles={profiles.data}
-              currentUserProfileId={currentUserProfile.data?.profileId}
-              onInviteUser={() => setIsInviteUserModalOpen(true)}
-              onInviteMultipleUsers={() => setIsBulkInviteUsersModalOpen(true)}
-              onDeleteUser={(user: Profile, clearSelection: () => void) => {
-                setSelectedUserToDelete(user);
-                setClearTableSelection(() => clearSelection);
-                setIsDeleteUserModalOpen(true);
-              }}
-              onDeleteUserModels={(user: Profile) => {
-                setSelectedUserForModelsDelete(user);
-                setIsDeleteUserModelsModalOpen(true);
-              }}
-              onUpdateUserQuotas={(user: Profile, clearSelection: () => void) => {
-                setSelectedUserForQuotas(user);
-                setClearTableSelection(() => clearSelection);
-                setIsUserQuotasModalOpen(true);
-              }}
-              onChangeUserRole={(user: Profile, clearSelection: () => void) => {
-                setSelectedUserForRoleChange(user);
-                setClearTableSelection(() => clearSelection);
-                setIsChangeUserRoleModalOpen(true);
-              }}
-              onResendInvite={(users: Profile[], clearSelection: () => void) => {
-                setSelectedUsersForResendInvite(users);
-                setClearTableSelection(() => clearSelection);
-                setIsResendInviteModalOpen(true);
-              }}
-            />
-          </SpaceBetween>
+      <ContentLayout
+        header={
+          <Header
+            variant="h1"
+            actions={
+              <SpaceBetween direction="horizontal" size="xs">
+                <Button onClick={() => setIsInstanceQuotasModalOpen(true)}>{t('page.actions.instanceQuotas')}</Button>
+                <Button onClick={() => setIsNewUserQuotasModalOpen(true)}>{t('page.actions.newUserQuotas')}</Button>
+              </SpaceBetween>
+            }
+          >
+            {t('page.header')}
+          </Header>
         }
-        contentType="default"
-        navigationHide
-        toolsHide
-      />
+      >
+        <SpaceBetween size="l">
+          <UsageSummary profiles={profiles.data} />
+
+          <ProfilesTable
+            profiles={profiles.data}
+            currentUserProfileId={currentUserProfile.data?.profileId}
+            onInviteUser={() => setIsInviteUserModalOpen(true)}
+            onInviteMultipleUsers={() => setIsBulkInviteUsersModalOpen(true)}
+            onDeleteUser={(user: Profile, clearSelection: () => void) => {
+              setSelectedUserToDelete(user);
+              setClearTableSelection(() => clearSelection);
+              setIsDeleteUserModalOpen(true);
+            }}
+            onDeleteUserModels={(user: Profile) => {
+              setSelectedUserForModelsDelete(user);
+              setIsDeleteUserModelsModalOpen(true);
+            }}
+            onUpdateUserQuotas={(user: Profile, clearSelection: () => void) => {
+              setSelectedUserForQuotas(user);
+              setClearTableSelection(() => clearSelection);
+              setIsUserQuotasModalOpen(true);
+            }}
+            onChangeUserRole={(user: Profile, clearSelection: () => void) => {
+              setSelectedUserForRoleChange(user);
+              setClearTableSelection(() => clearSelection);
+              setIsChangeUserRoleModalOpen(true);
+            }}
+            onResendInvite={(users: Profile[], clearSelection: () => void) => {
+              setSelectedUsersForResendInvite(users);
+              setClearTableSelection(() => clearSelection);
+              setIsResendInviteModalOpen(true);
+            }}
+          />
+        </SpaceBetween>
+      </ContentLayout>
       <InviteUserModal isOpen={isInviteUserModalOpen} setIsOpen={setIsInviteUserModalOpen} />
       <BulkInviteUsersModal isOpen={isBulkInviteUsersModalOpen} setIsOpen={setIsBulkInviteUsersModalOpen} />
       <DeleteUserModal

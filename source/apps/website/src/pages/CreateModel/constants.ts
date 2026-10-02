@@ -152,6 +152,10 @@ export const DEFAULT_OA_CONFIG: ObjectAvoidanceConfig = {
   objectPositions: DEFAULT_OBJECT_POSITIONS.slice(0, 3),
 };
 
+// Minimum training time (minutes) the create-model form accepts. Shared with the validation
+// schema and the clone sanitizer so the three stay in sync.
+export const MIN_MAX_TIME_IN_MINUTES = 10;
+
 export const DEFAULT_DISCRETE_ACTION_SPACE = computeDiscreteActionSpace(30, 5, 1, 2);
 
 export const DEFAULT_SAC_HYPERPARAMETERS: Hyperparameters = {
@@ -183,7 +187,7 @@ export const initialFormValues: CreateModelFormValues = {
       trackId: TrackId.A_TO_Z_SPEEDWAY,
       trackDirection: TrackDirection.CLOCKWISE,
     },
-    maxTimeInMinutes: 10,
+    maxTimeInMinutes: MIN_MAX_TIME_IN_MINUTES,
     minEvalTrials: DEFAULT_MIN_EVAL_TRIALS,
     raceType: RaceType.TIME_TRIAL,
     objectAvoidanceConfig: undefined,

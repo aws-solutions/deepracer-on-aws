@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2026-10-02
+
+### Added
+
+- Device type can now be updated manually by an operator, addressing the issue where device type was never set if only raw SSM activation was performed (bypassing `car_activation.sh`). ([#99](https://github.com/aws-solutions/deepracer-on-aws/issues/99))
+- Removed invite only registration mode in the admin management page UI. ([#97](https://github.com/aws-solutions/deepracer-on-aws/issues/97))
+
+### Fixed
+
+- Resolved `pnpm install` failure / Vite build break caused by the generated Smithy TypeScript client packages. ([#98](https://github.com/aws-solutions/deepracer-on-aws/issues/98))
+- Fixed UI page alignment inconsistencies.
+- Fixed cloning imported models. ([#94](https://github.com/aws-solutions/deepracer-on-aws/issues/94))
+
+### Changed
+
+- Removed the Timekeeping page from the Racer persona.
+
+### Security
+
+- Update dependencies to mitigate [CVE-2026-84394](https://nvd.nist.gov/vuln/detail/CVE-2026-84394), [CVE-2026-101894](https://avd.aquasec.com/nvd/2026/cve-2026-101894/), [CVE-2026-89161](https://nvd.nist.gov/vuln/detail/CVE-2026-89161), [CVE-2026-84233](https://nvd.nist.gov/vuln/detail/CVE-2026-84233), [CVE-2026-80230](https://nvd.nist.gov/vuln/detail/CVE-2026-80230), [CVE-2026-78367](https://nvd.nist.gov/vuln/detail/CVE-2026-78367), [CVE-2026-86142](https://nvd.nist.gov/vuln/detail/CVE-2026-86142), [CVE-2026-86144](https://nvd.nist.gov/vuln/detail/CVE-2026-86144), [CVE-2026-86143](https://nvd.nist.gov/vuln/detail/CVE-2026-86143), [CVE-2026-86138](https://nvd.nist.gov/vuln/detail/CVE-2026-86138), [CVE-2026-86140](https://nvd.nist.gov/vuln/detail/CVE-2026-86140), [CVE-2026-97687](https://nvd.nist.gov/vuln/detail/CVE-2026-97687), [CVE-2026-97689](https://nvd.nist.gov/vuln/detail/CVE-2026-97689) and [CVE-2026-74860](https://nvd.nist.gov/vuln/detail/CVE-2026-74860).
+
+### Documentation
+
+- Updated the architecture diagram in `README.md`.
+
 ## [1.3.0] - 2026-09-24
 
 ### Added

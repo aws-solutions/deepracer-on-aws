@@ -64,9 +64,6 @@ export class GlobalSettings extends Construct {
             newUserModelCountLimit: -1,
           },
         },
-        registration: {
-          type: 'invite-only', // 'invite-only' or 'self-service'
-        },
       }),
       description: 'DeepRacer on AWS AppConfig hosted configuration version',
     });

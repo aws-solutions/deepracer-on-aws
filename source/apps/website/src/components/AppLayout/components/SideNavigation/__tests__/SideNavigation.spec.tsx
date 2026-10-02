@@ -314,10 +314,9 @@ describe('getRaceManagementNavigationItems()', () => {
     expect(JSON.stringify(result)).toContain(getPath(PageId.TIMEKEEPING));
   });
 
-  it('includes Events and Timekeeping for RACERS', () => {
+  it('includes Events for RACERS', () => {
     const result = getRaceManagementNavigationItems([UserGroups.RACERS], t);
     expect(JSON.stringify(result)).toContain(getPath(PageId.EVENTS));
-    expect(JSON.stringify(result)).toContain(getPath(PageId.TIMEKEEPING));
   });
 
   it('excludes Events and Timekeeping for COMMENTATORS', () => {
@@ -338,10 +337,10 @@ describe('getRaceManagementNavigationItems()', () => {
     );
   });
 
-  it('excludes Commentator View for RACERS only', () => {
-    expect(JSON.stringify(getRaceManagementNavigationItems([UserGroups.RACERS], t))).not.toContain(
-      getPath(PageId.COMMENTATOR_VIEW),
-    );
+  it('excludes Timekeeping and Commentator View for RACERS only', () => {
+    const result = getRaceManagementNavigationItems([UserGroups.RACERS], t);
+    expect(JSON.stringify(result)).not.toContain(getPath(PageId.COMMENTATOR_VIEW));
+    expect(JSON.stringify(result)).not.toContain(getPath(PageId.TIMEKEEPING));
   });
 
   it('includes Register User for REGISTRATION_MANAGERS, RACE_FACILITATORS, and ADMIN', () => {

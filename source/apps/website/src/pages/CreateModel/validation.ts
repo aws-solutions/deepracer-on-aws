@@ -31,6 +31,7 @@ import {
   MAX_STEERING_ANGLE_MAX,
   MAX_STEERING_ANGLE_MIN,
 } from './components/ActionSpace/constants';
+import { MIN_MAX_TIME_IN_MINUTES } from './constants';
 import { CreateModelFormValues } from './types';
 
 interface ValidateOptionsExtended {
@@ -80,7 +81,7 @@ export const createModelValidationSchema: Yup.ObjectSchema<CreateModelFormValues
     }).required(),
     maxTimeInMinutes: Yup.number()
       .typeError(i18n.t('validation:number.invalid', { name: i18n.t('createModel:stopCondition.maximumTimeLabel') }))
-      .min(10, i18n.t('createModel:stopCondition.minimumTimeError'))
+      .min(MIN_MAX_TIME_IN_MINUTES, i18n.t('createModel:stopCondition.minimumTimeError'))
       .max(1440, i18n.t('createModel:stopCondition.maximumTimeError'))
       .integer(i18n.t('validation:number.integer', { name: i18n.t('createModel:stopCondition.maximumTimeLabel') }))
       .required(i18n.t('validation:required', { name: i18n.t('createModel:stopCondition.maximumTimeLabel') })),

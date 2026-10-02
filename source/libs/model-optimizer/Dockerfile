@@ -10,6 +10,13 @@ RUN microdnf update -y --releasever=latest \
     libsolv \
     libacl \
     glib2 \
+    rpm-libs \
+    rpm \
+    pcre2 \
+    pcre2-syntax \
+    libcurl-minimal \
+    curl-minimal \
+    libxml2 \
     && microdnf clean all
 
 # Set up the program in the image

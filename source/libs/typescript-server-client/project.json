@@ -1,0 +1,9 @@
+{
+  "name": "typescript-server-client",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/typescript-server-client/src",
+  "projectType": "library",
+  "implicitDependencies": ["model"],
+  "tags": [],
+  "targets": {}
+}

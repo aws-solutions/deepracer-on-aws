@@ -156,8 +156,18 @@ operation ClearDeviceModels {
     ]
 }
 
-/// Reassign (or clear) a device's fleet. This op's only mutable field is `fleetId`:
-/// provide it to move the device to that fleet; omit it to unassign the device.
+/// Update a device's mutable attributes (Administrators and race facilitators). PATCH
+/// semantics: apply whichever of the optional fields is present, leaving the rest unchanged.
+///
+/// `fleetId` — reassign (or clear) the device's fleet. Provide it to move the device to that
+/// fleet; omit it to unassign the device. The SSM managed-instance tag is the source of truth
+/// for fleet membership, so the tag is written first and the DynamoDB row is updated to match.
+///
+/// `carType` — manually set the device's car type (CAR devices only). This is a **DynamoDB-only
+/// fallback**: the device-management backend always prefers the `CarType` SSM tag the device
+/// self-reports at activation, and only falls back to this stored value when that tag is absent.
+/// Because the tag wins on the next status-poll reconciliation, setting `carType` on a device
+/// that is actively reporting its own `CarType` tag will be overwritten by the reported value.
 @idempotent
 @http(method: "PATCH", uri: "/devices/{instanceId}")
 operation UpdateDevice {
@@ -167,6 +177,10 @@ operation UpdateDevice {
         instanceId: InstanceId
 
         fleetId: ResourceIdentifier
+
+        /// Manual car-type override, persisted to DynamoDB as a fallback for when the device
+        /// does not self-report a `CarType` SSM tag. Valid for CAR devices only.
+        carType: CarType
     }
 
     output := {
