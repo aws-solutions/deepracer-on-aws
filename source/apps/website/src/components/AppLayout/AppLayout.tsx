@@ -8,18 +8,17 @@ import { Outlet, useLocation } from 'react-router-dom';
 import Breadcrumbs from './components/Breadcrumbs/index.js';
 import SideNavigation from './components/SideNavigation/index.js';
 import TopNavigation from './components/TopNavigation/index.js';
-import { AUTH_PAGE_IDS, PageId } from '../../constants/pages.js';
-import { AUTH_PAGE_MAX_CONTENT_WIDTH } from '../../constants/styles.js';
+import { AUTH_PAGE_IDS } from '../../constants/pages.js';
+import { AUTH_PAGE_MAX_CONTENT_WIDTH, UNBOUNDED_MAX_CONTENT_WIDTH } from '../../constants/styles.js';
 import { useAppDispatch } from '../../hooks/useAppDispatch.js';
 import { clearAllNotifications } from '../../store/notifications/notificationsSlice.js';
 import { getPageDetailsByPathname } from '../../utils/pageUtils.js';
 import Notifications from '../Notifications/index.js';
 
-const getMaxContentWidth = (isAuthPage: boolean, isLiveRace: boolean): number | undefined => {
-  if (isAuthPage) return AUTH_PAGE_MAX_CONTENT_WIDTH;
-  if (isLiveRace) return Number.MAX_SAFE_INTEGER;
-  return undefined;
-};
+// Auth pages keep a narrow centered form; every other page fills the width so the content offset is
+// uniform rather than centered at each contentType's default width.
+const getMaxContentWidth = (isAuthPage: boolean): number =>
+  isAuthPage ? AUTH_PAGE_MAX_CONTENT_WIDTH : UNBOUNDED_MAX_CONTENT_WIDTH;
 
 const AppLayout = () => {
   const { pathname, search } = useLocation();
@@ -27,7 +26,6 @@ const AppLayout = () => {
 
   const currentPageDetails = getPageDetailsByPathname(pathname);
   const isCurrentPageAuth = !!currentPageDetails && AUTH_PAGE_IDS.includes(currentPageDetails.pageId);
-  const isLiveRacePage = currentPageDetails?.pageId === PageId.LIVE_RACE;
   const isBroadcastMode = new URLSearchParams(search).get('mode') === 'broadcast';
 
   useEffect(() => {
@@ -46,7 +44,7 @@ const AppLayout = () => {
         content={<Outlet />}
         contentType={currentPageDetails?.contentType}
         breadcrumbs={<Breadcrumbs />}
-        maxContentWidth={getMaxContentWidth(isCurrentPageAuth, isLiveRacePage)}
+        maxContentWidth={getMaxContentWidth(isCurrentPageAuth)}
         headerSelector="#top-navigation"
         navigationHide={isCurrentPageAuth}
         toolsHide

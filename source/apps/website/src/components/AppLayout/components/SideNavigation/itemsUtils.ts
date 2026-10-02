@@ -95,12 +95,14 @@ export const getRaceManagementNavigationItems = (groups: UserGroups[], t: TFunct
         text: t(`breadcrumbs.${PageId.EVENTS}`, { ns: 'navigation' }),
         href: getPath(PageId.EVENTS),
       },
-      {
-        type: 'link',
-        text: t(`breadcrumbs.${PageId.TIMEKEEPING}`, { ns: 'navigation' }),
-        href: getPath(PageId.TIMEKEEPING),
-      },
     );
+  }
+  if (isAdmin || isFacilitator) {
+    items.push({
+      type: 'link',
+      text: t(`breadcrumbs.${PageId.TIMEKEEPING}`, { ns: 'navigation' }),
+      href: getPath(PageId.TIMEKEEPING),
+    });
   }
   if (isCommentator || isFacilitator || isAdmin) {
     items.push({

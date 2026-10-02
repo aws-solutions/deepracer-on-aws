@@ -105,21 +105,6 @@ const UsageSummary = ({ profiles }: { profiles: Profile[] }) => {
                   {formatValue(t, profiles.length, t('usageSummary.units.users'))}
                 </Box>
               </Box>
-              <Box>
-                <SpaceBetween direction="horizontal" size="xs" alignItems="center">
-                  <Box variant="awsui-key-label">{t('usageSummary.registrationMode.label')}</Box>
-                  <Popover
-                    dismissButton={false}
-                    position="right"
-                    size="medium"
-                    triggerType="custom"
-                    content={<Box padding="s">{t('usageSummary.registrationMode.popover')}</Box>}
-                  >
-                    <Icon name="status-info" size="medium" />
-                  </Popover>
-                </SpaceBetween>
-                <Box variant="p">{t('usageSummary.registrationMode.value')}</Box>
-              </Box>
             </SpaceBetween>
           </div>
 

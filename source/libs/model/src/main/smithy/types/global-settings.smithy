@@ -5,9 +5,6 @@ namespace com.aws.solutions.deepracer
 structure GlobalSettings {
     @required
     usageQuotas: UsageQuotas
-
-    @required
-    registration: RegistrationSettings
 }
 
 structure GlobalUsageQuotas {
@@ -34,10 +31,4 @@ structure UsageQuotas {
 
     @required
     newUser: NewUserUsageQuotas
-}
-
-structure RegistrationSettings {
-    // Registration type: "invite-only" or "self-service"
-    @required
-    type: String
 }

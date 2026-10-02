@@ -28,8 +28,6 @@ class GlobalSettingsValidator {
     // Validate nested paths based on top-level key
     if (topLevelKey === 'usageQuotas') {
       this.validateUsageQuotasPath(keyParts.slice(1));
-    } else if (topLevelKey === 'registration') {
-      this.validateRegistrationPath(keyParts.slice(1));
     }
   }
 
@@ -41,8 +39,6 @@ class GlobalSettingsValidator {
 
     if (keyParts[0] === 'usageQuotas') {
       this.validateUsageQuotasValue(keyParts.slice(1), value);
-    } else if (keyParts[0] === 'registration') {
-      this.validateRegistrationValue(keyParts.slice(1), value);
     }
   }
 
@@ -54,12 +50,10 @@ class GlobalSettingsValidator {
     this.validateValue(key, value);
   }
 
-  private static readonly ALLOWED_TOP_LEVEL_KEYS = new Set(['usageQuotas', 'registration']);
+  private static readonly ALLOWED_TOP_LEVEL_KEYS = new Set(['usageQuotas']);
   private static readonly ALLOWED_USAGE_QUOTAS_KEYS = new Set(['global', 'newUser']);
   private static readonly ALLOWED_GLOBAL_KEYS = new Set(['globalComputeMinutesLimit', 'globalModelCountLimit']);
   private static readonly ALLOWED_NEW_USER_KEYS = new Set(['newUserComputeMinutesLimit', 'newUserModelCountLimit']);
-  private static readonly ALLOWED_REGISTRATION_KEYS = new Set(['type']);
-  private static readonly ALLOWED_REGISTRATION_TYPES = new Set(['invite-only', 'self-service']);
 
   /**
    * Validates usage quotas key path
@@ -105,29 +99,6 @@ class GlobalSettingsValidator {
   }
 
   /**
-   * Validates registration key path
-   */
-  private static validateRegistrationPath(keyParts: string[]): void {
-    if (keyParts.length === 0) {
-      // Allow updating entire registration object
-      return;
-    }
-
-    if (keyParts.length === 1) {
-      const fieldKey = keyParts[0];
-      if (!this.ALLOWED_REGISTRATION_KEYS.has(fieldKey)) {
-        logger.error(
-          `Invalid registration field: ${fieldKey}. Allowed fields: ${Array.from(this.ALLOWED_REGISTRATION_KEYS).join(', ')}`,
-        );
-        this.throwValidationError();
-      }
-    } else {
-      logger.error('Registration key path too deep');
-      this.throwValidationError();
-    }
-  }
-
-  /**
    * Validates usage quotas values
    */
   private static validateUsageQuotasValue(keyParts: string[], value: DocumentType): void {
@@ -145,21 +116,6 @@ class GlobalSettingsValidator {
     } else if (keyParts.length === 2) {
       // Validating individual quota field
       this.validateQuotaFieldValue(value);
-    }
-  }
-
-  /**
-   * Validates registration values
-   */
-  private static validateRegistrationValue(keyParts: string[], value: DocumentType): void {
-    if (keyParts.length === 0) {
-      // Validating entire registration object
-      this.validateRegistrationObject(value);
-    } else if (keyParts.length === 1) {
-      const fieldKey = keyParts[0];
-      if (fieldKey === 'type') {
-        this.validateRegistrationType(value);
-      }
     }
   }
 
@@ -315,47 +271,6 @@ class GlobalSettingsValidator {
 
     if (num < -1) {
       logger.error('Quota values must be -1 (unlimited) or 0 or greater');
-      this.throwValidationError();
-    }
-  }
-
-  /**
-   * Validates registration object
-   */
-  private static validateRegistrationObject(value: DocumentType): void {
-    if (!this.isObject(value)) {
-      this.throwValidationError();
-    }
-
-    const obj = value as Record<string, unknown>;
-
-    // Check for required keys
-    if (!obj.type) {
-      logger.error('Registration must contain a type field');
-      this.throwValidationError();
-    }
-
-    // Check for no extra keys
-    const allowedKeys = Array.from(this.ALLOWED_REGISTRATION_KEYS);
-    const actualKeys = Object.keys(obj);
-    const extraKeys = actualKeys.filter((k) => !allowedKeys.includes(k));
-    if (extraKeys.length > 0) {
-      logger.error(`Invalid keys in registration: ${extraKeys.join(', ')}`);
-      this.throwValidationError();
-    }
-
-    this.validateRegistrationType(obj.type as DocumentType);
-  }
-
-  /**
-   * Validates registration.type value
-   */
-  private static validateRegistrationType(value: DocumentType): void {
-    if (typeof value !== 'string') {
-      this.throwValidationError();
-    }
-
-    if (!this.ALLOWED_REGISTRATION_TYPES.has(value as string)) {
       this.throwValidationError();
     }
   }

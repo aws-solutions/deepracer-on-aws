@@ -11,7 +11,7 @@ import KeyValuePairs from '@cloudscape-design/components/key-value-pairs';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import Spinner from '@cloudscape-design/components/spinner';
 import StatusIndicator from '@cloudscape-design/components/status-indicator';
-import { Device, DeviceColor, DeviceStatus, DeviceType, UserGroups } from '@deepracer-indy/typescript-client';
+import { CarType, Device, DeviceColor, DeviceStatus, DeviceType, UserGroups } from '@deepracer-indy/typescript-client';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -36,6 +36,7 @@ import {
 import { checkUserGroupMembership } from '#utils/authUtils.js';
 import { getPath } from '#utils/pageUtils.js';
 
+import ChangeCarTypeModal from './components/ChangeCarTypeModal';
 import ChangeColorModal from './components/ChangeColorModal';
 import ChangeFleetModal from './components/ChangeFleetModal';
 import DeleteDeviceModal from './components/DeleteDeviceModal';
@@ -62,6 +63,7 @@ const DeviceDetail = () => {
   const [showStopModal, setShowStopModal] = useState(false);
   const [showColorModal, setShowColorModal] = useState(false);
   const [showFleetModal, setShowFleetModal] = useState(false);
+  const [showCarTypeModal, setShowCarTypeModal] = useState(false);
 
   const { data: devices, isLoading, refetch } = useListDevicesQuery({});
   const device: Device | undefined = useMemo(
@@ -74,10 +76,8 @@ const DeviceDetail = () => {
   const [changeDeviceColor, { isLoading: isChangingColor }] = useChangeDeviceColorMutation();
   const [deleteDevice, { isLoading: isDeleting }] = useDeleteDeviceMutation();
   const [updateDevice, { isLoading: isChangingFleet }] = useUpdateDeviceMutation();
+  const [updateDeviceCarType, { isLoading: isChangingCarType }] = useUpdateDeviceMutation();
 
-  // Fleets resolve the device's fleet name in Details (and populate the reassignment modal for
-  // admins). ListFleets is authorized for admins and facilitators — the same groups gated into
-  // this page — so load it for both.
   const { data: fleets = [] } = useListFleetsQuery({}, { skip: !isAdminOrFacilitator });
 
   useEffect(() => {
@@ -160,15 +160,25 @@ const DeviceDetail = () => {
     [instanceId, device, updateDevice, dispatch, t],
   );
 
-  // Live device updates: the BroadcastHandler pushes DEVICE_STATUS_CHANGED / DEVICE_COMMAND_RESULT
-  // to deepracer/{ns}/device/{instanceId} (SSM command completion tracked via EventBridge →
-  // deviceStateChangeHandler → DDB stream). Refetch on any event; surface command outcomes.
+  const handleChangeCarType = useCallback(
+    async (carType: CarType) => {
+      if (!instanceId || !device) return;
+      try {
+        await updateDeviceCarType({ instanceId, carType }).unwrap();
+        dispatch(displaySuccessNotification({ content: t('detail.carTypeChangeSuccess', { name: device.name }) }));
+      } catch {
+        dispatch(displayErrorNotification({ content: t('detail.carTypeChangeError') }));
+      } finally {
+        setShowCarTypeModal(false);
+      }
+    },
+    [instanceId, device, updateDeviceCarType, dispatch, t],
+  );
+
   const handleDeviceEvent = useCallback(
     (event: DeviceMqttEvent) => {
       if (event.eventType === 'DEVICE_COMMAND_RESULT') {
         const { commandStatus } = event;
-        // Only a Failed command is an error (red). Success is green; every other status
-        // (Pending, InProgress, Cancelled, TimedOut, …) is surfaced as INFO (blue).
         if (commandStatus === 'Success') {
           dispatch(
             displaySuccessNotification({ content: t('detail.commandResultSuccess', { status: commandStatus }) }),
@@ -213,8 +223,6 @@ const DeviceDetail = () => {
 
   const stopDisabledReason = getStopDisabledReason();
 
-  // Show the fleet's human-readable name; fall back to the id while fleets load (or if it is not
-  // found), and to "Unassigned" when the device has no fleet.
   const fleetName = device.fleetId
     ? (fleets.find((fleet) => fleet.fleetId === device.fleetId)?.name ?? device.fleetId)
     : t('unassignedFleet');
@@ -237,6 +245,9 @@ const DeviceDetail = () => {
       )}
       {isAdminOrFacilitator && <Button onClick={() => setShowColorModal(true)}>{t('detail.colorButton')}</Button>}
       {isAdmin && <Button onClick={() => setShowFleetModal(true)}>{t('detail.changeFleetButton')}</Button>}
+      {isAdmin && device.deviceType === DeviceType.CAR && (
+        <Button onClick={() => setShowCarTypeModal(true)}>{t('detail.changeCarTypeButton')}</Button>
+      )}
       {isAdmin && <Button onClick={() => setShowDeleteModal(true)}>{t('detail.deleteButton')}</Button>}
     </SpaceBetween>
   );
@@ -264,6 +275,14 @@ const DeviceDetail = () => {
               <KeyValuePairs
                 items={[
                   { label: t('list.columnHeaders.deviceType'), value: t(`deviceType.${device.deviceType}`) },
+                  ...(device.deviceType === DeviceType.CAR
+                    ? [
+                        {
+                          label: t('detail.carTypeLabel'),
+                          value: device.carType ? t(`carType.${device.carType}`) : t('detail.carTypeNotSet'),
+                        },
+                      ]
+                    : []),
                   { label: t('list.columnHeaders.status'), value: t(`status.${device.status}`) },
                   { label: t('list.columnHeaders.fleetId'), value: fleetName },
                   { label: t('list.columnHeaders.ipAddress'), value: device.ipAddress ?? '—' },
@@ -311,6 +330,16 @@ const DeviceDetail = () => {
           isVisible
           onChangeFleet={handleChangeFleet}
           onDismiss={() => setShowFleetModal(false)}
+        />
+      )}
+
+      {showCarTypeModal && (
+        <ChangeCarTypeModal
+          currentCarType={device.carType}
+          isChanging={isChangingCarType}
+          isVisible
+          onChangeCarType={handleChangeCarType}
+          onDismiss={() => setShowCarTypeModal(false)}
         />
       )}
     </>
