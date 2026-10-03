@@ -78,8 +78,10 @@ def convert_to_openvino_ir(model_pb_path: str, output_dir: str, agent_algorithm:
     """
     Convert model.pb to OpenVINO IR v11 via ov.convert_model().
 
-    Converts once with no constraints to detect graph outputs (names may carry a
-    ":0" suffix), then matches against the expected output tensor name. Raises
+    Converts once with no constraints to detect graph inputs/outputs (names may
+    carry a ":0" suffix), then matches against the expected output tensor name
+    and pins any dynamic input dimensions (e.g. an unbounded batch axis) to 1 —
+    the car-side runtime expects fully static input shapes. Raises
     ConversionError if the expected output is not found or conversion fails.
 
     Returns the path to the written model.xml (model.bin is written alongside it
@@ -103,7 +105,14 @@ def convert_to_openvino_ir(model_pb_path: str, output_dir: str, agent_algorithm:
                 f"Detected outputs: {detected_outputs}"
             )
 
-        model = ov.convert_model(model_pb_path, output=output_spec)
+        input_specs = []
+        for model_input in probe_model.inputs:
+            static_shape = ov.PartialShape(
+                [dim if dim.is_static else ov.Dimension(1) for dim in model_input.get_partial_shape()]
+            )
+            input_specs.append((model_input.get_any_name(), static_shape))
+
+        model = ov.convert_model(model_pb_path, input=input_specs, output=output_spec)
         ov.save_model(model, xml_path)
         duration_ms = int((time.monotonic() - start) * 1000)
         logger.info("OpenVINO IR conversion succeeded", durationMs=duration_ms)
