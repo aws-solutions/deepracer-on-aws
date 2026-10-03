@@ -6,6 +6,8 @@ import type { Operation } from '@aws-smithy/server-common';
 import { deviceDao, fleetDao, type DeviceItem, type ResourceId } from '@deepracer-indy/database';
 import {
   BadRequestError,
+  CarType,
+  DeviceType,
   getUpdateDeviceHandler,
   InternalFailureError,
   NotAuthorizedError,
@@ -25,33 +27,9 @@ import { toDeviceResponse } from '../utils/toDeviceResponse.js';
 /** SSM tag whose value the status poller reads back to populate `DeviceEntity.fleetId`. */
 const FLEET_TAG_KEY = 'fleetId';
 
-/**
- * `PATCH /devices/{instanceId}` — reassign (or clear) a device's fleet (Administrators and race facilitators —
- * fleet management is admin-scoped).
- *
- * This op's only mutable field is `fleetId`: provide it to move the device to that fleet,
- * omit it to unassign. Because the Task 5 status poller reconstructs `fleetId` from the SSM
- * managed-instance tag, the tag is updated **first** (source of truth) — if that fails we
- * abort before touching DynamoDB, avoiding drift where the next poll reverts the change.
- * Mirrors DREM `cars_function/carsUpdateFleet`.
- */
-export const UpdateDeviceOperation: Operation<
-  UpdateDeviceServerInput,
-  UpdateDeviceServerOutput,
-  HandlerContext
-> = async (input, context) => {
-  const { profileId } = context;
-  if (!(await isUserAdminOrFacilitator(profileId))) {
-    logger.warn('Admin auth failure', { action: 'ADMIN_AUTH_FAILURE', profileId });
-    throw new NotAuthorizedError({ message: 'Only administrators or race facilitators can reassign device fleets.' });
-  }
-
-  const { instanceId, fleetId } = input;
-  const device = await deviceDao.load({ instanceId }); // 404 (NotFoundError) if the device is unknown
-
+const applyFleetTag = async (instanceId: string, fleetId?: string): Promise<void> => {
   try {
     if (fleetId) {
-      // Assigning to a fleet: the fleet must exist (400 if not), then set the tag.
       try {
         await fleetDao.load({ fleetId: fleetId as ResourceId });
       } catch (error) {
@@ -68,7 +46,6 @@ export const UpdateDeviceOperation: Operation<
         }),
       );
     } else {
-      // Unassigning: remove the fleetId tag so the poller won't re-populate it.
       await ssmClient.send(
         new RemoveTagsFromResourceCommand({
           ResourceType: 'ManagedInstance',
@@ -86,27 +63,85 @@ export const UpdateDeviceOperation: Operation<
     });
     throw new InternalFailureError({ message: 'Failed to update the device fleet.' });
   }
+};
 
-  // The SSM tag is the source of truth and is now set (the device moved). Update the DynamoDB
-  // cache best-effort — the poller reconciles fleetId from the tag regardless, so a cache-write
-  // failure must not surface a spurious 500 for a change that already took effect (matches
-  // batchUpdateDevice). Passing `undefined` clears the attribute (BaseDao removes undefined fields).
-  const nextFleetId = (fleetId as ResourceId | undefined) || undefined;
-  let updated: DeviceItem;
+const persistFleet = async (device: DeviceItem, nextFleetId?: ResourceId): Promise<DeviceItem> => {
   try {
-    updated = await deviceDao.partialUpdate({ instanceId }, { fleetId: nextFleetId });
+    return await deviceDao.partialUpdate({ instanceId: device.instanceId }, { fleetId: nextFleetId });
   } catch (error) {
-    logger.warn('Device fleet tag set but DynamoDB cache update failed; poller will reconcile', {
+    logger.warn('Device fleet cache update failed after tag write; poller will reconcile', {
       action: 'DEVICE_FLEET_CACHE_UPDATE_FAILURE',
-      instanceId,
-      fleetId: fleetId ?? null,
+      instanceId: device.instanceId,
+      fleetId: nextFleetId ?? null,
       error,
     });
-    // Reflect the applied change on the already-loaded entity so the response is still accurate.
-    updated = { ...device, fleetId: nextFleetId };
+    return { ...device, fleetId: nextFleetId };
+  }
+};
+
+const persistCarType = async (instanceId: string, carType: CarType): Promise<DeviceItem> => {
+  try {
+    return await deviceDao.partialUpdate({ instanceId }, { carType });
+  } catch (error) {
+    logger.error('Failed to persist device car type', {
+      action: 'DEVICE_CAR_TYPE_UPDATE_FAILURE',
+      instanceId,
+      carType,
+      error,
+    });
+    throw new InternalFailureError({ message: 'Failed to persist the device car type.' });
+  }
+};
+
+/**
+ *
+ * `fleetId` is treated as clear-when-omitted (preserving existing behavior); `carType` is
+ * additive — omitting it leaves the stored car type unchanged.
+ */
+export const UpdateDeviceOperation: Operation<
+  UpdateDeviceServerInput,
+  UpdateDeviceServerOutput,
+  HandlerContext
+> = async (input, context) => {
+  const { profileId } = context;
+  if (!(await isUserAdminOrFacilitator(profileId))) {
+    logger.warn('Admin auth failure', { action: 'ADMIN_AUTH_FAILURE', profileId });
+    throw new NotAuthorizedError({ message: 'Only administrators or race facilitators can update devices.' });
   }
 
-  logger.info('Device fleet updated', { action: 'DEVICE_FLEET_UPDATE', instanceId, fleetId: fleetId ?? null });
+  const { instanceId, fleetId, carType } = input;
+  const device = await deviceDao.load({ instanceId }); // 404 (NotFoundError) if the device is unknown
+
+  // carType is meaningful only for cars; a timer has none. Reject early so a bad request never
+  // reaches DynamoDB.
+  if (carType !== undefined && device.deviceType !== DeviceType.CAR) {
+    throw new BadRequestError({ message: 'carType can only be set on CAR devices.' });
+  }
+
+  const isCarTypeOnly = carType !== undefined && fleetId == null;
+  const isFleetAffecting = !isCarTypeOnly;
+  const nextFleetId = (fleetId as ResourceId | undefined) || undefined;
+
+  let updated: DeviceItem = device;
+
+  if (isFleetAffecting) {
+    await applyFleetTag(instanceId, fleetId);
+    updated = await persistFleet(device, nextFleetId);
+  }
+
+  if (carType !== undefined) {
+    updated = await persistCarType(instanceId, carType);
+    if (isFleetAffecting) {
+      updated = { ...updated, fleetId: nextFleetId };
+    }
+  }
+
+  logger.info('Device updated', {
+    action: 'DEVICE_UPDATE',
+    instanceId,
+    fleetId: isFleetAffecting ? (fleetId ?? null) : undefined,
+    carType: carType ?? null,
+  });
   return { device: toDeviceResponse(updated) } satisfies UpdateDeviceServerOutput;
 };
 

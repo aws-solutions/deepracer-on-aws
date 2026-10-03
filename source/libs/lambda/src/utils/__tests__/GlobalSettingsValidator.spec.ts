@@ -18,7 +18,6 @@ describe('GlobalSettingsValidator', () => {
   describe('validateKeyPath', () => {
     it('should allow valid top-level keys', () => {
       expect(() => globalSettingsValidator.validateKeyPath('usageQuotas')).not.toThrow();
-      expect(() => globalSettingsValidator.validateKeyPath('registration')).not.toThrow();
     });
 
     it('should reject invalid top-level keys', () => {
@@ -45,15 +44,6 @@ describe('GlobalSettingsValidator', () => {
       expect(() =>
         globalSettingsValidator.validateKeyPath('usageQuotas.global.globalComputeMinutesLimit.tooDeep'),
       ).toThrow(BadRequestError);
-    });
-
-    it('should allow valid registration paths', () => {
-      expect(() => globalSettingsValidator.validateKeyPath('registration.type')).not.toThrow();
-    });
-
-    it('should reject invalid registration paths', () => {
-      expect(() => globalSettingsValidator.validateKeyPath('registration.invalidField')).toThrow(BadRequestError);
-      expect(() => globalSettingsValidator.validateKeyPath('registration.type.tooDeep')).toThrow(BadRequestError);
     });
 
     it('should reject empty keys', () => {
@@ -341,55 +331,6 @@ describe('GlobalSettingsValidator', () => {
         globalSettingsValidator.validateValue('usageQuotas.newUser', invalidNewUserQuotasBothFields),
       ).toThrow(BadRequestError);
     });
-
-    it('should validate registration object', () => {
-      const validRegistration = { type: 'invite-only' };
-      expect(() => globalSettingsValidator.validateValue('registration', validRegistration)).not.toThrow();
-
-      const validRegistration2 = { type: 'self-service' };
-      expect(() => globalSettingsValidator.validateValue('registration', validRegistration2)).not.toThrow();
-    });
-
-    it('should reject invalid registration types', () => {
-      const invalidRegistration = { type: 'open' };
-      expect(() => globalSettingsValidator.validateValue('registration', invalidRegistration)).toThrow(BadRequestError);
-
-      expect(() => globalSettingsValidator.validateValue('registration.type', 'open')).toThrow(BadRequestError);
-    });
-
-    it('should reject non-string registration type values', () => {
-      expect(() => globalSettingsValidator.validateValue('registration.type', 42)).toThrow(BadRequestError);
-      expect(() => globalSettingsValidator.validateValue('registration.type', null)).toThrow(BadRequestError);
-      expect(() => globalSettingsValidator.validateValue('registration.type', true)).toThrow(BadRequestError);
-      expect(() => globalSettingsValidator.validateValue('registration.type', {})).toThrow(BadRequestError);
-      expect(() => globalSettingsValidator.validateValue('registration.type', [])).toThrow(BadRequestError);
-    });
-
-    it('should reject registration with extra keys', () => {
-      const invalidRegistration = {
-        type: 'invite-only',
-        extraKey: 'should not be allowed',
-      };
-      expect(() => globalSettingsValidator.validateValue('registration', invalidRegistration)).toThrow(BadRequestError);
-    });
-
-    it('should reject registration that is not an object', () => {
-      expect(() => globalSettingsValidator.validateValue('registration', 'invalid string')).toThrow(BadRequestError);
-      expect(() => globalSettingsValidator.validateValue('registration', 42)).toThrow(BadRequestError);
-      expect(() => globalSettingsValidator.validateValue('registration', null)).toThrow(BadRequestError);
-      expect(() => globalSettingsValidator.validateValue('registration', [])).toThrow(BadRequestError);
-    });
-
-    it('should reject registration object missing type field', () => {
-      const registrationWithoutType = {
-        // missing type field
-        extraField: 'some value',
-      };
-
-      expect(() => globalSettingsValidator.validateValue('registration', registrationWithoutType)).toThrow(
-        BadRequestError,
-      );
-    });
   });
 
   describe('validate (complete validation)', () => {
@@ -405,13 +346,9 @@ describe('GlobalSettingsValidator', () => {
             newUserModelCountLimit: '3',
           },
         },
-        registration: {
-          type: 'invite-only' as const,
-        },
       };
 
       expect(() => globalSettingsValidator.validate('usageQuotas', validSettings.usageQuotas)).not.toThrow();
-      expect(() => globalSettingsValidator.validate('registration', validSettings.registration)).not.toThrow();
     });
 
     it('should prevent malicious updates', () => {
@@ -438,12 +375,16 @@ describe('GlobalSettingsValidator', () => {
 
     it('should prevent SQL injection attempts', () => {
       const sqlInjectionAttempt = "'; DROP TABLE users; --";
-      expect(() => globalSettingsValidator.validate('registration.type', sqlInjectionAttempt)).toThrow(BadRequestError);
+      expect(() =>
+        globalSettingsValidator.validate('usageQuotas.global.globalComputeMinutesLimit', sqlInjectionAttempt),
+      ).toThrow(BadRequestError);
     });
 
     it('should prevent XSS attempts', () => {
       const xssAttempt = '<script>alert("xss")</script>';
-      expect(() => globalSettingsValidator.validate('registration.type', xssAttempt)).toThrow(BadRequestError);
+      expect(() =>
+        globalSettingsValidator.validate('usageQuotas.global.globalComputeMinutesLimit', xssAttempt),
+      ).toThrow(BadRequestError);
     });
   });
 
@@ -477,11 +418,6 @@ describe('GlobalSettingsValidator', () => {
       expect(logger.error).toHaveBeenCalledWith(
         'Invalid new user quotas field: invalidField. Allowed fields: newUserComputeMinutesLimit, newUserModelCountLimit',
       );
-    });
-
-    it('should log error when registration path is too deep', () => {
-      expect(() => globalSettingsValidator.validateKeyPath('registration.type.tooDeep')).toThrow(BadRequestError);
-      expect(logger.error).toHaveBeenCalledWith('Registration key path too deep');
     });
 
     it('should log error when usage quotas object is missing required keys', () => {
@@ -632,18 +568,6 @@ describe('GlobalSettingsValidator', () => {
         BadRequestError,
       );
       expect(logger.error).toHaveBeenCalledWith('New user quotas must be an object');
-    });
-
-    it('should log error when registration object is missing type field', () => {
-      const registrationWithoutType = {
-        // missing type field
-        extraField: 'some value',
-      };
-
-      expect(() => globalSettingsValidator.validateValue('registration', registrationWithoutType)).toThrow(
-        BadRequestError,
-      );
-      expect(logger.error).toHaveBeenCalledWith('Registration must contain a type field');
     });
   });
 });

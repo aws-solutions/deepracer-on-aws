@@ -31,11 +31,6 @@
       "label": "Number of users",
       "popover": "This shows the total number of users who are registered on your deployment."
     },
-    "registrationMode": {
-      "label": "Registration mode",
-      "popover": "This indicates how new users join your deployment. \"Invite only\" means users must be explicitly invited by an administrator.",
-      "value": "Invite only"
-    },
     "globalComputeLimit": {
       "label": "Global compute usage limit",
       "popover": "This shows the maximum total compute hours that can be used across all users in your deployment for training and evaluation."

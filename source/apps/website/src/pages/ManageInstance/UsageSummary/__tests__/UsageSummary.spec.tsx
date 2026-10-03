@@ -47,7 +47,6 @@ describe('UsageSummary', () => {
   it('renders all labels in the second column', () => {
     render(<UsageSummary profiles={[]} />);
     expect(screen.getByText('Number of users')).toBeInTheDocument();
-    expect(screen.getByText('Registration mode')).toBeInTheDocument();
   });
 
   it('renders all labels in the third column', () => {
@@ -76,7 +75,6 @@ describe('UsageSummary', () => {
       'Models stored',
       'Storage used',
       'Number of users',
-      'Registration mode',
       'New user compute usage limit',
       'New user model count limit',
       'Global compute usage limit',
@@ -139,11 +137,6 @@ describe('UsageSummary', () => {
     const mockProfiles = [{ modelStorageUsage: oneGB } as Profile, { modelStorageUsage: oneGB * 2 } as Profile];
     render(<UsageSummary profiles={mockProfiles} />);
     expect(screen.getByText('3.00 GB')).toBeInTheDocument();
-  });
-
-  it('displays "Invite only" for registration mode', () => {
-    render(<UsageSummary profiles={[]} />);
-    expect(screen.getByText('Invite only')).toBeInTheDocument();
   });
 
   it('displays correct new user compute usage limit', () => {
