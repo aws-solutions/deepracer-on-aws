@@ -108,7 +108,7 @@ export async function getCognitoUserId(cognitoAuthProvider: string) {
   return profileId;
 }
 
-async function getUserGroups(profileId: ResourceId): Promise<string[]> {
+export async function getUserGroups(profileId: ResourceId): Promise<string[]> {
   const userPoolId = process.env.USER_POOL_ID;
   if (!userPoolId) {
     throw new InternalFailureError({ message: 'Service configuration error.' });

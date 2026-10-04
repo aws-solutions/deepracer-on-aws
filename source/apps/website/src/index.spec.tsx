@@ -58,6 +58,10 @@ vi.mock('#pages/CloneRace', () => ({
   default: () => <div data-testid="clone-race-page">Clone Race Page</div>,
 }));
 
+vi.mock('#pages/CarLogs', () => ({
+  default: () => <div data-testid="car-logs-page">Car Logs Page</div>,
+}));
+
 vi.mock('#pages/CreateEvaluation', () => ({
   default: () => <div data-testid="create-evaluation-page">Create Evaluation Page</div>,
 }));

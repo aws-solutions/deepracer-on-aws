@@ -38,3 +38,4 @@ region=us-east-1
 # override_reward_validation_repo_name=
 # override_model_validation_repo_name=
 # override_model_optimizer_repo_name=
+# override_car_log_video_processor_repo_name=

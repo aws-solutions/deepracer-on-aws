@@ -14,7 +14,9 @@
     "trackPlaceholder": "Choose a track",
     "loadingTracks": "Loading tracks...",
     "selectModalConfirm": "Select",
-    "selectModalCancel": "Cancel"
+    "selectModalCancel": "Cancel",
+    "fetchCarLogsLabel": "Fetch car logs when a run finishes",
+    "fetchCarLogsDescription": "Automatically request car-log processing when a run is finished or discarded."
   },
   "runSetup": {
     "header": "Select Racer: {{event}} on {{track}}",
@@ -151,5 +153,11 @@
       "car": "Car name",
       "actions": "Actions"
     }
+  },
+  "warnings": {
+    "carLogFetchMissingDevice": "Car-log fetch was enabled, but this run has no recorded car device to fetch from.",
+    "carLogFetchFailed": "The run finished, but one or more car-log fetch requests could not be started.",
+    "carLogFetchStarted": "Started car-log fetch for {{count}} car after the run finished.",
+    "carLogFetchStarted_other": "Started car-log fetch for {{count}} cars after the run finished."
   }
 }

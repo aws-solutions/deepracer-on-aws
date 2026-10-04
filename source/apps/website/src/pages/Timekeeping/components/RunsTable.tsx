@@ -19,11 +19,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getPropertyFilterI18nStrings } from '#components/PropertyFilterI18nStrings/index.js';
+import { useAppDispatch } from '#hooks/useAppDispatch.js';
 import { useTimekeepingContext } from '#hooks/useTimekeepingContext.js';
-import { useTimekeepingSessionActions } from '#hooks/useTimekeepingSession.js';
+import { useTimekeepingLaps, useTimekeepingSessionActions } from '#hooks/useTimekeepingSession.js';
 import { useListAdminProfilesQuery } from '#services/deepRacer/adminApi.js';
+import { useStartCarLogFetchMutation } from '#services/deepRacer/carLogsApi.js';
 import { useGetEventQuery } from '#services/deepRacer/eventsApi.js';
 import { useCreateRunMutation, useListRunsQuery, useTransitionRunStatusMutation } from '#services/deepRacer/runsApi.js';
+import { displayWarningNotification } from '#store/notifications/notificationsSlice.js';
 
 import { ACTIVE_RUN_STATUS_INDICATOR } from './activeRunStatusIndicator';
 import { RunSetupModal, type RunSetupSelection } from './RunSetupModal';
@@ -58,15 +61,18 @@ const getColumnDefinitions = (t: TFunction<'timekeeping'>): TableProps.ColumnDef
 export const RunsTable = () => {
   const { t } = useTranslation('timekeeping');
   const { t: tCommon } = useTranslation('common');
+  const dispatch = useAppDispatch();
 
   const { registerActiveRun, registerCreatedRun } = useTimekeepingSessionActions();
-  const { selectedEventId, selectedLeaderboardId } = useTimekeepingContext();
+  const { laps = [] } = useTimekeepingLaps();
+  const { fetchCarLogsOnRunFinish, selectedEventId, selectedLeaderboardId } = useTimekeepingContext();
 
   const [isRunSetupModalVisible, setIsRunSetupModalVisible] = useState(false);
   const [runSetupError, setRunSetupError] = useState<string | undefined>(undefined);
   const [runTransitionError, setRunTransitionError] = useState<string | undefined>(undefined);
   const [preferences, setPreferences] = useState<CollectionPreferencesProps.Preferences>({ pageSize: 10 });
   const [createRun, { isLoading: isCreatingRun }] = useCreateRunMutation();
+  const [startCarLogFetch] = useStartCarLogFetchMutation();
 
   const [transitionRunStatus, { isLoading: isTransitioning }] = useTransitionRunStatusMutation();
 
@@ -239,11 +245,56 @@ export const RunsTable = () => {
         runId: runToDiscard.runId,
         action: RunTransitionAction.DISCARD,
       }).unwrap();
+      if (fetchCarLogsOnRunFinish) {
+        void (async () => {
+          const deviceIds = [
+            ...new Set(laps.map((lap) => lap.deviceId).filter((deviceId): deviceId is string => Boolean(deviceId))),
+          ];
+          if (deviceIds.length === 0) {
+            dispatch(displayWarningNotification({ content: t('warnings.carLogFetchMissingDevice') }));
+            return;
+          }
+
+          const racerName = profiles.find((profile) => profile.profileId === runToDiscard.profileId)?.alias;
+          const results = await Promise.all(
+            deviceIds.map(async (instanceId) => {
+              try {
+                await startCarLogFetch({
+                  leaderboardId: selectedLeaderboardId,
+                  runId: runToDiscard.runId,
+                  instanceId,
+                  laterThan: runToDiscard.createdAt,
+                  ...(racerName ? { racerName } : {}),
+                }).unwrap();
+                return true;
+              } catch {
+                return false;
+              }
+            }),
+          );
+
+          if (results.some((result) => !result)) {
+            dispatch(displayWarningNotification({ content: t('warnings.carLogFetchFailed') }));
+          }
+        })();
+      }
       registerActiveRun(undefined);
     } catch {
       setRunTransitionError(t('errors.transitionRun'));
     }
-  }, [activeRun, registerActiveRun, selectedEventId, selectedLeaderboardId, t, transitionRunStatus]);
+  }, [
+    activeRun,
+    dispatch,
+    fetchCarLogsOnRunFinish,
+    laps,
+    profiles,
+    registerActiveRun,
+    selectedEventId,
+    selectedLeaderboardId,
+    startCarLogFetch,
+    t,
+    transitionRunStatus,
+  ]);
 
   const headerActions = (() => {
     if (!activeRun || activeRun.runStatus === RunStatus.SUBMITTED || activeRun.runStatus === RunStatus.DISCARDED) {

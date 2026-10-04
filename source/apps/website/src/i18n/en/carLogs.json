@@ -1,0 +1,187 @@
+{
+  "page": {
+    "header": "Car logs",
+    "description": {
+      "manager": "Fetch logs from cars, upload manual archives, and monitor processing for every racer.",
+      "viewer": "Browse processed car-log assets that are available to your commentator role.",
+      "racer": "Browse, download, and delete your processed car-log assets."
+    }
+  },
+  "tabs": {
+    "assets": "Assets",
+    "processing": "Processing"
+  },
+  "status": {
+    "CREATED": "Created",
+    "REQUESTED_UPLOAD": "Requested upload",
+    "WAITING_FOR_UPLOAD": "Waiting for upload",
+    "UPLOAD_FAILED": "Upload failed",
+    "UPLOADED": "Uploaded",
+    "ANALYZED": "Analyzed",
+    "QUEUED_FOR_PROCESSING": "Queued for processing",
+    "PROCESSING": "Processing",
+    "DONE": "Done",
+    "FAILED": "Failed"
+  },
+  "assetTypes": {
+    "VIDEO": "Video",
+    "BAG_MCAP": "ROS bag (.mcap)",
+    "BAG_SQLITE": "ROS bag (.db3)"
+  },
+  "assets": {
+    "header": "Processed assets",
+    "loading": "Loading car-log assets",
+    "resourceName": "assets",
+    "columns": {
+      "type": "Type",
+      "filename": "Filename",
+      "user": "Racer",
+      "models": "Models",
+      "event": "Event",
+      "car": "Car",
+      "uploadedAt": "Uploaded",
+      "duration": "Duration"
+    },
+    "actions": {
+      "refresh": "Refresh assets",
+      "upload": "Upload archive",
+      "download": "Download",
+      "delete": "Delete"
+    },
+    "empty": {
+      "title": "No car-log assets",
+      "description": "Fetch logs from a car or upload a .tar.gz archive to create new assets."
+    },
+    "noMatch": {
+      "title": "No matching assets",
+      "description": "Adjust your filters to find different car-log assets."
+    },
+    "pagination": {
+      "nextPageLabel": "Next page",
+      "previousPageLabel": "Previous page",
+      "pageLabel": "Page {{pageNumber}}"
+    },
+    "preferences": {
+      "title": "Asset table preferences",
+      "confirmLabel": "Confirm",
+      "cancelLabel": "Cancel",
+      "pageSizeTitle": "Assets per page",
+      "contentDensityLabel": "Compact mode",
+      "contentDensityDescription": "Display rows more densely.",
+      "stripedRowsLabel": "Striped rows",
+      "stripedRowsDescription": "Add alternating row shading.",
+      "wrapLinesLabel": "Wrap lines",
+      "wrapLinesDescription": "Wrap long cell content.",
+      "contentDisplayTitle": "Select visible columns"
+    }
+  },
+  "processing": {
+    "header": "Fetch and processing jobs",
+    "loading": "Loading car-log jobs",
+    "resourceName": "jobs",
+    "columns": {
+      "status": "Status",
+      "device": "Car / device",
+      "event": "Event",
+      "startedAt": "Started",
+      "endedAt": "Ended",
+      "error": "Error"
+    },
+    "actions": {
+      "refresh": "Refresh processing jobs"
+    },
+    "empty": {
+      "title": "No processing jobs",
+      "description": "Start a fetch or upload an archive to create processing activity."
+    },
+    "noMatch": {
+      "title": "No matching jobs",
+      "description": "Adjust your filters to find different processing jobs."
+    },
+    "pagination": {
+      "nextPageLabel": "Next page",
+      "previousPageLabel": "Previous page",
+      "pageLabel": "Page {{pageNumber}}"
+    },
+    "preferences": {
+      "title": "Processing table preferences",
+      "confirmLabel": "Confirm",
+      "cancelLabel": "Cancel",
+      "pageSizeTitle": "Jobs per page",
+      "contentDensityLabel": "Compact mode",
+      "contentDensityDescription": "Display rows more densely.",
+      "stripedRowsLabel": "Striped rows",
+      "stripedRowsDescription": "Add alternating row shading.",
+      "wrapLinesLabel": "Wrap lines",
+      "wrapLinesDescription": "Wrap long cell content.",
+      "contentDisplayTitle": "Select visible columns"
+    }
+  },
+  "download": {
+    "header": "Download car-log assets",
+    "closeAriaLabel": "Close download modal",
+    "confirmButton": "Download",
+    "description": "Downloads start one at a time so browser downloads stay predictable.",
+    "inProgress": "Preparing downloads",
+    "notifications": {
+      "success": "Downloaded {{count}} car-log asset.",
+      "success_other": "Downloaded {{count}} car-log assets.",
+      "error": "Unable to download {{count}} car-log asset.",
+      "error_other": "Unable to download {{count}} car-log assets.",
+      "partial": "Downloaded {{successCount}} asset(s); {{failureCount}} failed."
+    },
+    "results": {
+      "success": "All selected assets were downloaded.",
+      "error": "None of the selected assets could be downloaded.",
+      "partial": "Some assets downloaded successfully, but others failed.",
+      "missingUrl": "No download URL was returned for this asset.",
+      "failedFetch": "The file could not be downloaded from the presigned URL."
+    }
+  },
+  "delete": {
+    "header": "Delete car-log assets",
+    "closeAriaLabel": "Close delete modal",
+    "confirmButton": "Delete",
+    "description": "Delete the selected assets permanently. This cannot be undone.",
+    "inProgress": "Deleting selected assets",
+    "notifications": {
+      "success": "Deleted {{count}} car-log asset.",
+      "success_other": "Deleted {{count}} car-log assets.",
+      "error": "Unable to delete {{count}} car-log asset.",
+      "error_other": "Unable to delete {{count}} car-log assets.",
+      "partial": "Deleted {{successCount}} asset(s); {{failureCount}} failed."
+    },
+    "results": {
+      "success": "All selected assets were deleted.",
+      "error": "None of the selected assets could be deleted.",
+      "partial": "Some assets were deleted successfully, but others failed.",
+      "failedDelete": "The asset could not be deleted."
+    }
+  },
+  "upload": {
+    "header": "Upload car-log archive",
+    "closeAriaLabel": "Close upload modal",
+    "confirmButton": "Upload archive",
+    "description": "Upload a .tar.gz archive that contains ROS bag data from a car. Processing starts automatically after the upload finishes.",
+    "helperText": "Use a single .tar.gz file exported from DeepRacer on AWS or the migration tooling. The archive should contain one bag capture per upload.",
+    "fileLabel": "Archive file",
+    "fileDescription": "Choose a .tar.gz archive to upload.",
+    "constraintText": "Only .tar.gz archives are supported.",
+    "invalidFileType": "Choose a .tar.gz archive.",
+    "failed": "The archive could not be uploaded.",
+    "success": "Upload started for job {{jobId}}. Monitor the Processing tab for status updates.",
+    "fileUpload": {
+      "uploadButtonText": "Choose file",
+      "dropzoneText": "Drop archive here",
+      "removeFileAriaLabel": "Remove file",
+      "limitShowFewer": "Show fewer files",
+      "limitShowMore": "Show more files",
+      "errorIconAriaLabel": "Error",
+      "warningIconAriaLabel": "Warning"
+    }
+  },
+  "common": {
+    "close": "Close",
+    "cancel": "Cancel"
+  }
+}

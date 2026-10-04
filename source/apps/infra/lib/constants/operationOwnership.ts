@@ -9,7 +9,8 @@ import type { DeepRacerIndyServiceOperations } from '@deepracer-indy/typescript-
  * `core` is the `ApiStack` / `Api` construct. Add a key here when an epic nested
  * stack ships, then move its operations over in {@link OPERATION_OWNER}.
  */
-export type StackKey = 'core' | 'eventManagement' | 'modelManagement' | 'realTimeRoles' | 'deviceManagement';
+export type StackKey =
+  'core' | 'eventManagement' | 'modelManagement' | 'realTimeRoles' | 'deviceManagement' | 'carLogs';
 
 /**
  * THE authoritative assignment of every Smithy operation to its owning stack.
@@ -145,6 +146,15 @@ export const OPERATION_OWNER = {
   DeleteFleet: 'deviceManagement',
   AssignEventFleets: 'deviceManagement',
   ListEventDevices: 'deviceManagement',
+
+  // ── Car logs — rosbag fetch and video generation ───────────────────────────
+  StartCarLogFetch: 'carLogs',
+  ListCarLogFetches: 'carLogs',
+  GetCarLogFetch: 'carLogs',
+  ListCarLogAssets: 'carLogs',
+  GetCarLogAssetUrls: 'carLogs',
+  DeleteCarLogAsset: 'carLogs',
+  CreateCarLogUpload: 'carLogs',
 } as const satisfies Record<DeepRacerIndyServiceOperations, StackKey>;
 
 /**

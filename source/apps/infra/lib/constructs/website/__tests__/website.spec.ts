@@ -18,6 +18,7 @@ describe.skip('StaticWebsite', () => {
   let template: Template;
   let modelStorageBucket: Bucket;
   let uploadBucket: Bucket;
+  let deviceLogsBucket: Bucket;
 
   const testProps = {
     apiEndpointUrl: 'https://api.example.com',
@@ -42,10 +43,16 @@ describe.skip('StaticWebsite', () => {
       removalPolicy: RemovalPolicy.DESTROY,
     });
 
+    deviceLogsBucket = new Bucket(stack, 'TestDeviceLogsBucket', {
+      bucketName: 'test-device-logs-bucket',
+      removalPolicy: RemovalPolicy.DESTROY,
+    });
+
     new StaticWebsite(stack, 'TestStaticWebsite', {
       ...testProps,
       modelStorageBucket,
       uploadBucket,
+      deviceLogsBucket,
       namespace: TEST_NAMESPACE,
       solutionVersion: 'v1.0.0',
     });
