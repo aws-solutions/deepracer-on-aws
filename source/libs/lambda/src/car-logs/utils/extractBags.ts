@@ -5,6 +5,7 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { createGunzip } from 'node:zlib';
 
+import { logger } from '@deepracer-indy/utils';
 import { extract as tarExtract } from 'tar-stream';
 
 import { CarLogJobError } from './jobErrors.js';
@@ -94,6 +95,8 @@ export async function extractBags<T>(
     if (error instanceof CarLogJobError) {
       throw error;
     }
+    // The user-facing message is generic, so the real cause has to be in the logs.
+    logger.error('The archive could not be read', { error });
     throw new CarLogJobError('The archive could not be read.', { cause: error });
   }
 

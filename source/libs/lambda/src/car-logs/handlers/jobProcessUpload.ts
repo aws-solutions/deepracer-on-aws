@@ -62,7 +62,12 @@ const handler = async ({ jobId }: { jobId: ResourceId }): Promise<{ jobId: Resou
     throw new CarLogJobError('No uploaded archive was found for this job.');
   }
 
-  const head = await s3Client.send(new HeadObjectCommand({ Bucket: bucket, Key: uploadKey })).catch(() => undefined);
+  const head = await s3Client.send(new HeadObjectCommand({ Bucket: bucket, Key: uploadKey })).catch((error) => {
+    if (error?.name !== 'NotFound') {
+      logger.error('Unable to read the uploaded archive', { jobId, uploadKey, error });
+    }
+    return undefined;
+  });
   if (!head) {
     throw new CarLogJobError('No uploaded archive was found for this job.');
   }

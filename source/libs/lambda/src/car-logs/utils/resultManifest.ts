@@ -1,6 +1,8 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import { logger } from '@deepracer-indy/utils';
+
 import { CarLogJobError } from './jobErrors.js';
 import type { CarLogResultManifest, CarLogResultVideo } from '../types.js';
 
@@ -19,7 +21,8 @@ export function parseResultManifest(raw: string): CarLogResultManifest {
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
-  } catch {
+  } catch (error) {
+    logger.error('The video processor result is not valid JSON', { error });
     throw new CarLogJobError('The video processor returned an unreadable result.');
   }
   if (!isRecord(parsed) || typeof parsed.jobId !== 'string' || !Array.isArray(parsed.videos)) {

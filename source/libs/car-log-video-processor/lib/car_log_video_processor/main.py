@@ -65,6 +65,12 @@ def download_model(config: JobConfig, bag: Bag, cache: dict[str, Path]) -> Path:
     return cache[key]
 
 
+def subprocess_env() -> dict[str, str]:
+    """Environment for the analysis subprocess; keeps the ROS paths that entry.sh put in PYTHONPATH."""
+    python_path = os.pathsep.join(p for p in (str(APP_DIR.parent), os.environ.get("PYTHONPATH")) if p)
+    return {**os.environ, "PYTHONPATH": python_path}
+
+
 def analyse_bag(config: JobConfig, bag: Bag, model_path: Path, settings: dict[str, Any]) -> Path | None:
     """Renders the analysis video of one bag in a subprocess, so a crash only fails that bag."""
     bag_path = WORK_DIR / "input" / bag.bag_dir
@@ -93,13 +99,23 @@ def analyse_bag(config: JobConfig, bag: Bag, model_path: Path, settings: dict[st
             cmd += ["--frame_limit", settings["frame_limit"]]
         if settings["describe"]:
             cmd.append("--describe")
-        result = subprocess.run(cmd, check=False, env={**os.environ, "PYTHONPATH": str(APP_DIR.parent)})
+        result = subprocess.run(cmd, check=False, env=subprocess_env())
     finally:
         shutil.rmtree(bag_path, ignore_errors=True)
     if result.returncode != 0 or not video_path.is_file():
         logger.error("Analysis of %s failed with code %s", bag.bag_dir, result.returncode)
         return None
     return video_path
+
+
+def font_paths() -> dict[str, str]:
+    """Font files keyed by the weights that combine_videos looks up."""
+    return {
+        "light": str(RESOURCES_DIR / "Amazon_Ember_Lt.ttf"),
+        "regular": str(RESOURCES_DIR / "Amazon_Ember_Rg.ttf"),
+        "bold": str(RESOURCES_DIR / "Amazon_Ember_Bd.ttf"),
+        "heavy": str(RESOURCES_DIR / "Amazon_Ember_He.ttf"),
+    }
 
 
 def combine_group(config: JobConfig, group: VideoGroup, settings: dict[str, Any]) -> dict[str, Any] | None:
@@ -111,7 +127,7 @@ def combine_group(config: JobConfig, group: VideoGroup, settings: dict[str, Any]
         group.videos,
         str(output),
         {"background": str(BACKGROUND_IMAGE), "logo": str(RESOURCES_DIR / "logo192.png")},
-        {"regular": str(RESOURCES_DIR / "Amazon_Ember_Rg.ttf"), "bold": str(RESOURCES_DIR / "Amazon_Ember_Bd.ttf")},
+        font_paths(),
         codec=settings["codec"],
         skip_duration=settings["skip_duration"],
         update_frequency=1,

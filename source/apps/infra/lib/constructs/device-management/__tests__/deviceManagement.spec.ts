@@ -29,6 +29,16 @@ describe('DeviceManagement (Task 5 status pipeline wiring)', () => {
   });
   const template = Template.fromStack(stack);
 
+  it('gathers application inventory for all managed devices so the software version can be read', () => {
+    expect(() =>
+      template.hasResourceProperties('AWS::SSM::Association', {
+        Name: 'AWS-GatherSoftwareInventory',
+        Targets: [{ Key: 'tag:deepracer:managed', Values: ['true'] }],
+        Parameters: Match.objectLike({ applications: ['Enabled'] }),
+      }),
+    ).not.toThrow();
+  });
+
   it('schedules the status poller every 5 minutes', () => {
     expect(() =>
       template.hasResourceProperties('AWS::Events::Rule', {

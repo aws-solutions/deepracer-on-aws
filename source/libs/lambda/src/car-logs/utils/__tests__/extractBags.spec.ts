@@ -4,6 +4,7 @@
 import { Readable } from 'node:stream';
 import { gzipSync } from 'node:zlib';
 
+import { logger } from '@deepracer-indy/utils';
 import { pack as tarPack } from 'tar-stream';
 
 import { extractBags } from '../extractBags.js';
@@ -117,8 +118,16 @@ describe('extractBags', () => {
     const archive = await buildArchive([{ name: 'good/a', content: '1' }]);
     const failing = vi.fn().mockRejectedValue(new Error('s3 down'));
 
+    const logError = vi.spyOn(logger, 'error').mockImplementation(() => undefined);
+
     await expect(
       extractBags(archive, { resolve: async () => ({ accept: true, context: 'ctx' }), write: failing }),
     ).rejects.toThrow(CarLogJobError);
+
+    expect(logError).toHaveBeenCalledWith(
+      'The archive could not be read',
+      expect.objectContaining({ error: expect.objectContaining({ message: 's3 down' }) }),
+    );
+    logError.mockRestore();
   });
 });

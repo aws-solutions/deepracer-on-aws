@@ -183,3 +183,30 @@ def test_analyse_bag_returns_nothing_when_the_analysis_fails(s3, monkeypatch, tm
     monkeypatch.setattr(main.subprocess, "run", lambda cmd, **kwargs: type("Result", (), {"returncode": 1})())
 
     assert main.analyse_bag(config, config.bags[0], tmp_path / "m.tar.gz", SETTINGS) is None
+
+
+def test_subprocess_env_keeps_existing_python_path(monkeypatch):
+    monkeypatch.setenv("PYTHONPATH", "/opt/ros/jazzy/lib/python3.12/site-packages")
+
+    paths = main.subprocess_env()["PYTHONPATH"].split(":")
+
+    assert paths[0] == str(main.APP_DIR.parent)
+    assert "/opt/ros/jazzy/lib/python3.12/site-packages" in paths
+
+
+def test_subprocess_env_without_existing_python_path(monkeypatch):
+    monkeypatch.delenv("PYTHONPATH", raising=False)
+
+    assert main.subprocess_env()["PYTHONPATH"] == str(main.APP_DIR.parent)
+
+
+def test_font_paths_cover_every_weight_combine_videos_uses():
+    import re
+    from pathlib import Path
+
+    source = (Path(main.__file__).parent / "combine_videos.py").read_text()
+    used = set(re.findall(r'fonts\["(\w+)"\]', source))
+    fonts = main.font_paths()
+
+    assert used <= fonts.keys()
+    assert all(Path(path).is_file() for path in fonts.values())
