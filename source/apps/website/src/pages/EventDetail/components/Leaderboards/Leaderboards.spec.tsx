@@ -72,6 +72,7 @@ describe('<Leaderboards />', () => {
 
     expect(mockNavigate).toHaveBeenCalledWith('/timekeep');
     expect(JSON.parse(localStorage.getItem('deepracer-timekeeping-selected-event-and-track') ?? '')).toEqual({
+      fetchCarLogsOnRunFinish: false,
       selectedEventId: 'evt-001',
       selectedLeaderboardId: 'lb-001',
     });

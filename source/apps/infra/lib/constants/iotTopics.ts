@@ -30,3 +30,6 @@ export const iotCountdownTopicFilter = (namespace: string) => `${iotTopicPrefix(
  * status changes and async command results. A sibling of the leaderboard
  * and race families under the shared root. */
 export const iotDeviceTopicPrefix = (namespace: string) => `${iotTopicRoot(namespace)}/device`;
+
+/** Car-log topic family: `deepracer/{ns}/carlogs` — cloud→browser push of fetch-job and asset changes. */
+export const iotCarLogTopicPrefix = (namespace: string) => `${iotTopicRoot(namespace)}/carlogs`;

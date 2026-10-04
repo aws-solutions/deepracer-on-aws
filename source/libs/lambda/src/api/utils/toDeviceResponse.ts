@@ -18,6 +18,7 @@ export const toDeviceResponse = (item: DeviceItem): Device => ({
   status: item.status as DeviceStatus,
   activatedAt: new Date(item.activatedAt),
   ...(item.carType && { carType: item.carType as CarType }),
+  ...(item.loggingCapable !== undefined && { loggingCapable: item.loggingCapable }),
   ...(item.fleetId && { fleetId: item.fleetId }),
   ...(item.lastSeenAt && { lastSeenAt: new Date(item.lastSeenAt) }),
   ...(item.ipAddress && { ipAddress: item.ipAddress }),

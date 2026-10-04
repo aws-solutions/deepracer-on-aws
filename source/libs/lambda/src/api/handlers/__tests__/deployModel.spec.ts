@@ -1,7 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { deploymentDao, deviceDao, modelDao, TEST_PROFILE_ID_1 } from '@deepracer-indy/database';
+import { deploymentDao, deviceDao, modelDao, profileDao, TEST_PROFILE_ID_1 } from '@deepracer-indy/database';
 import {
   BadRequestError,
   CarType,
@@ -71,6 +71,7 @@ describe('DeployModel operation', () => {
   beforeEach(() => {
     vi.spyOn(modelDao, 'load').mockResolvedValue(TEST_MODEL as never);
     vi.spyOn(deviceDao, 'load').mockResolvedValue(TEST_DEVICE as never);
+    vi.spyOn(profileDao, 'load').mockResolvedValue({ alias: 'TestRacer' } as never);
     vi.spyOn(deploymentDao, 'listAllByModel').mockResolvedValue([] as never);
     vi.spyOn(deploymentDao, 'create').mockResolvedValue({} as never);
     vi.spyOn(deploymentDao, 'updateStatus').mockResolvedValue({} as never);
@@ -106,6 +107,13 @@ describe('DeployModel operation', () => {
       }),
     );
     expect(logDeploySpy).toHaveBeenCalledWith();
+  });
+
+  it('should pass the model owner alias as racerName to the step function', async () => {
+    await DeployModelOperation(validInput, TEST_OPERATION_CONTEXT);
+
+    const command = vi.mocked(sfnClient.send).mock.calls[0][0] as { input: { input: string } };
+    expect(JSON.parse(command.input.input)).toEqual(expect.objectContaining({ racerName: 'TestRacer' }));
   });
 
   it('should select rpi-model.tar.gz for DEEPRACER_RPI carType', async () => {

@@ -166,7 +166,7 @@ export class DeviceManagement extends Construct {
     dynamoDBTable.grantReadWriteData(statusPollerFn);
     statusPollerFn.addToRolePolicy(
       new PolicyStatement({
-        actions: ['ssm:DescribeInstanceInformation', 'ssm:ListTagsForResource'],
+        actions: ['ssm:DescribeInstanceInformation', 'ssm:ListTagsForResource', 'ssm:ListInventoryEntries'],
         resources: ['*'],
       }),
     );
@@ -186,7 +186,12 @@ export class DeviceManagement extends Construct {
     dynamoDBTable.grantReadWriteData(stateChangeFn);
     stateChangeFn.addToRolePolicy(
       new PolicyStatement({
-        actions: ['ssm:DescribeInstanceInformation', 'ssm:ListTagsForResource', 'ssm:GetCommandInvocation'],
+        actions: [
+          'ssm:DescribeInstanceInformation',
+          'ssm:ListTagsForResource',
+          'ssm:GetCommandInvocation',
+          'ssm:ListInventoryEntries',
+        ],
         resources: ['*'],
       }),
     );

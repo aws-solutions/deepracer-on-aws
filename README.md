@@ -88,6 +88,8 @@ Deploying this solution with the default parameters deploys the following compon
 
 1. A [AWS Lambda](https://aws.amazon.com/lambda/) SafetyNet function is invoked by EventBridge when a live race Step Functions execution reaches any terminal state. It clears the execution lock with a conditional write, applies a backoff check if the execution has failed repeatedly, and touches a PENDING queue item to generate a DynamoDB stream event — retriggering the Stream Handler to start a new execution if items remain in the queue.
 
+1. A car logs workflow ([AWS Step Functions](https://aws.amazon.com/step-functions/)) collects ROS bag logs from a car through [AWS Systems Manager](https://aws.amazon.com/systems-manager/) (or from a manual upload to the device logs bucket), stores the matching bags per racer, and runs an [AWS Batch](https://aws.amazon.com/batch/) Fargate job with the car-log video processor container image to create videos. See [Car Logs runbook](source/docs/runbooks/car-logs.md).
+
 ## Package layout
 
 - The source code for the **DeepRacer on AWS** is located in `./source`.
@@ -114,6 +116,9 @@ _DeepRacer on AWS_ is structured as monorepo. See below for package layouts and 
    ┃        ┣ 📂pages                       React components for individual website pages
    ┃        ┗ 📂utils                       Utils specific to the website application
    ┗ 📂libs                                 Libraries - Code consumed/imported by apps or other libraries
+      ┣ 📂car-log-video-processor           Car log video processor (Python/Docker) - turns ROS bags into videos
+      ┃  ┣ 📂lib/car_log_video_processor    Container source code
+      ┃  ┗ 📂tests                          pytest unit tests
       ┣ 📂config                            Config package - App-wide configuration
       ┃  ┗ 📂src
       ┃     ┣ 📂configs                     Domain specific configurations
@@ -131,6 +136,7 @@ _DeepRacer on AWS_ is structured as monorepo. See below for package layouts and 
       ┃     ┃  ┣ 📂handlers                 API lambda handler implementations
       ┃     ┃  ┣ 📂types                    API TypeScript types
       ┃     ┃  ┗ 📂utils                    API lambda utils
+      ┃     ┣ 📂car-logs                    Car log workflow lambda code
       ┃     ┣ 📂cognito                     Cognito lambda code
       ┃     ┗ 📂workflow                    Workflow lambda code
       ┣ 📂model                             Model package - API Smithy model
@@ -336,12 +342,13 @@ The solution uses CDK context values for container image configuration. These ar
 - `PUBLIC_ECR_REGISTRY`: "public.ecr.aws/aws-solutions"
 - `MODEL_VALIDATION_REPO_NAME`: "deepracer-on-aws-model-validation"
 - `MODEL_OPTIMIZER_REPO_NAME`: "deepracer-on-aws-model-optimizer"
+- `CAR_LOG_VIDEO_PROCESSOR_REPO_NAME`: "deepracer-on-aws-car-log-video-processor"
 - `REWARD_VALIDATION_REPO_NAME`: "deepracer-on-aws-reward-function-validation"
 - `SIMAPP_REPO_NAME`: "deepracer-on-aws-simapp"
 
 **Redirecting a single image to a custom source:**
 
-By default, all four container images are pulled from the public AWS Solutions ECR gallery
+By default, all five container images are pulled from the public AWS Solutions ECR gallery
 (`PUBLIC_ECR_REGISTRY`). If you need to source one image from a different registry — for
 example, an image you've built yourself and pushed to a private ECR repository — set both an
 `OVERRIDE_*_REPO_NAME` context value for that image and `OVERRIDE_PUBLIC_ECR_REGISTRY`. Only
@@ -349,7 +356,8 @@ images with their own `OVERRIDE_*_REPO_NAME` set are redirected; every other ima
 to use the default public registry unaffected.
 
 Available override keys: `OVERRIDE_SIMAPP_REPO_NAME`, `OVERRIDE_REWARD_VALIDATION_REPO_NAME`,
-`OVERRIDE_MODEL_VALIDATION_REPO_NAME`, `OVERRIDE_MODEL_OPTIMIZER_REPO_NAME`.
+`OVERRIDE_MODEL_VALIDATION_REPO_NAME`, `OVERRIDE_MODEL_OPTIMIZER_REPO_NAME`,
+`OVERRIDE_CAR_LOG_VIDEO_PROCESSOR_REPO_NAME`.
 
 For example, to source only the model optimizer image from a private ECR repository while
 leaving SimApp, reward validation, and model validation on the public gallery:

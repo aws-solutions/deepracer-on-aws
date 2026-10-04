@@ -11,6 +11,7 @@ export enum PageId {
   CREATE_MODEL = 'createModel',
   CREATE_RACE = 'createRace',
   CLONE_RACE = 'cloneRace',
+  CAR_LOGS = 'carLogs',
   DEVICES = 'devices',
   DEVICE_DETAIL = 'deviceDetail',
   ACTIVATE_DEVICE = 'activateDevice',
@@ -93,6 +94,10 @@ export const pages = {
   [PageId.CREATE_RACE]: {
     path: '/races/create',
     contentType: 'wizard',
+  },
+  [PageId.CAR_LOGS]: {
+    path: '/car-logs',
+    contentType: 'table',
   },
   [PageId.DEVICES]: {
     path: '/devices',

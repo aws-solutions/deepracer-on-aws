@@ -12,6 +12,7 @@ import {
   ListObjectsV2CommandOutput,
   NoSuchKey,
   paginateListObjectsV2,
+  PutObjectCommand,
 } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
@@ -141,6 +142,23 @@ export class S3Helper {
       logger.error('Unable to generate presigned URL', { s3Location, error });
       throw error;
     }
+  }
+
+  /**
+   * Presigned URL for uploading a single object with HTTP PUT.
+   * @param location S3 location as string
+   * @param expiresIn URL expiration time in seconds
+   * @param contentType Content-Type the uploader must send (it is part of the signature)
+   */
+  async getPresignedPutUrl(location: string, expiresIn: number, contentType: string) {
+    const s3Location = new AmazonS3URI(location);
+    logger.info('Generating presigned PUT URL', { s3Location, expiresIn, contentType });
+
+    return getSignedUrl(
+      s3Client,
+      new PutObjectCommand({ Bucket: s3Location.bucket, Key: s3Location.key, ContentType: contentType }),
+      { expiresIn },
+    );
   }
 
   /**

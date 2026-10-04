@@ -18,7 +18,14 @@ import {
  * assert the partition properties the rest of the framework depends on.
  */
 describe('operationOwnership', () => {
-  const STACK_KEYS: StackKey[] = ['core', 'eventManagement', 'modelManagement', 'realTimeRoles', 'deviceManagement'];
+  const STACK_KEYS: StackKey[] = [
+    'core',
+    'eventManagement',
+    'modelManagement',
+    'realTimeRoles',
+    'deviceManagement',
+    'carLogs',
+  ];
 
   it('partitions every operation across stack keys with no gaps', () => {
     const partitioned = STACK_KEYS.flatMap((key) => operationsOwnedBy(key));
@@ -37,6 +44,18 @@ describe('operationOwnership', () => {
     const ops = operationsOwnedBy('core');
     expect(ops).toEqual([...ops].sort());
     expect(operationsOwnedBy('core')).toEqual(ops);
+  });
+
+  it('assigns every Car Logs operation to the carLogs key', () => {
+    expect(operationsOwnedBy('carLogs')).toEqual([
+      'CreateCarLogUpload',
+      'DeleteCarLogAsset',
+      'GetCarLogAssetUrls',
+      'GetCarLogFetch',
+      'ListCarLogAssets',
+      'ListCarLogFetches',
+      'StartCarLogFetch',
+    ]);
   });
 
   it('assigns every Event Management operation to the eventManagement key', () => {

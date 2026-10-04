@@ -97,6 +97,13 @@ export const getRaceManagementNavigationItems = (groups: UserGroups[], t: TFunct
       },
     );
   }
+  if (isAdmin || isFacilitator || isRacer || isCommentator || isRegistrationManager) {
+    items.push({
+      type: 'link',
+      text: t(`breadcrumbs.${PageId.CAR_LOGS}`, { ns: 'navigation' }),
+      href: getPath(PageId.CAR_LOGS),
+    });
+  }
   if (isAdmin || isFacilitator) {
     items.push({
       type: 'link',

@@ -42,6 +42,7 @@ const mockRestartDevice = vi.fn();
 const mockStopDevice = vi.fn();
 const mockChangeDeviceColor = vi.fn();
 const mockDeleteDevice = vi.fn();
+const mockStartCarLogFetch = vi.fn();
 const mockUpdateDevice = vi.fn();
 const mockListDevicesQuery = vi.fn((): { data: Device[] | undefined; isLoading: boolean; refetch?: () => void } => ({
   data: [mockDevice],
@@ -55,6 +56,10 @@ vi.mock('#services/deepRacer/devicesApi', () => ({
   useChangeDeviceColorMutation: () => [mockChangeDeviceColor, { isLoading: false }],
   useDeleteDeviceMutation: () => [mockDeleteDevice, { isLoading: false }],
   useUpdateDeviceMutation: () => [mockUpdateDevice, { isLoading: false }],
+}));
+
+vi.mock('#services/deepRacer/carLogsApi', () => ({
+  useStartCarLogFetchMutation: () => [mockStartCarLogFetch, { isLoading: false }],
 }));
 
 vi.mock('#services/deepRacer/fleetsApi', () => ({
@@ -87,6 +92,7 @@ describe('<DeviceDetail />', () => {
     mockStopDevice.mockReturnValue({ unwrap: () => Promise.resolve({ commandId: 'cmd-2' }) });
     mockChangeDeviceColor.mockReturnValue({ unwrap: () => Promise.resolve() });
     mockDeleteDevice.mockReturnValue({ unwrap: () => Promise.resolve() });
+    mockStartCarLogFetch.mockReturnValue({ unwrap: () => Promise.resolve({ jobId: 'job-001' }) });
     mockUpdateDevice.mockReturnValue({ unwrap: () => Promise.resolve(mockDevice) });
   });
 

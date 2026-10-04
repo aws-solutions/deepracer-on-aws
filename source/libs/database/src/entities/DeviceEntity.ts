@@ -62,6 +62,10 @@ export const DeviceEntity = new Entity(
       [DynamoDBItemAttribute.IP_ADDRESS]: {
         type: 'string',
       },
+      [DynamoDBItemAttribute.LOGGING_CAPABLE]: {
+        // Whether the car software can record rosbag logs; unset until the first sync.
+        type: 'boolean',
+      },
       [DynamoDBItemAttribute.TTL]: {
         type: 'number',
       },

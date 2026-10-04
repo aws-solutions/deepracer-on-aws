@@ -140,6 +140,59 @@ describe('PollDeviceStatus', () => {
     expect(badCall?.[0]).not.toHaveProperty('carType');
   });
 
+  it.each([
+    ['2.1.2.7', true],
+    ['2.1.3.0+build5', true],
+    ['3.0', true],
+    ['2.1.2.6', false],
+    ['2.1', false],
+    ['not-a-version', false],
+  ])('sets loggingCapable from the installed core version %s', async (version, expected) => {
+    vi.mocked(ssmClient.send).mockImplementation((cmd: unknown) => {
+      const c = cmd as Cmd;
+      if (c.constructor.name === 'DescribeInstanceInformationCommand') {
+        return Promise.resolve({
+          InstanceInformationList: [{ InstanceId: 'mi-1', PingStatus: 'Online', LastPingDateTime: now }],
+        }) as never;
+      }
+      if (c.constructor.name === 'ListInventoryEntriesCommand') {
+        return Promise.resolve({ Entries: [{ Name: 'aws-deepracer-core', Version: version }] }) as never;
+      }
+      return Promise.resolve({ TagList: managedCarTags }) as never;
+    });
+
+    await PollDeviceStatus(scheduledEvent, {} as never, vi.fn());
+
+    expect(deviceDao.upsertStatus).toHaveBeenCalledWith(
+      expect.objectContaining({ instanceId: 'mi-1', loggingCapable: expected }),
+    );
+  });
+
+  it('leaves loggingCapable unset when the inventory cannot be read, and for timers', async () => {
+    vi.mocked(ssmClient.send).mockImplementation((cmd: unknown) => {
+      const c = cmd as Cmd;
+      if (c.constructor.name === 'DescribeInstanceInformationCommand') {
+        return Promise.resolve({
+          InstanceInformationList: [
+            { InstanceId: 'mi-1', PingStatus: 'Online', LastPingDateTime: now },
+            { InstanceId: 'mi-t', PingStatus: 'Online', LastPingDateTime: now },
+          ],
+        }) as never;
+      }
+      if (c.constructor.name === 'ListInventoryEntriesCommand') {
+        return Promise.reject(new Error('AccessDenied')) as never;
+      }
+      return Promise.resolve({ TagList: c.input.ResourceId === 'mi-t' ? managedTimerTags : managedCarTags }) as never;
+    });
+
+    await PollDeviceStatus(scheduledEvent, {} as never, vi.fn());
+
+    for (const [arg] of vi.mocked(deviceDao.upsertStatus).mock.calls) {
+      expect(arg).not.toHaveProperty('loggingCapable');
+    }
+    expect(deviceDao.upsertStatus).toHaveBeenCalledTimes(2);
+  });
+
   it('never sets carType for TIMER devices even if a CarType tag is present', async () => {
     const timerWithCarType = [...managedTimerTags, { Key: 'CarType', Value: 'DEEPRACER' }];
     vi.mocked(ssmClient.send).mockImplementation((cmd: unknown) => {

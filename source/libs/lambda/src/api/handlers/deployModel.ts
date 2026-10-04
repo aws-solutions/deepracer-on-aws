@@ -4,7 +4,14 @@
 import { StartExecutionCommand } from '@aws-sdk/client-sfn';
 import { DescribeInstanceInformationCommand } from '@aws-sdk/client-ssm';
 import type { Operation } from '@aws-smithy/server-common';
-import { deploymentDao, deviceDao, generateResourceId, modelDao, ResourceId } from '@deepracer-indy/database';
+import {
+  deploymentDao,
+  deviceDao,
+  generateResourceId,
+  modelDao,
+  profileDao,
+  ResourceId,
+} from '@deepracer-indy/database';
 import {
   BadRequestError,
   CarType,
@@ -63,9 +70,10 @@ export const DeployModelOperation: Operation<DeployModelServerInput, DeployModel
   const batchId = input.batchId as ResourceId | undefined;
 
   // Fetch model and device records in parallel
-  const [model, device] = await Promise.all([
+  const [model, device, targetProfile] = await Promise.all([
     modelDao.load({ modelId, profileId: targetProfileId }),
     deviceDao.load({ instanceId: carInstanceId }),
+    profileDao.load({ profileId: targetProfileId }),
   ]);
 
   // Validate optimizationStatus is OPTIMIZED
@@ -156,6 +164,7 @@ export const DeployModelOperation: Operation<DeployModelServerInput, DeployModel
           presignedUrl,
           carType: device.carType,
           modelName: model.name,
+          racerName: targetProfile.alias,
         }),
       }),
     );

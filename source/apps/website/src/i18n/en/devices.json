@@ -24,7 +24,8 @@
       "status": "Status",
       "fleetId": "Fleet",
       "lastSeenAt": "Last seen",
-      "ipAddress": "IP address"
+      "ipAddress": "IP address",
+      "loggingCapable": "Logging capable"
     },
     "filters": {
       "filteringAriaLabel": "Filter devices",
@@ -40,7 +41,10 @@
       "nextPageLabel": "Next page",
       "previousPageLabel": "Previous page",
       "pageLabel": "Page {{pageNumber}} of all pages"
-    }
+    },
+    "fetchCarLogsButton": "Fetch car logs",
+    "fetchCarLogsDisabledReasonEmpty": "Select at least one logging-capable car.",
+    "fetchCarLogsDisabledReasonUnsupported": "Every selected device must be a logging-capable car."
   },
   "deviceType": {
     "CAR": "Car",
@@ -64,11 +68,26 @@
   "wizard": {
     "title": "Activate device",
     "steps": {
-      "type": { "title": "Device type", "description": "Choose the kind of device to activate." },
-      "fleet": { "title": "Fleet", "description": "Assign the device to a fleet (optional)." },
-      "configure": { "title": "Configure", "description": "Name the device and set optional local options." },
-      "params": { "title": "Get activation command", "description": "Run this command on the device." },
-      "wait": { "title": "Wait for online", "description": "The device appears once it registers." }
+      "type": {
+        "title": "Device type",
+        "description": "Choose the kind of device to activate."
+      },
+      "fleet": {
+        "title": "Fleet",
+        "description": "Assign the device to a fleet (optional)."
+      },
+      "configure": {
+        "title": "Configure",
+        "description": "Name the device and set optional local options."
+      },
+      "params": {
+        "title": "Get activation command",
+        "description": "Run this command on the device."
+      },
+      "wait": {
+        "title": "Wait for online",
+        "description": "The device appears once it registers."
+      }
     },
     "typeLabel": "Device type",
     "nameLabel": "Device name",
@@ -146,7 +165,11 @@
     "deleteSuccess": "Device {{name}} deleted.",
     "deleteError": "Failed to delete the device.",
     "confirm": "Confirm",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "fetchCarLogsButton": "Fetch car logs",
+    "fetchCarLogsCarsOnlyTooltip": "Car-log fetch is only available for cars.",
+    "fetchCarLogsUnsupportedTooltip": "This car does not report support for log capture.",
+    "loggingCapableLabel": "Logging capable"
   },
   "color": {
     "RED": "Red",
@@ -156,5 +179,38 @@
     "CYAN": "Cyan",
     "MAGENTA": "Magenta",
     "WHITE": "White"
+  },
+  "loggingCapable": {
+    "true": "Yes",
+    "false": "No",
+    "unknown": "Unknown"
+  },
+  "carLogs": {
+    "fetchModal": {
+      "header": "Fetch car logs for {{count}} car",
+      "header_other": "Fetch car logs for {{count}} cars",
+      "closeAriaLabel": "Close fetch car logs modal",
+      "cancel": "Cancel",
+      "confirm": "Fetch logs",
+      "description": "Start a log fetch job for the selected cars.",
+      "help": "Provide a racer name or model ID so the backend can identify the correct bag capture. Optionally restrict the search to logs created after an ISO 8601 timestamp.",
+      "racerNameLabel": "Racer name",
+      "racerNameDescription": "Optional unless you leave Model ID blank.",
+      "modelIdLabel": "Model ID",
+      "modelIdDescription": "Optional unless you leave Racer name blank.",
+      "laterThanLabel": "Later than",
+      "laterThanDescription": "Optional ISO 8601 timestamp, for example 2025-01-15T14:30:00Z.",
+      "laterThanPlaceholder": "2025-01-15T14:30:00Z",
+      "validation": {
+        "requiresSelector": "Provide a racer name or a model ID.",
+        "invalidLaterThan": "Later than must be a valid ISO 8601 timestamp."
+      }
+    },
+    "notifications": {
+      "fetchSuccess": "Started car-log fetch for {{count}} car.",
+      "fetchSuccess_other": "Started car-log fetch for {{count}} cars.",
+      "fetchPartial": "Started {{successCount}} car-log fetch(es); {{failureCount}} failed.",
+      "fetchError": "Unable to start car-log fetch for the selected cars."
+    }
   }
 }

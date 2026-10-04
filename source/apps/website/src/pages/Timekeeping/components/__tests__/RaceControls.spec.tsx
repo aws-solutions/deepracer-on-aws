@@ -28,6 +28,7 @@ const {
   mockPublishLapCaptured,
   mockPublishOverlayUpdate,
   mockRegisterActiveRun,
+  mockStartCarLogFetch,
   mockTransitionRunStatus,
   mockUseTimekeepingSession,
 } = vi.hoisted(() => ({
@@ -41,12 +42,21 @@ const {
   mockPublishLapCaptured: vi.fn(),
   mockPublishOverlayUpdate: vi.fn(),
   mockRegisterActiveRun: vi.fn(),
+  mockStartCarLogFetch: vi.fn(),
   mockTransitionRunStatus: vi.fn(),
   mockUseTimekeepingSession: vi.fn(),
 }));
 
+vi.mock('#hooks/useAppDispatch.js', () => ({
+  useAppDispatch: () => vi.fn(),
+}));
+
 vi.mock('#hooks/useTimekeepingContext.js', () => ({
-  useTimekeepingContext: () => ({ selectedEventId: 'event-001', selectedLeaderboardId: 'leaderboard-001' }),
+  useTimekeepingContext: () => ({
+    fetchCarLogsOnRunFinish: false,
+    selectedEventId: 'event-001',
+    selectedLeaderboardId: 'leaderboard-001',
+  }),
 }));
 
 vi.mock('#hooks/useTimekeeperMqtt.js', () => ({
@@ -68,6 +78,10 @@ vi.mock('#services/deepRacer/eventsApi.js', () => ({
 vi.mock('#services/deepRacer/lapsApi.js', () => ({
   useCreateLapMutation: () => [mockCreateLap, { isLoading: false }],
   useSetLapValidityMutation: () => [mockSetLapValidity, { isLoading: false }],
+}));
+
+vi.mock('#services/deepRacer/carLogsApi.js', () => ({
+  useStartCarLogFetchMutation: () => [mockStartCarLogFetch, { isLoading: false }],
 }));
 
 vi.mock('#services/deepRacer/runsApi.js', () => ({
@@ -94,6 +108,7 @@ describe('<RaceControls />', () => {
     mockPublishLapCaptured.mockResolvedValue(true);
     mockPublishOverlayUpdate.mockResolvedValue(true);
     mockSetLapValidity.mockReturnValue({ unwrap: () => Promise.resolve({}) });
+    mockStartCarLogFetch.mockReturnValue({ unwrap: () => Promise.resolve({ jobId: 'job-001' }) });
     mockTransitionRunStatus.mockReturnValue({
       unwrap: () => Promise.resolve({ run: { runId: 'run-001', runStatus: RunStatus.IN_PROGRESS } }),
     });

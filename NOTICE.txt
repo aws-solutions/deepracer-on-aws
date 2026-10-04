@@ -815,6 +815,7 @@ ament_lint_auto under the Apache-2.0 license.
 annoy under the Apache-2.0 license.
 aws-lambda-powertools under the MIT-0 license.
 AWSSDK under the Apache-2.0 license.
+aws-deepracer-interfaces-pkg under the Apache-2.0 license.
 aws_common under the Apache-2.0 license.
 aws_ros2_common under the Apache-2.0 license.
 bokeh under the BSD 3-Clause.

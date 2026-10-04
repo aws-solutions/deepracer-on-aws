@@ -12,4 +12,5 @@ container_images:
   - deepracer-on-aws-simapp
   - deepracer-on-aws-model-optimizer
   - deepracer-on-aws-model-validation
+  - deepracer-on-aws-car-log-video-processor
 auto_create_github_pr: true

@@ -78,6 +78,7 @@ describe('SideNavigation', () => {
 
     // Verify base navigation links are present
     expect(screen.getByText(`breadcrumbs.${PageId.RACES}`)).toBeInTheDocument();
+    expect(screen.getByText(`breadcrumbs.${PageId.CAR_LOGS}`)).toBeInTheDocument();
     expect(screen.getByText(`breadcrumbs.${PageId.GET_STARTED}`)).toBeInTheDocument();
     expect(screen.getByText(`breadcrumbs.${PageId.MODELS}`)).toBeInTheDocument();
 
@@ -114,6 +115,7 @@ describe('SideNavigation', () => {
     expect(screen.queryByText(`breadcrumbs.${PageId.MODELS}`)).not.toBeInTheDocument();
 
     // Commentator should still see their own role-appropriate link.
+    expect(screen.getByText(`breadcrumbs.${PageId.CAR_LOGS}`)).toBeInTheDocument();
     expect(screen.getByText(`breadcrumbs.${PageId.COMMENTATOR_VIEW}`)).toBeInTheDocument();
   });
 
