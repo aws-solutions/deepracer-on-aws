@@ -16,6 +16,7 @@ export interface WebsiteStackProps extends NestedStackProps {
   userPoolClientId: string;
   modelStorageBucket: Bucket;
   uploadBucket: Bucket;
+  deviceLogsBucket: Bucket;
   namespace: string;
   solutionVersion: string;
   customDomainParam: CfnParameter;
@@ -32,6 +33,7 @@ export class WebsiteStack extends NestedStack {
       modelStorageBucket,
       userPoolClientId,
       uploadBucket,
+      deviceLogsBucket,
       namespace,
       solutionVersion,
     } = props;
@@ -43,6 +45,7 @@ export class WebsiteStack extends NestedStack {
       modelStorageBucket: modelStorageBucket,
       identityPoolId,
       uploadBucket,
+      deviceLogsBucket,
       namespace,
       solutionVersion,
     });

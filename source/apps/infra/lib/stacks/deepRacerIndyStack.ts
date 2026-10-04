@@ -483,6 +483,7 @@ export class DeepRacerIndyStack extends Stack {
       modelStorageBucket: modelStorageBucket,
       identityPoolId: identityPool.ref,
       uploadBucket,
+      deviceLogsBucket,
       namespace,
       solutionVersion,
       iotEndpoint: liveRaceEvents.iotEndpoint,

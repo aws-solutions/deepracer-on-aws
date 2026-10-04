@@ -50,6 +50,7 @@ describe('WebsiteStack', () => {
 
     const mockModelStorageBucket = new Bucket(parentStack, 'MockModelStorage');
     const mockUploadBucket = new Bucket(parentStack, 'MockUpload');
+    const mockDeviceLogsBucket = new Bucket(parentStack, 'MockDeviceLogs');
 
     const customDomainParam = new CfnParameter(parentStack, 'CustomDomainParam', {
       type: 'String',
@@ -64,6 +65,7 @@ describe('WebsiteStack', () => {
       userPoolClientId: 'test-client-id',
       modelStorageBucket: mockModelStorageBucket,
       uploadBucket: mockUploadBucket,
+      deviceLogsBucket: mockDeviceLogsBucket,
       namespace: TEST_NAMESPACE,
       solutionVersion: 'v1.0.0',
       customDomainParam,
@@ -90,6 +92,7 @@ describe('WebsiteStack', () => {
 
     const mockModelStorageBucket = new Bucket(parentStack, 'MockModelStorage');
     const mockUploadBucket = new Bucket(parentStack, 'MockUpload');
+    const mockDeviceLogsBucket = new Bucket(parentStack, 'MockDeviceLogs');
 
     const customDomainParam = new CfnParameter(parentStack, 'CustomDomainParam', {
       type: 'String',
@@ -105,6 +108,7 @@ describe('WebsiteStack', () => {
       userPoolClientId: 'test-client-id',
       modelStorageBucket: mockModelStorageBucket,
       uploadBucket: mockUploadBucket,
+      deviceLogsBucket: mockDeviceLogsBucket,
       namespace: TEST_NAMESPACE,
       solutionVersion: 'v1.0.0',
       customDomainParam,
