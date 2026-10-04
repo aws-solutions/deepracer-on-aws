@@ -39,6 +39,13 @@ service DeepRacerIndy {
         GetBulkInviteUserJobStatus
         ListBulkInviteUserJobs
         ResendInvite
+        StartCarLogFetch
+        ListCarLogFetches
+        GetCarLogFetch
+        ListCarLogAssets
+        GetCarLogAssetUrls
+        DeleteCarLogAsset
+        CreateCarLogUpload
     ]
     resources: [
         ModelResource

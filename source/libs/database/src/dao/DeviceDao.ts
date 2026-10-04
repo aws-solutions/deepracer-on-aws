@@ -80,8 +80,10 @@ export class DeviceDao extends BaseDao<DeviceEntity> {
     fleetId?: ResourceId;
     ipAddress?: string;
     carType?: CarType;
+    loggingCapable?: boolean;
   }): Promise<DeviceItem> {
     const { instanceId, name, deviceType, status, activatedAt, lastSeenAt, ttl, fleetId, ipAddress, carType } = params;
+    const { loggingCapable } = params;
     const mutableFields = {
       status,
       lastSeenAt,
@@ -90,6 +92,7 @@ export class DeviceDao extends BaseDao<DeviceEntity> {
       ...(fleetId ? { fleetId } : {}),
       ...(ipAddress ? { ipAddress } : {}),
       ...(carType ? { carType } : {}),
+      ...(loggingCapable === undefined ? {} : { loggingCapable }),
     };
 
     const existing = await this.get({ instanceId });
@@ -109,6 +112,7 @@ export class DeviceDao extends BaseDao<DeviceEntity> {
         ...(fleetId ? { fleetId } : {}),
         ...(ipAddress ? { ipAddress } : {}),
         ...(carType ? { carType } : {}),
+        ...(loggingCapable === undefined ? {} : { loggingCapable }),
       });
     } catch (error) {
       if (isConditionalCheckFailure(error)) {

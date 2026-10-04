@@ -22,14 +22,16 @@ const REGION = 'us-east-1';
  */
 function mockHandlerArns(): StackHandlerArns {
   const arnFor = (operation: string) => `arn:aws:lambda:${REGION}:${ACCOUNT}:function:mock-${operation}`;
-  const mapFor = (key: 'core' | 'eventManagement' | 'modelManagement' | 'realTimeRoles' | 'deviceManagement') =>
-    Object.fromEntries(operationsOwnedBy(key).map((op) => [op, arnFor(op)]));
+  const mapFor = (
+    key: 'core' | 'eventManagement' | 'modelManagement' | 'realTimeRoles' | 'deviceManagement' | 'carLogs',
+  ) => Object.fromEntries(operationsOwnedBy(key).map((op) => [op, arnFor(op)]));
   return {
     core: mapFor('core'),
     eventManagement: mapFor('eventManagement'),
     modelManagement: mapFor('modelManagement'),
     realTimeRoles: mapFor('realTimeRoles'),
     deviceManagement: mapFor('deviceManagement'),
+    carLogs: mapFor('carLogs'),
   } as StackHandlerArns;
 }
 
@@ -39,6 +41,7 @@ const ALL_OPERATIONS = [
   ...operationsOwnedBy('modelManagement'),
   ...operationsOwnedBy('realTimeRoles'),
   ...operationsOwnedBy('deviceManagement'),
+  ...operationsOwnedBy('carLogs'),
 ];
 
 /**

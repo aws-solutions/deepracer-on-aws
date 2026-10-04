@@ -5,15 +5,21 @@ import { EventStatus, RaceFormat } from '@deepracer-indy/typescript-client';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import i18n from '#i18n/index.js';
-import { render, screen } from '#utils/testUtils';
+import { fireEvent, render, screen } from '#utils/testUtils';
 
 import { EventAndTrackInfo } from '../EventAndTrackInfo';
 
 const mockListEventsQuery = vi.fn();
 const mockListEventTracksQuery = vi.fn();
+const mockSetFetchCarLogsOnRunFinish = vi.fn();
 
 vi.mock('#hooks/useTimekeepingContext.js', () => ({
-  useTimekeepingContext: () => ({ selectedEventId: 'event-001', selectedLeaderboardId: 'leaderboard-001' }),
+  useTimekeepingContext: () => ({
+    fetchCarLogsOnRunFinish: false,
+    selectedEventId: 'event-001',
+    selectedLeaderboardId: 'leaderboard-001',
+    setFetchCarLogsOnRunFinish: mockSetFetchCarLogsOnRunFinish,
+  }),
 }));
 
 vi.mock('#services/deepRacer/eventsApi.js', () => ({
@@ -41,5 +47,13 @@ describe('<EventAndTrackInfo />', () => {
       `${i18n.t('timekeeping:contextSelection.raceFormatLabel')} ${i18n.t('events:raceFormat.AVERAGE_LAPS')}`,
     );
     expect(screen.getByTestId('race-format-info')).not.toHaveTextContent(i18n.t('events:raceFormat.BEST_LAP'));
+  });
+
+  it('persists the fetch-car-logs toggle through the timekeeping context', () => {
+    render(<EventAndTrackInfo />);
+
+    fireEvent.click(screen.getByRole('checkbox', { name: i18n.t('timekeeping:contextSelection.fetchCarLogsLabel') }));
+
+    expect(mockSetFetchCarLogsOnRunFinish).toHaveBeenCalledWith(true);
   });
 });

@@ -33,6 +33,9 @@ endif
 ifdef override_model_optimizer_repo_name
 override_context_args += --context OVERRIDE_MODEL_OPTIMIZER_REPO_NAME=$(override_model_optimizer_repo_name)
 endif
+ifdef override_car_log_video_processor_repo_name
+override_context_args += --context OVERRIDE_CAR_LOG_VIDEO_PROCESSOR_REPO_NAME=$(override_car_log_video_processor_repo_name)
+endif
 
 region ?= us-east-1
 email_delivery_method ?= COGNITO

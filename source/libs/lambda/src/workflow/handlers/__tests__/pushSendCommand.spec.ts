@@ -16,7 +16,13 @@ const TEST_INPUT: PushDeploymentContext = {
   presignedUrl: 'https://example.com/model.tar.gz',
   carType: 'DEEPRACER_RPI',
   modelName: 'test-model',
+  racerName: 'Test_Racer',
 };
+
+const getScript = (callIndex: number) =>
+  ((ssmMock.call(callIndex).args[0].input as { Parameters?: { commands?: string[] } }).Parameters?.commands ?? []).join(
+    '\n',
+  );
 
 describe('pushSendCommand', () => {
   beforeEach(() => {
@@ -49,15 +55,14 @@ describe('pushSendCommand', () => {
     );
   });
 
-  it('should use modelName-modelId as the car folder name to prevent same-name collisions', async () => {
+  it('should use racerName_modelName_modelId as the car folder name', async () => {
     ssmMock.on(SendCommandCommand).resolves({ Command: { CommandId: 'cmd-1' } });
 
     await lambdaHandler(TEST_INPUT, {} as never, vi.fn() as never);
 
-    const input = ssmMock.call(0).args[0].input as { Parameters?: { commands?: string[] } };
-    const script = (input.Parameters?.commands ?? []).join('\n');
-    expect(script).toContain('/opt/aws/deepracer/artifacts/test-model-model-1/');
-    expect(script).toContain('/tmp/test-model-model-1.tar.gz');
+    const script = getScript(0);
+    expect(script).toContain('/opt/aws/deepracer/artifacts/Test_Racer_test-model_model-1/');
+    expect(script).toContain('/tmp/Test_Racer_test-model_model-1.tar.gz');
   });
 
   it('should give different folder names for same-named models with different modelIds', async () => {
@@ -66,11 +71,17 @@ describe('pushSendCommand', () => {
     await lambdaHandler(TEST_INPUT, {} as never, vi.fn() as never);
     await lambdaHandler({ ...TEST_INPUT, modelId: 'model-2' as never }, {} as never, vi.fn() as never);
 
-    const input1 = ssmMock.call(0).args[0].input as { Parameters?: { commands?: string[] } };
-    const input2 = ssmMock.call(1).args[0].input as { Parameters?: { commands?: string[] } };
-    const script1 = (input1.Parameters?.commands ?? []).join('\n');
-    const script2 = (input2.Parameters?.commands ?? []).join('\n');
-    expect(script1).toContain('test-model-model-1');
-    expect(script2).toContain('test-model-model-2');
+    expect(getScript(0)).toContain('Test_Racer_test-model_model-1');
+    expect(getScript(1)).toContain('Test_Racer_test-model_model-2');
+  });
+
+  it('should sanitize racerName and modelName and fall back to defaults', async () => {
+    ssmMock.on(SendCommandCommand).resolves({ Command: { CommandId: 'cmd-1' } });
+
+    await lambdaHandler({ ...TEST_INPUT, racerName: 'a b;$(x)', modelName: '../m' }, {} as never, vi.fn() as never);
+    await lambdaHandler({ ...TEST_INPUT, racerName: undefined, modelName: undefined }, {} as never, vi.fn() as never);
+
+    expect(getScript(0)).toContain('/opt/aws/deepracer/artifacts/abx_m_model-1/');
+    expect(getScript(1)).toContain('/opt/aws/deepracer/artifacts/racer_model_model-1/');
   });
 });

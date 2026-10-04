@@ -14,6 +14,7 @@ export interface PushDeploymentContext {
   presignedUrl: string;
   carType: string;
   modelName?: string;
+  racerName?: string;
   commandId?: string;
   commandStatus?: string;
   commandError?: string;

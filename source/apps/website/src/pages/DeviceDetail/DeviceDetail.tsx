@@ -19,6 +19,10 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { PageId } from '#constants/pages';
 import { useAppDispatch } from '#hooks/useAppDispatch';
 import { useDeviceMqtt, type DeviceMqttEvent } from '#hooks/useDeviceMqtt.js';
+import StartCarLogFetchModal, {
+  type StartCarLogFetchFilters,
+} from '#pages/DeviceList/components/StartCarLogFetchModal.js';
+import { useStartCarLogFetchMutation } from '#services/deepRacer/carLogsApi.js';
 import {
   useChangeDeviceColorMutation,
   useDeleteDeviceMutation,
@@ -32,6 +36,7 @@ import {
   displayErrorNotification,
   displayInfoNotification,
   displaySuccessNotification,
+  displayWarningNotification,
 } from '#store/notifications/notificationsSlice.js';
 import { checkUserGroupMembership } from '#utils/authUtils.js';
 import { getPath } from '#utils/pageUtils.js';
@@ -64,6 +69,7 @@ const DeviceDetail = () => {
   const [showColorModal, setShowColorModal] = useState(false);
   const [showFleetModal, setShowFleetModal] = useState(false);
   const [showCarTypeModal, setShowCarTypeModal] = useState(false);
+  const [showFetchCarLogsModal, setShowFetchCarLogsModal] = useState(false);
 
   const { data: devices, isLoading, refetch } = useListDevicesQuery({});
   const device: Device | undefined = useMemo(
@@ -75,6 +81,7 @@ const DeviceDetail = () => {
   const [stopDevice, { isLoading: isStopping }] = useStopDeviceMutation();
   const [changeDeviceColor, { isLoading: isChangingColor }] = useChangeDeviceColorMutation();
   const [deleteDevice, { isLoading: isDeleting }] = useDeleteDeviceMutation();
+  const [startCarLogFetch, { isLoading: isStartingCarLogFetch }] = useStartCarLogFetchMutation();
   const [updateDevice, { isLoading: isChangingFleet }] = useUpdateDeviceMutation();
   const [updateDeviceCarType, { isLoading: isChangingCarType }] = useUpdateDeviceMutation();
 
@@ -205,6 +212,13 @@ const DeviceDetail = () => {
     return undefined;
   };
 
+  const getFetchCarLogsDisabledReason = (): string | undefined => {
+    if (!device) return undefined;
+    if (device.deviceType !== DeviceType.CAR) return t('detail.fetchCarLogsCarsOnlyTooltip');
+    if (device.loggingCapable === false) return t('detail.fetchCarLogsUnsupportedTooltip');
+    return undefined;
+  };
+
   if (isLoading) {
     return (
       <ContentLayout header={<Header variant="h1">{t('detail.loadingText')}</Header>}>
@@ -222,6 +236,15 @@ const DeviceDetail = () => {
   }
 
   const stopDisabledReason = getStopDisabledReason();
+  const fetchCarLogsDisabledReason = getFetchCarLogsDisabledReason();
+  const loggingCapableText =
+    device.deviceType !== DeviceType.CAR
+      ? '—'
+      : device.loggingCapable === true
+        ? t('loggingCapable.true')
+        : device.loggingCapable === false
+          ? t('loggingCapable.false')
+          : t('loggingCapable.unknown');
 
   const fleetName = device.fleetId
     ? (fleets.find((fleet) => fleet.fleetId === device.fleetId)?.name ?? device.fleetId)
@@ -232,6 +255,15 @@ const DeviceDetail = () => {
       {isAdminOrFacilitator && (
         <Button onClick={() => handleRestart()} loading={isRestarting}>
           {t('detail.restartButton')}
+        </Button>
+      )}
+      {isAdminOrFacilitator && (
+        <Button
+          onClick={() => setShowFetchCarLogsModal(true)}
+          disabled={!!fetchCarLogsDisabledReason}
+          disabledReason={fetchCarLogsDisabledReason}
+        >
+          {t('detail.fetchCarLogsButton')}
         </Button>
       )}
       {isAdminOrFacilitator && (
@@ -280,6 +312,10 @@ const DeviceDetail = () => {
                         {
                           label: t('detail.carTypeLabel'),
                           value: device.carType ? t(`carType.${device.carType}`) : t('detail.carTypeNotSet'),
+                        },
+                        {
+                          label: t('detail.loggingCapableLabel'),
+                          value: loggingCapableText,
                         },
                       ]
                     : []),
@@ -340,6 +376,28 @@ const DeviceDetail = () => {
           isVisible
           onChangeCarType={handleChangeCarType}
           onDismiss={() => setShowCarTypeModal(false)}
+        />
+      )}
+      {showFetchCarLogsModal && (
+        <StartCarLogFetchModal
+          deviceNames={[device.name]}
+          isSubmitting={isStartingCarLogFetch}
+          isVisible
+          onDismiss={() => setShowFetchCarLogsModal(false)}
+          onSubmit={async (filters: StartCarLogFetchFilters) => {
+            try {
+              await startCarLogFetch({
+                instanceId: device.instanceId,
+                ...(filters.racerName ? { racerName: filters.racerName } : {}),
+                ...(filters.modelId ? { modelId: filters.modelId } : {}),
+                ...(filters.laterThan ? { laterThan: filters.laterThan } : {}),
+              }).unwrap();
+              dispatch(displaySuccessNotification({ content: t('carLogs.notifications.fetchSuccess', { count: 1 }) }));
+              setShowFetchCarLogsModal(false);
+            } catch {
+              dispatch(displayWarningNotification({ content: t('carLogs.notifications.fetchError') }));
+            }
+          }}
         />
       )}
     </>

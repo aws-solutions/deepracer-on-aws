@@ -12,14 +12,17 @@ import { DeviceStatus, DeviceType, type Lap, RunStatus, RunTransitionAction } fr
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { useAppDispatch } from '#hooks/useAppDispatch.js';
 import { useTimekeeperMqtt } from '#hooks/useTimekeeperMqtt.js';
 import { useTimekeepingContext } from '#hooks/useTimekeepingContext.js';
 import { useTimekeepingLaps, useTimekeepingRun, useTimekeepingSessionActions } from '#hooks/useTimekeepingSession.js';
 import type { OverlayUpdateEvent } from '#pages/PhysicalRace/types/events.js';
+import { useStartCarLogFetchMutation } from '#services/deepRacer/carLogsApi.js';
 import { useListDevicesQuery } from '#services/deepRacer/devicesApi.js';
 import { useGetEventQuery, useListEventTracksQuery } from '#services/deepRacer/eventsApi.js';
 import { useCreateLapMutation, useSetLapValidityMutation } from '#services/deepRacer/lapsApi.js';
 import { useTransitionRunStatusMutation } from '#services/deepRacer/runsApi.js';
+import { displayWarningNotification } from '#store/notifications/notificationsSlice.js';
 
 import './RaceControls.css';
 import { formatCountdown, formatLapTime } from '../utils';
@@ -37,11 +40,12 @@ const OVERLAY_RACE_STATUS_BY_RUN_STATUS: Record<RunStatus, OverlayUpdateEvent['r
 
 export const RaceControls = () => {
   const { t } = useTranslation('timekeeping');
+  const dispatch = useAppDispatch();
 
   const { activeRun, runSetup } = useTimekeepingRun();
   const { laps = [] } = useTimekeepingLaps();
   const { addOptimisticLap, removeOptimisticLap, registerActiveRun } = useTimekeepingSessionActions();
-  const { selectedEventId, selectedLeaderboardId } = useTimekeepingContext();
+  const { fetchCarLogsOnRunFinish, selectedEventId, selectedLeaderboardId } = useTimekeepingContext();
   const { publishLapCaptured, publishOverlayUpdate } = useTimekeeperMqtt(
     selectedEventId ?? '',
     selectedLeaderboardId ?? '',
@@ -51,6 +55,7 @@ export const RaceControls = () => {
   const [createLap, { isLoading: isCreatingLap }] = useCreateLapMutation();
   const [setLapValidity] = useSetLapValidityMutation();
   const [transitionRunStatus, { isLoading: isTransitioning }] = useTransitionRunStatusMutation();
+  const [startCarLogFetch] = useStartCarLogFetchMutation();
   const { data: event } = useGetEventQuery({ eventId: selectedEventId ?? '' }, { skip: !selectedEventId });
   const { data: tracks = [] } = useListEventTracksQuery({ eventId: selectedEventId ?? '' }, { skip: !selectedEventId });
 
@@ -483,6 +488,39 @@ export const RaceControls = () => {
       }),
     [pauseInvalidatedLapTimer, rollbackPause, submitInvalidLap, t],
   );
+  const autoFetchCarLogsForRun = useCallback(
+    async (runId: string, createdAt: Date, deviceIds: Array<string | undefined>) => {
+      if (!fetchCarLogsOnRunFinish || !selectedEventId || !selectedLeaderboardId) return;
+
+      const uniqueDeviceIds = [...new Set(deviceIds.filter((deviceId): deviceId is string => Boolean(deviceId)))];
+      if (uniqueDeviceIds.length === 0) {
+        dispatch(displayWarningNotification({ content: t('warnings.carLogFetchMissingDevice') }));
+        return;
+      }
+
+      const results = await Promise.all(
+        uniqueDeviceIds.map(async (instanceId) => {
+          try {
+            await startCarLogFetch({
+              leaderboardId: selectedLeaderboardId,
+              runId,
+              instanceId,
+              laterThan: createdAt,
+              ...(racerName ? { racerName } : {}),
+            }).unwrap();
+            return true;
+          } catch {
+            return false;
+          }
+        }),
+      );
+
+      if (results.some((result) => !result)) {
+        dispatch(displayWarningNotification({ content: t('warnings.carLogFetchFailed') }));
+      }
+    },
+    [dispatch, fetchCarLogsOnRunFinish, racerName, selectedEventId, selectedLeaderboardId, startCarLogFetch, t],
+  );
   const handleFinish = useCallback(async () => {
     if (!activeRun || !canFinish || !selectedEventId || !selectedLeaderboardId) return;
 
@@ -495,6 +533,7 @@ export const RaceControls = () => {
       }).unwrap();
       pauseRaceTimer();
       registerActiveRun(run);
+      void autoFetchCarLogsForRun(run.runId, run.createdAt, [selectedCar?.value, ...laps.map((lap) => lap.deviceId)]);
       try {
         await publishRaceState(RunStatus.FINISHED);
         setPublishError(undefined);
@@ -507,9 +546,12 @@ export const RaceControls = () => {
   }, [
     activeRun,
     canFinish,
+    autoFetchCarLogsForRun,
     pauseRaceTimer,
     publishRaceState,
     registerActiveRun,
+    laps,
+    selectedCar?.value,
     selectedEventId,
     selectedLeaderboardId,
     t,

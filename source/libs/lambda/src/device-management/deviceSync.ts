@@ -5,6 +5,7 @@ import {
   DeregisterManagedInstanceCommand,
   DescribeInstanceInformationCommand,
   type InstanceInformation,
+  ListInventoryEntriesCommand,
   ListTagsForResourceCommand,
 } from '@aws-sdk/client-ssm';
 import { deviceDao, type DeviceItem, type ResourceId } from '@deepracer-indy/database';
@@ -55,6 +56,46 @@ const readCarType = (tags: Record<string, string>): CarType | undefined => {
   const value = tags.CarType;
   return value !== undefined && CAR_TYPE_VALUES.has(value) ? (value as CarType) : undefined;
 };
+
+/** First `aws-deepracer-core` release whose logging package writes the rosbags the car log feature needs. */
+const MINIMUM_LOGGING_VERSION = [2, 1, 2, 7];
+
+/** True when a version such as `2.1.2.7+build` is at least {@link MINIMUM_LOGGING_VERSION}. */
+export const isLoggingCapableVersion = (version: string): boolean => {
+  const parts = version.split('+')[0].split('.').map(Number);
+  if (parts.length === 0 || parts.some((part) => !Number.isInteger(part) || part < 0)) {
+    return false;
+  }
+  for (let i = 0; i < Math.max(parts.length, MINIMUM_LOGGING_VERSION.length); i += 1) {
+    const diff = (parts[i] ?? 0) - (MINIMUM_LOGGING_VERSION[i] ?? 0);
+    if (diff !== 0) {
+      return diff > 0;
+    }
+  }
+  return true;
+};
+
+/**
+ * Reads the installed DeepRacer software version from SSM inventory. Returns undefined when it
+ * cannot be determined (inventory not collected yet or the call failed), so that an unknown
+ * state does not overwrite an earlier result or block the car.
+ */
+async function readLoggingCapable(instanceId: string): Promise<boolean | undefined> {
+  try {
+    const response = await ssmClient.send(
+      new ListInventoryEntriesCommand({
+        InstanceId: instanceId,
+        TypeName: 'AWS:Application',
+        Filters: [{ Key: 'Name', Values: ['aws-deepracer-core'], Type: 'Equal' }],
+      }),
+    );
+    const version = response.Entries?.find((entry) => entry.Name === 'aws-deepracer-core')?.Version;
+    return version ? isLoggingCapableVersion(version) : undefined;
+  } catch (error) {
+    logger.warn('Could not read the DeepRacer software version', { instanceId, error });
+    return undefined;
+  }
+}
 
 async function readTags(instanceId: string): Promise<Record<string, string>> {
   const response = await ssmClient.send(
@@ -261,6 +302,7 @@ export async function syncInstance(info: InstanceInformation, retiredInstanceIds
 
   const carType = deviceType === DeviceType.CAR ? (readCarType(tags) ?? inherited?.carType) : undefined;
   const fleetId = (tags.fleetId as ResourceId | undefined) || inherited?.fleetId;
+  const loggingCapable = deviceType === DeviceType.CAR ? await readLoggingCapable(instanceId) : undefined;
 
   await deviceDao.upsertStatus({
     instanceId,
@@ -273,6 +315,7 @@ export async function syncInstance(info: InstanceInformation, retiredInstanceIds
     fleetId: fleetId || undefined,
     ipAddress: info.IPAddress ?? undefined,
     ...(carType ? { carType } : {}),
+    ...(loggingCapable === undefined ? {} : { loggingCapable }),
   });
 
   if (previous && successor) {

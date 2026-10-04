@@ -21,9 +21,11 @@ const {
   mockUseCreateRunMutation,
   mockUseTransitionRunStatusMutation,
   mockCreateRun,
+  mockStartCarLogFetch,
   mockTransitionRunStatus,
   mockUseListAdminProfilesQuery,
   mockUseGetEventQuery,
+  mockUseTimekeepingLaps,
 } = vi.hoisted(() => ({
   mockUseTimekeepingContext: vi.fn(),
   mockUseTimekeepingSession: vi.fn(),
@@ -33,9 +35,15 @@ const {
   mockUseCreateRunMutation: vi.fn(),
   mockUseTransitionRunStatusMutation: vi.fn(),
   mockCreateRun: vi.fn(),
+  mockStartCarLogFetch: vi.fn(),
   mockTransitionRunStatus: vi.fn(),
   mockUseListAdminProfilesQuery: vi.fn(),
   mockUseGetEventQuery: vi.fn(),
+  mockUseTimekeepingLaps: vi.fn(),
+}));
+
+vi.mock('#hooks/useAppDispatch.js', () => ({
+  useAppDispatch: () => vi.fn(),
 }));
 
 vi.mock('#hooks/useTimekeepingContext.js', () => ({
@@ -60,8 +68,13 @@ vi.mock('#services/deepRacer/eventsApi.js', async (importOriginal) => {
   };
 });
 
+vi.mock('#services/deepRacer/carLogsApi.js', () => ({
+  useStartCarLogFetchMutation: () => [mockStartCarLogFetch, { isLoading: false }],
+}));
+
 vi.mock('#hooks/useTimekeepingSession.js', () => ({
   useTimekeepingSessionActions: mockUseTimekeepingSession,
+  useTimekeepingLaps: () => mockUseTimekeepingLaps(),
 }));
 
 const mockProfiles: AdminProfile[] = [
@@ -102,6 +115,7 @@ describe('<RunsTable />', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUseTimekeepingContext.mockReturnValue({
+      fetchCarLogsOnRunFinish: false,
       selectedEventId: 'event-001',
       selectedLeaderboardId: 'leaderboard-001',
     });
@@ -113,9 +127,11 @@ describe('<RunsTable />', () => {
     mockUseCreateRunMutation.mockReturnValue([mockCreateRun, { isLoading: false }]);
     mockUseTransitionRunStatusMutation.mockReturnValue([mockTransitionRunStatus, { isLoading: false }]);
     mockCreateRun.mockReturnValue({ unwrap: () => Promise.resolve(createdRun) });
+    mockStartCarLogFetch.mockReturnValue({ unwrap: () => Promise.resolve({ jobId: 'job-001' }) });
     mockTransitionRunStatus.mockReturnValue({ unwrap: () => Promise.resolve({ run: mockRuns[1] }) });
     mockUseListAdminProfilesQuery.mockReturnValue({ data: mockProfiles });
     mockUseGetEventQuery.mockReturnValue({ data: {} });
+    mockUseTimekeepingLaps.mockReturnValue({ laps: [] });
   });
 
   it('loads the selected track runs and resolves racer aliases', () => {
@@ -139,6 +155,7 @@ describe('<RunsTable />', () => {
 
   it('skips the run query until Event and Track are selected', () => {
     mockUseTimekeepingContext.mockReturnValue({
+      fetchCarLogsOnRunFinish: false,
       selectedEventId: undefined,
       selectedLeaderboardId: undefined,
     });

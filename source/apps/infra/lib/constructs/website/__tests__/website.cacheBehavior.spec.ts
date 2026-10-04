@@ -38,6 +38,7 @@ describe('StaticWebsite — public/leaderboards/* cache behavior', () => {
       bucketName: 'test-model-storage-bucket',
       removalPolicy: RemovalPolicy.DESTROY,
     });
+    const deviceLogsBucket = new Bucket(stack, 'TestDeviceLogsBucket', { removalPolicy: RemovalPolicy.DESTROY });
     const uploadBucket = new Bucket(stack, 'TestUploadBucket', {
       bucketName: 'test-upload-bucket',
       removalPolicy: RemovalPolicy.DESTROY,
@@ -50,6 +51,7 @@ describe('StaticWebsite — public/leaderboards/* cache behavior', () => {
       userPoolClientId: 'abcdefghijklmnopqrstuvwxyz',
       modelStorageBucket,
       uploadBucket,
+      deviceLogsBucket,
       namespace: TEST_NAMESPACE,
       solutionVersion: 'v1.0.0',
     });
@@ -80,6 +82,17 @@ describe('StaticWebsite — public/leaderboards/* cache behavior', () => {
     expect(cacheBehaviors[0].TargetOriginId).toBe(
       distribution.Properties.DistributionConfig.DefaultCacheBehavior.TargetOriginId,
     );
+  });
+
+  it('lets the browser fetch car-log downloads from the device logs bucket (CSP connect-src)', () => {
+    const policies = Object.values(template.findResources('AWS::CloudFront::ResponseHeadersPolicy'));
+    const csps = policies.map((policy) =>
+      JSON.stringify(
+        policy.Properties.ResponseHeadersPolicyConfig.SecurityHeadersConfig.ContentSecurityPolicy.ContentSecurityPolicy,
+      ),
+    );
+    expect(csps.length).toBeGreaterThan(0);
+    csps.forEach((csp) => expect(csp).toMatch(/connect-src[\s\S]*TestDeviceLogsBucket[\s\S]*RegionalDomainName/));
   });
 
   it("excludes only the page's ?t= cache-buster from the cache key, so the 5s TTL still collapses concurrent requests at the edge", () => {
@@ -135,6 +148,7 @@ describe('StaticWebsite — deployment artifact exclusions', () => {
     Source.asset = assetSpy as typeof Source.asset;
 
     const modelStorageBucket = new Bucket(stack, 'TestModelStorageBucket', { removalPolicy: RemovalPolicy.DESTROY });
+    const deviceLogsBucket = new Bucket(stack, 'TestDeviceLogsBucket', { removalPolicy: RemovalPolicy.DESTROY });
     const uploadBucket = new Bucket(stack, 'TestUploadBucket', { removalPolicy: RemovalPolicy.DESTROY });
 
     new StaticWebsite(stack, 'TestStaticWebsite', {
@@ -144,6 +158,7 @@ describe('StaticWebsite — deployment artifact exclusions', () => {
       userPoolClientId: 'abcdefghijklmnopqrstuvwxyz',
       modelStorageBucket,
       uploadBucket,
+      deviceLogsBucket,
       namespace: TEST_NAMESPACE,
       solutionVersion: 'v1.0.0',
     });
