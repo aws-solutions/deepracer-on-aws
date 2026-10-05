@@ -112,7 +112,7 @@ outputs:					## Show CloudFormation stack outputs
 
 ##@ Website (local development)
 
-.PHONY: website.config website.dev website.build
+.PHONY: website.config website.dev website.build website.deploy
 website.config:				## Generate apps/website/public/env.js from the deployed stack outputs
 	cd $(SRC) && NAMESPACE=$(namespace) AWS_REGION=$(region) pnpm --filter @deepracer-indy/website run config:local
 
@@ -121,6 +121,9 @@ website.dev:					## Run the website locally against the config generated above
 
 website.build:					## Build only the website app (vite build), skipping infra synth
 	cd $(SRC) && pnpm nx build website
+
+website.deploy: website.build		## Build the website and publish it straight to the deployed bucket + invalidate CloudFront (DRY_RUN=1 to preview)
+	cd $(SRC) && NAMESPACE=$(namespace) AWS_REGION=$(region) DRY_RUN=$(DRY_RUN) pnpm --filter @deepracer-indy/website run deploy:s3
 
 ##@ Internal
 

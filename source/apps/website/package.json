@@ -7,7 +7,8 @@
     "dev": "vite",
     "clean": "rm -rf dist",
     "postinstall": "patch-package",
-    "config:local": "./scripts/generate-local-env.sh"
+    "config:local": "./scripts/generate-local-env.sh",
+    "deploy:s3": "./scripts/deploy-website.sh"
   },
   "dependencies": {
     "@aws-amplify/ui-react": "6.9.2",
