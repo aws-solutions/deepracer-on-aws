@@ -3,6 +3,83 @@
 Operational guide for collecting ROS bag logs from cars (or from a manual upload) and turning them
 into videos. Covers the flow, access rules, retention, cost and troubleshooting.
 
+## Data flow
+
+```mermaid
+flowchart LR
+  subgraph Users["Users (website)"]
+    FAC["Admin / facilitator<br/>Devices page or<br/>Timekeeping toggle"]
+    RAC["Any user<br/>manual .tar.gz upload"]
+    VIEW["Car logs pages<br/>own logs: Learning & Models<br/>all logs: Model Management"]
+  end
+
+  subgraph API["API Gateway + Lambda"]
+    START["StartCarLogFetch"]
+    UPLOAD["CreateCarLogUpload<br/>(presigned PUT)"]
+    LIST["ListCarLogAssets<br/>GetCarLogAssetUrls<br/>DeleteCarLogAsset"]
+  end
+
+  CAR["DeepRacer car<br/>ROS bags<br/>on-car folder: racer_model_modelId"]
+  SSM["SSM Run Command<br/>AWS-RunShellScript"]
+  S3S[("Device logs bucket<br/>staging/")]
+  SFN{{"Step Functions<br/>DeepRacerCarLogWorkflow"}}
+  PROC["JobProcessUpload λ<br/>unpack, match modelId,<br/>find owner"]
+  S3B[("carlogs/profileId/bags/")]
+  CFG[("job-configs/jobId.json")]
+  BATCH["AWS Batch (Fargate)<br/>car-log-video-processor<br/>analyse bags, Grad-CAM, render MP4"]
+  MODELS[("Model bucket<br/>pb-only-model.tar.gz")]
+  S3V[("carlogs/profileId/videos/<br/>results/jobId.json")]
+  REG["JobRegisterResults λ"]
+  DDB[("DynamoDB<br/>fetch jobs + assets")]
+  IOT["IoT Core MQTT<br/>carlogs/jobs<br/>carlogs/assets/profileId"]
+
+  FAC -->|1| START --> SFN
+  RAC -->|1| UPLOAD -->|presigned PUT| S3S
+  S3S -.->|"Object Created<br/>staging/manual/"| SFN
+  SFN -->|2 SendCommand| SSM -->|run script| CAR
+  CAR -->|"3 tar.gz via presigned PUT"| S3S
+  SFN -->|4| PROC
+  S3S --> PROC
+  PROC --> S3B
+  PROC --> CFG
+  PROC --> DDB
+  SFN -->|5 submitJob.sync| BATCH
+  CFG --> BATCH
+  S3B --> BATCH
+  MODELS --> BATCH
+  BATCH --> S3V
+  SFN -->|6| REG
+  S3V --> REG
+  REG --> DDB
+  DDB -->|stream| IOT
+  IOT -->|refresh| VIEW
+  VIEW --> LIST
+  LIST --> DDB
+  LIST -->|presigned GET| S3B
+  LIST -->|presigned GET| S3V
+```
+
+The workflow state machine:
+
+```mermaid
+stateDiagram-v2
+  [*] --> jobInit
+  jobInit --> sendCommand: source = CAR
+  jobInit --> processUpload: source = MANUAL
+  sendCommand --> wait15s
+  wait15s --> pollCommand
+  pollCommand --> wait15s: pending (max ~35 min)
+  pollCommand --> processUpload: success
+  pollCommand --> jobFail: upload failed or timed out
+  processUpload --> queued
+  processUpload --> jobFail: no matching bags / error
+  queued --> batchJob: QUEUED_FOR_PROCESSING
+  batchJob --> registerResults
+  batchJob --> jobFail: error
+  jobFail --> [*]: job marked FAILED / UPLOAD_FAILED
+  registerResults --> [*]
+```
+
 ## How it works
 
 1. **Start.** A facilitator or admin starts a fetch for a car (`StartCarLogFetch`, from the Devices
@@ -32,9 +109,13 @@ before this naming was introduced do not match and are ignored.
 
 | Role | Assets | Fetch jobs | Delete | Start fetch / upload |
 |---|---|---|---|---|
-| racer | own only | none | own | upload |
-| facilitator, admin | all | all | all | yes |
-| commentator | read (videos; no raw bag downloads) | none | no | no |
+| racer, registration manager | own only | none | own | upload |
+| facilitator, admin | all (Model Management), own (Learning & Models) | all | all | yes |
+| commentator | all videos (no other racers' raw bags); own assets in full | none | own | no |
+
+Every role finds its own logs under **Learning & Models → Car logs** (`/car-logs`). Admins and
+facilitators also get **Model Management → Car logs** (`/admin/car-logs`) with every racer's logs, the
+Racer column, uploads and the processing tab.
 
 ## Retention
 
