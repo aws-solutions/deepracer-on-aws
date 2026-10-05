@@ -45,6 +45,8 @@ interface CarLogAssetTableItem extends CarLogAsset {
 
 interface CarLogAssetsTableProps {
   access: CarLogsAccess | undefined;
+  /** The racer column is redundant when the list only holds the caller's own logs. */
+  showUserColumn: boolean;
   assets: CarLogAsset[];
   isFetching: boolean;
   isLoading: boolean;
@@ -81,6 +83,7 @@ const ASSET_TYPE_TRANSLATION_KEY: Record<
 
 const CarLogAssetsTable = ({
   access,
+  showUserColumn,
   assets,
   isFetching,
   isLoading,
@@ -134,12 +137,16 @@ const CarLogAssetsTable = ({
         groupValuesLabel: t('assets.columns.filename'),
         operators: [':', '!:', '=', '!='],
       },
-      {
-        key: 'userLabel',
-        propertyLabel: t('assets.columns.user'),
-        groupValuesLabel: t('assets.columns.user'),
-        operators: [':', '!:', '=', '!='],
-      },
+      ...(showUserColumn
+        ? [
+            {
+              key: 'userLabel',
+              propertyLabel: t('assets.columns.user'),
+              groupValuesLabel: t('assets.columns.user'),
+              operators: [':', '!:', '=', '!='],
+            },
+          ]
+        : []),
       {
         key: 'modelsText',
         propertyLabel: t('assets.columns.models'),
@@ -165,7 +172,7 @@ const CarLogAssetsTable = ({
         operators: [':', '!:'],
       },
     ],
-    [t],
+    [showUserColumn, t],
   );
 
   const {
@@ -206,13 +213,17 @@ const CarLogAssetsTable = ({
         isRowHeader: true,
         minWidth: 220,
       },
-      {
-        id: AssetsColumn.USER,
-        header: t('assets.columns.user'),
-        cell: (item) => item.userLabel,
-        sortingField: 'userLabel',
-        minWidth: 180,
-      },
+      ...(showUserColumn
+        ? [
+            {
+              id: AssetsColumn.USER,
+              header: t('assets.columns.user'),
+              cell: (item: CarLogAssetTableItem) => item.userLabel,
+              sortingField: 'userLabel',
+              minWidth: 180,
+            },
+          ]
+        : []),
       {
         id: AssetsColumn.MODELS,
         header: t('assets.columns.models'),
@@ -249,7 +260,7 @@ const CarLogAssetsTable = ({
         minWidth: 140,
       },
     ],
-    [t],
+    [showUserColumn, t],
   );
 
   const visibleCount = filteredItemsCount ?? items.length;
@@ -263,7 +274,7 @@ const CarLogAssetsTable = ({
       loading={isLoading}
       loadingText={t('assets.loading')}
       columnDefinitions={columnDefinitions}
-      columnDisplay={preferences.contentDisplay}
+      columnDisplay={preferences.contentDisplay?.filter((item) => showUserColumn || item.id !== AssetsColumn.USER)}
       selectionType={canSelect ? 'multi' : undefined}
       resizableColumns
       header={
@@ -330,7 +341,7 @@ const CarLogAssetsTable = ({
             options: [
               { id: AssetsColumn.TYPE, label: t('assets.columns.type') },
               { id: AssetsColumn.FILENAME, label: t('assets.columns.filename'), alwaysVisible: true },
-              { id: AssetsColumn.USER, label: t('assets.columns.user') },
+              ...(showUserColumn ? [{ id: AssetsColumn.USER, label: t('assets.columns.user') }] : []),
               { id: AssetsColumn.MODELS, label: t('assets.columns.models') },
               { id: AssetsColumn.EVENT, label: t('assets.columns.event') },
               { id: AssetsColumn.CAR, label: t('assets.columns.car') },

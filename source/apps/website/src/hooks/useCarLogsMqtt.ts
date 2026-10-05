@@ -35,14 +35,16 @@ export const buildCarLogAssetTopic = (namespace: string, profileId: string): str
 
 /**
  * Subscribes to car-log MQTT notifications and invalidates the matching RTK Query caches.
- * Managers also subscribe to job status changes; racers subscribe to their own asset topic,
- * while managers/commentators use the single-level wildcard to receive updates for every profile.
+ * In the `all` scope managers also subscribe to job status changes, and managers/commentators use the
+ * single-level wildcard to receive updates for every profile. Everyone else (and the `mine` scope)
+ * subscribes to the caller's own asset topic.
  */
-export const useCarLogsMqtt = (): UseMqttSubscriptionReturn => {
+export const useCarLogsMqtt = (scope: 'all' | 'mine' = 'all'): UseMqttSubscriptionReturn => {
   const dispatch = useAppDispatch();
   const [groups, setGroups] = useState<UserGroups[] | null>(null);
   const access = useMemo(() => resolveCarLogsAccess(groups ?? []), [groups]);
-  const { data: profile } = useGetProfileQuery(undefined, { skip: groups === null || access !== 'racer' });
+  const isAllScope = scope === 'all' && (access === 'manager' || access === 'viewer');
+  const { data: profile } = useGetProfileQuery(undefined, { skip: groups === null || isAllScope });
 
   useEffect(() => {
     let isMounted = true;
@@ -77,7 +79,7 @@ export const useCarLogsMqtt = (): UseMqttSubscriptionReturn => {
     );
   };
 
-  const assetTopicId = groups === null ? '' : access === 'racer' ? (profile?.profileId ?? '') : '+';
+  const assetTopicId = groups === null ? '' : isAllScope ? '+' : (profile?.profileId ?? '');
 
   const assetSubscription = useMqttSubscription<CarLogAssetMqttEvent>(
     assetTopicId,
@@ -89,7 +91,7 @@ export const useCarLogsMqtt = (): UseMqttSubscriptionReturn => {
   );
 
   const jobSubscription = useMqttSubscription<CarLogJobMqttEvent>(
-    groups !== null && access === 'manager' ? 'jobs' : '',
+    groups !== null && isAllScope && access === 'manager' ? 'jobs' : '',
     (namespace) => buildCarLogJobTopic(namespace),
     {
       onEvent: (event) => invalidateFetchTags(event.jobId),
@@ -97,5 +99,5 @@ export const useCarLogsMqtt = (): UseMqttSubscriptionReturn => {
     { disableWhenIdEmpty: true },
   );
 
-  return access === 'manager' ? jobSubscription : assetSubscription;
+  return isAllScope && access === 'manager' ? jobSubscription : assetSubscription;
 };

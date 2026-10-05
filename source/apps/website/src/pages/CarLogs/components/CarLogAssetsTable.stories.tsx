@@ -18,6 +18,7 @@ type Story = StoryObj<typeof CarLogAssetsTable>;
 export const Manager: Story = {
   args: {
     access: 'manager',
+    showUserColumn: true,
     assets: [
       {
         assetId: 'asset-001',

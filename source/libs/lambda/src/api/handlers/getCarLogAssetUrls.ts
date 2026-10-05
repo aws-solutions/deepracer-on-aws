@@ -26,7 +26,7 @@ const FORBIDDEN = { code: 'FORBIDDEN', message: 'You are not allowed to access t
 
 /** Returns an error entry when the caller may not download the asset, otherwise undefined. */
 const checkAccess = (access: CarLogAccess, callerId: ResourceId, asset: CarLogAssetItem) => {
-  if (access === 'manager' || (access === 'racer' && callerId === asset.profileId)) {
+  if (access === 'manager' || callerId === asset.profileId) {
     return undefined;
   }
   // Commentators may watch videos but cannot take raw bags.

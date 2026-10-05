@@ -5,6 +5,7 @@ import type { AppLayoutProps } from '@cloudscape-design/components/app-layout';
 
 export enum PageId {
   ACCOUNT = 'account',
+  ADMIN_CAR_LOGS = 'adminCarLogs',
   ADMIN_MODELS = 'adminModels',
   CREATE_EVALUATION = 'createEvaluation',
   CREATE_EVENT = 'createEvent',
@@ -94,6 +95,10 @@ export const pages = {
   [PageId.CREATE_RACE]: {
     path: '/races/create',
     contentType: 'wizard',
+  },
+  [PageId.ADMIN_CAR_LOGS]: {
+    path: '/admin/car-logs',
+    contentType: 'table',
   },
   [PageId.CAR_LOGS]: {
     path: '/car-logs',

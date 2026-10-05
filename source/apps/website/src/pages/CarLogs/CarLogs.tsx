@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 
 import { useCarLogsMqtt } from '#hooks/useCarLogsMqtt.js';
 import { useListCarLogAssetsQuery, useListCarLogFetchesQuery } from '#services/deepRacer/carLogsApi.js';
+import { useGetProfileQuery } from '#services/deepRacer/profileApi.js';
 import { getUserGroups } from '#utils/authUtils.js';
 import { canManageCarLogJobs, resolveCarLogsAccess } from '#utils/carLogsAccess.js';
 
@@ -22,7 +23,12 @@ import { isCarLogFetchActive } from './utils.js';
 
 const CAR_LOGS_POLLING_INTERVAL_MS = 15000;
 
-const CarLogs = () => {
+interface CarLogsProps {
+  /** `all` lists every racer's logs (Model Management); `mine` lists only the caller's own. */
+  scope: 'all' | 'mine';
+}
+
+const CarLogs = ({ scope }: CarLogsProps) => {
   const { t } = useTranslation('carLogs');
   const [groups, setGroups] = useState<UserGroups[] | null>(null);
   const [downloadAssets, setDownloadAssets] = useState<CarLogAsset[] | null>(null);
@@ -45,8 +51,12 @@ const CarLogs = () => {
     };
   }, []);
 
-  const access = groups === null ? undefined : resolveCarLogsAccess(groups);
-  const isManager = canManageCarLogJobs(access);
+  const roleAccess = groups === null ? undefined : resolveCarLogsAccess(groups);
+  const isAllScope = scope === 'all' && (roleAccess === 'manager' || roleAccess === 'viewer');
+  // In the own-logs view everyone acts as the owner of the listed assets.
+  const access = roleAccess === undefined ? undefined : isAllScope ? roleAccess : 'racer';
+  const isManager = isAllScope && canManageCarLogJobs(roleAccess);
+  const { data: profile } = useGetProfileQuery(undefined, { skip: groups === null || isAllScope });
 
   const fetchesQuery = useListCarLogFetchesQuery(undefined, {
     skip: !isManager,
@@ -66,14 +76,15 @@ const CarLogs = () => {
     isLoading: isLoadingAssets,
     isFetching: isFetchingAssets,
     refetch: refetchAssets,
-  } = useListCarLogAssetsQuery(undefined, {
+  } = useListCarLogAssetsQuery(isAllScope ? undefined : { profileId: profile?.profileId }, {
+    skip: groups === null || (!isAllScope && !profile),
     pollingInterval: hasActiveJobs ? CAR_LOGS_POLLING_INTERVAL_MS : 0,
     skipPollingIfUnfocused: true,
     refetchOnFocus: true,
     refetchOnMountOrArgChange: true,
   });
 
-  useCarLogsMqtt();
+  useCarLogsMqtt(scope);
 
   const tabs = useMemo(
     () => [
@@ -83,6 +94,7 @@ const CarLogs = () => {
         content: (
           <CarLogAssetsTable
             access={access}
+            showUserColumn={isAllScope}
             assets={assets}
             isFetching={isFetchingAssets}
             isLoading={isLoadingAssets}
@@ -110,7 +122,7 @@ const CarLogs = () => {
           ]
         : []),
     ],
-    [access, assets, fetchesQuery, isFetchingAssets, isLoadingAssets, isManager, jobs, refetchAssets, t],
+    [access, assets, fetchesQuery, isAllScope, isFetchingAssets, isLoadingAssets, isManager, jobs, refetchAssets, t],
   );
 
   const pageDescription =

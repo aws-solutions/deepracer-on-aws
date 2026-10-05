@@ -31,7 +31,7 @@ export const DeleteCarLogAssetOperation: Operation<
   const ownerProfileId = input.profileId as ResourceId;
   const access = await getCarLogAccess(context.profileId);
   // Same message as a missing asset so the existence of other racers' assets is not revealed.
-  if (access === 'viewer' || (access === 'racer' && context.profileId !== ownerProfileId)) {
+  if (access !== 'manager' && context.profileId !== ownerProfileId) {
     throw new NotAuthorizedError({ message: 'You are not allowed to delete this asset.' });
   }
 

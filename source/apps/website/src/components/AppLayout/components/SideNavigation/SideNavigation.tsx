@@ -1,7 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import CloudscapeSideNavigation, { SideNavigationProps } from '@cloudscape-design/components/side-navigation';
+import CloudscapeSideNavigation from '@cloudscape-design/components/side-navigation';
 import { UserGroups } from '@deepracer-indy/typescript-client';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -14,6 +14,7 @@ import { getPageBasePath, getPath } from '#utils/pageUtils.js';
 import {
   getAdminNavigationItems,
   getDeviceManagementNavigationItems,
+  getLearningAndModelsNavigationItems,
   getModelManagementNavigationItems,
   getRaceManagementNavigationItems,
 } from './itemsUtils.js';
@@ -37,32 +38,6 @@ const SideNavigation = () => {
   }, []);
 
   const isAdmin = userGroups.includes(UserGroups.ADMIN);
-  const isFacilitator = userGroups.includes(UserGroups.RACE_FACILITATORS);
-  const isRacer = userGroups.includes(UserGroups.RACERS);
-  const canViewModels = isAdmin || isFacilitator || isRacer;
-
-  // Get started and Your models are only relevant to roles that can train/manage models —
-  // Commentators and Registration Managers have no model-training relationship.
-  const baseNavigationItems: SideNavigationProps.Item[] = canViewModels
-    ? [
-        {
-          type: 'section',
-          text: t('sections.learningAndModels', { ns: 'navigation' }),
-          items: [
-            {
-              type: 'link',
-              text: t(`breadcrumbs.${PageId.GET_STARTED}`, { ns: 'navigation' }),
-              href: getPath(PageId.GET_STARTED),
-            },
-            {
-              type: 'link',
-              text: t(`breadcrumbs.${PageId.MODELS}`, { ns: 'navigation' }),
-              href: getPath(PageId.MODELS),
-            },
-          ],
-        },
-      ]
-    : [];
 
   const { data: versionData } = useVersionCheck({ enabled: isAdmin });
 
@@ -76,7 +51,7 @@ const SideNavigation = () => {
           navigate(e.detail.href);
         }}
         items={[
-          ...baseNavigationItems,
+          ...getLearningAndModelsNavigationItems(userGroups, t),
           ...getRaceManagementNavigationItems(userGroups, t),
           ...getDeviceManagementNavigationItems(userGroups, t),
           ...getModelManagementNavigationItems(userGroups, t),

@@ -42,5 +42,6 @@
   "registerRacer": "Register racer",
   "timekeeping": "Timekeeping",
   "timekeepingTrack": "Timekeeping",
-  "carLogs": "Car logs"
+  "carLogs": "Car logs",
+  "adminCarLogs": "Car logs"
 }

@@ -20,6 +20,10 @@ vi.mock('#hooks/useCarLogsMqtt.js', () => ({
   useCarLogsMqtt: vi.fn(),
 }));
 
+vi.mock('#services/deepRacer/profileApi.js', () => ({
+  useGetProfileQuery: () => ({ data: { profileId: 'my-profile' } }),
+}));
+
 vi.mock('#services/deepRacer/carLogsApi.js', () => ({
   useListCarLogAssetsQuery: (...args: unknown[]) => mockUseListCarLogAssetsQuery(...args),
   useListCarLogFetchesQuery: (...args: unknown[]) => mockUseListCarLogFetchesQuery(...args),
@@ -64,7 +68,7 @@ describe('<CarLogs />', () => {
   it('shows assets and processing tabs for managers', async () => {
     mockGetUserGroups.mockResolvedValue([UserGroups.ADMIN]);
 
-    render(<CarLogs />);
+    render(<CarLogs scope="all" />);
 
     await waitFor(() => {
       expect(screen.getByRole('tab', { name: 'Assets' })).toBeInTheDocument();
@@ -77,7 +81,7 @@ describe('<CarLogs />', () => {
   it('shows only the assets tab for commentators', async () => {
     mockGetUserGroups.mockResolvedValue([UserGroups.COMMENTATORS]);
 
-    render(<CarLogs />);
+    render(<CarLogs scope="all" />);
 
     await waitFor(() => {
       expect(screen.getByRole('tab', { name: 'Assets' })).toBeInTheDocument();
@@ -86,5 +90,46 @@ describe('<CarLogs />', () => {
     expect(screen.queryByRole('tab', { name: 'Processing' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Download' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
+  });
+
+  describe('own logs scope', () => {
+    it.each([[UserGroups.ADMIN], [UserGroups.RACE_FACILITATORS]])(
+      'lists only the caller’s logs without racer column or admin tools for %s',
+      async (group) => {
+        mockGetUserGroups.mockResolvedValue([group]);
+
+        render(<CarLogs scope="mine" />);
+
+        await waitFor(() => {
+          expect(screen.getByRole('tab', { name: 'Assets' })).toBeInTheDocument();
+        });
+
+        expect(mockUseListCarLogAssetsQuery).toHaveBeenLastCalledWith(
+          { profileId: 'my-profile' },
+          expect.objectContaining({ skip: false }),
+        );
+        expect(screen.queryByRole('tab', { name: 'Processing' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Upload archive' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('columnheader', { name: /Racer|User/ })).not.toBeInTheDocument();
+        expect(mockUseListCarLogFetchesQuery).toHaveBeenLastCalledWith(
+          undefined,
+          expect.objectContaining({ skip: true }),
+        );
+      },
+    );
+
+    it('lists every racer’s logs with the racer column in the all scope', async () => {
+      mockGetUserGroups.mockResolvedValue([UserGroups.ADMIN]);
+
+      render(<CarLogs scope="all" />);
+
+      await waitFor(() => {
+        expect(mockUseListCarLogAssetsQuery).toHaveBeenLastCalledWith(
+          undefined,
+          expect.objectContaining({ skip: false }),
+        );
+      });
+      expect(await screen.findByRole('columnheader', { name: /Racer|User/ })).toBeInTheDocument();
+    });
   });
 });

@@ -124,6 +124,20 @@ describe('car log asset operations', () => {
       expect(out.errors).toEqual([{ assetId: ASSET_ID, code: 'NOT_FOUND', message: 'Asset not found.' }]);
     });
 
+    it('lets commentators download their own bags', async () => {
+      mockAccess.mockResolvedValue('viewer');
+      vi.spyOn(carLogAssetDao, 'get').mockResolvedValue(
+        asset({ assetType: CarLogAssetType.BAG_SQLITE, s3Key: `carlogs/${CALLER}/bags/b/` }) as never,
+      );
+
+      const out = await GetCarLogAssetUrlsOperation(
+        { assets: [{ profileId: CALLER, assetId: ASSET_ID }] },
+        TEST_OPERATION_CONTEXT,
+      );
+      expect(out.urls.length + (out.errors?.length ?? 0)).toBe(1);
+      expect(out.errors ?? []).toEqual([]);
+    });
+
     it('lets commentators watch videos but not take bags', async () => {
       mockAccess.mockResolvedValue('viewer');
       vi.spyOn(carLogAssetDao, 'get')
@@ -243,16 +257,26 @@ describe('car log asset operations', () => {
       expect(carLogAssetDao.delete).toHaveBeenCalledWith({ profileId: CALLER, assetId: ASSET_ID });
     });
 
-    it('rejects racers deleting others’ assets and commentators deleting anything', async () => {
+    it('rejects racers and commentators deleting others’ assets', async () => {
       await expect(
         DeleteCarLogAssetOperation({ profileId: OTHER, assetId: ASSET_ID }, TEST_OPERATION_CONTEXT),
       ).rejects.toThrow(NotAuthorizedError);
 
       mockAccess.mockResolvedValue('viewer');
       await expect(
-        DeleteCarLogAssetOperation({ profileId: CALLER, assetId: ASSET_ID }, TEST_OPERATION_CONTEXT),
+        DeleteCarLogAssetOperation({ profileId: OTHER, assetId: ASSET_ID }, TEST_OPERATION_CONTEXT),
       ).rejects.toThrow(NotAuthorizedError);
       expect(s3Helper.deleteS3Location).not.toHaveBeenCalled();
+    });
+
+    it('lets commentators delete their own assets', async () => {
+      mockAccess.mockResolvedValue('viewer');
+      vi.spyOn(carLogAssetDao, 'get').mockResolvedValue(asset({ s3Key: `carlogs/${CALLER}/videos/run.mp4` }) as never);
+      vi.spyOn(carLogAssetDao, 'delete').mockResolvedValue(undefined as never);
+
+      await DeleteCarLogAssetOperation({ profileId: CALLER, assetId: ASSET_ID }, TEST_OPERATION_CONTEXT);
+
+      expect(carLogAssetDao.delete).toHaveBeenCalledWith({ profileId: CALLER, assetId: ASSET_ID });
     });
 
     it('lets managers delete any racer’s asset', async () => {

@@ -79,7 +79,8 @@ const router = createBrowserRouter([
         </Route>
         <Route path={pages[PageId.CLONE_RACE].path} element={<CloneRace />} />
         <Route path={pages[PageId.CREATE_EVALUATION].path} element={<CreateEvaluation />} />
-        <Route path={pages[PageId.CAR_LOGS].path} element={<CarLogs />} />
+        <Route path={pages[PageId.CAR_LOGS].path} element={<CarLogs scope="mine" />} />
+        <Route path={pages[PageId.ADMIN_CAR_LOGS].path} element={<CarLogs scope="all" />} />
         <Route element={<RequiresAdmin />}>
           <Route path={pages[PageId.CREATE_EVENT].path} element={<CreateEvent />} />
           <Route path={pages[PageId.EDIT_EVENT].path} element={<EditEvent />} />

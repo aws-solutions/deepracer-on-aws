@@ -41,6 +41,7 @@
     "commentatorView": "Commentator view",
     "raceStats": "Race statistics",
     "registerRacer": "Register racer",
-    "carLogs": "Car logs"
+    "carLogs": "Car logs",
+    "adminCarLogs": "Car logs"
   }
 }
