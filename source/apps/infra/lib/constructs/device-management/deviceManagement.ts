@@ -19,6 +19,7 @@ import { LambdaFunction as LambdaFunctionTarget } from 'aws-cdk-lib/aws-events-t
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { IKey } from 'aws-cdk-lib/aws-kms';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
+import { CfnAssociation } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 import { OperationsOwnedBy } from '#constants/operationOwnership.js';
@@ -166,7 +167,7 @@ export class DeviceManagement extends Construct {
     dynamoDBTable.grantReadWriteData(statusPollerFn);
     statusPollerFn.addToRolePolicy(
       new PolicyStatement({
-        actions: ['ssm:DescribeInstanceInformation', 'ssm:ListTagsForResource'],
+        actions: ['ssm:DescribeInstanceInformation', 'ssm:ListTagsForResource', 'ssm:ListInventoryEntries'],
         resources: ['*'],
       }),
     );
@@ -186,10 +187,37 @@ export class DeviceManagement extends Construct {
     dynamoDBTable.grantReadWriteData(stateChangeFn);
     stateChangeFn.addToRolePolicy(
       new PolicyStatement({
-        actions: ['ssm:DescribeInstanceInformation', 'ssm:ListTagsForResource', 'ssm:GetCommandInvocation'],
+        actions: [
+          'ssm:DescribeInstanceInformation',
+          'ssm:ListTagsForResource',
+          'ssm:GetCommandInvocation',
+          'ssm:ListInventoryEntries',
+        ],
         resources: ['*'],
       }),
     );
+
+    // ── Software inventory: the status sync reads the installed aws-deepracer-core version from
+    // AWS:Application inventory to decide whether a car supports car-log fetching.
+    new CfnAssociation(this, 'DeviceSoftwareInventory', {
+      associationName: `${namespace}-DeviceSoftwareInventory`,
+      name: 'AWS-GatherSoftwareInventory',
+      scheduleExpression: 'rate(12 hours)',
+      targets: [{ key: 'tag:deepracer:managed', values: ['true'] }],
+      parameters: {
+        applications: ['Enabled'],
+        awsComponents: ['Disabled'],
+        billingInfo: ['Disabled'],
+        customInventory: ['Disabled'],
+        files: [''],
+        instanceDetailedInformation: ['Disabled'],
+        networkConfig: ['Disabled'],
+        services: ['Disabled'],
+        windowsRegistry: [''],
+        windowsRoles: ['Disabled'],
+        windowsUpdates: ['Disabled'],
+      },
+    });
 
     // ── Pruning Lambda.
     const prunerLogGroup = new LogGroup(this, 'DevicePrunerLogGroup', {

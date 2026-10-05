@@ -49,6 +49,7 @@ describe('DeepRacerIndyStack', () => {
         PUBLIC_ECR_REGISTRY: 'public.ecr.aws/aws-solutions',
         MODEL_VALIDATION_REPO_NAME: 'deepracer-on-aws-model-validation',
         MODEL_OPTIMIZER_REPO_NAME: 'deepracer-on-aws-model-optimizer',
+        CAR_LOG_VIDEO_PROCESSOR_REPO_NAME: 'deepracer-on-aws-car-log-video-processor',
         REWARD_VALIDATION_REPO_NAME: 'deepracer-on-aws-reward-function-validation',
         SIMAPP_REPO_NAME: 'deepracer-on-aws-simapp',
       },
@@ -77,9 +78,9 @@ describe('DeepRacerIndyStack', () => {
       expect(stackResource.Properties.TemplateURL['Fn::Join']).toBeDefined();
     });
 
-    it('creates exactly seven nested stacks', () => {
-      // Ecr, ApiStack (core handlers), EventManagement, ModelManagement, RealTimeRoles, DeviceManagement, Gateway
-      template.resourceCountIs('AWS::CloudFormation::Stack', 7);
+    it('creates exactly eight nested stacks', () => {
+      // Ecr, ApiStack (core handlers), EventManagement, ModelManagement, RealTimeRoles, DeviceManagement, CarLogs, Gateway
+      template.resourceCountIs('AWS::CloudFormation::Stack', 8);
       expect(template).toBeDefined();
     });
 

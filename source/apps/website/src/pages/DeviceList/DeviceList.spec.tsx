@@ -23,15 +23,21 @@ vi.mock('#hooks/useAppDispatch.js', () => ({
 vi.mock('#store/notifications/notificationsSlice.js', () => ({
   displaySuccessNotification: vi.fn((args) => args),
   displayErrorNotification: vi.fn((args) => args),
+  displayWarningNotification: vi.fn((args) => args),
 }));
 
 const mockDeleteDevice = vi.fn();
 const mockBatchUpdateDevice = vi.fn();
+const mockStartCarLogFetch = vi.fn();
 
 vi.mock('#services/deepRacer/devicesApi.js', () => ({
   useListDevicesQuery: vi.fn(() => ({ data: mockDevices, isLoading: false, isFetching: false, refetch: vi.fn() })),
   useDeleteDeviceMutation: vi.fn(() => [mockDeleteDevice, { isLoading: false }]),
   useBatchUpdateDeviceMutation: vi.fn(() => [mockBatchUpdateDevice, { isLoading: false }]),
+}));
+
+vi.mock('#services/deepRacer/carLogsApi.js', () => ({
+  useStartCarLogFetchMutation: () => [mockStartCarLogFetch, { isLoading: false }],
 }));
 
 vi.mock('#services/deepRacer/fleetsApi.js', () => ({
@@ -62,6 +68,7 @@ const mockDevices: Device[] = [
     name: 'Car Alpha',
     deviceType: DeviceType.CAR,
     status: DeviceStatus.ONLINE,
+    loggingCapable: true,
     fleetId: 'fleet-a',
     activatedAt: new Date('2025-06-01'),
     lastSeenAt: new Date('2025-06-10T10:00:00Z'),
@@ -78,6 +85,7 @@ const mockDevices: Device[] = [
     name: 'Car Gamma',
     deviceType: DeviceType.CAR,
     status: DeviceStatus.OFFLINE,
+    loggingCapable: false,
     fleetId: 'fleet-b',
     activatedAt: new Date('2025-07-01'),
     lastSeenAt: new Date('2025-07-02T08:30:00Z'),
@@ -93,6 +101,7 @@ describe('<DeviceList />', () => {
     mockBatchUpdateDevice.mockReturnValue({
       unwrap: () => Promise.resolve({ assignedInstanceIds: ['mi-001'], errors: [] }),
     });
+    mockStartCarLogFetch.mockReturnValue({ unwrap: () => Promise.resolve({ jobId: 'job-001' }) });
   });
 
   describe('when user is authorized', () => {
@@ -347,6 +356,22 @@ describe('<DeviceList />', () => {
       });
 
       expect(screen.getByRole('button', { name: i18n.t('devices:list.viewDetailsButton') })).toBeDisabled();
+    });
+
+    it('disables Fetch car logs when the selection includes a non logging-capable device', async () => {
+      render(<DeviceList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Car Alpha')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getAllByRole('checkbox')[2]);
+
+      // With a disabledReason, Cloudscape keeps the button focusable and exposes aria-disabled instead of the disabled attribute
+      expect(screen.getByRole('button', { name: i18n.t('devices:list.fetchCarLogsButton') })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      );
     });
   });
 

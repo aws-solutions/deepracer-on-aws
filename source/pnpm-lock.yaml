@@ -598,6 +598,9 @@ importers:
       base64url:
         specifier: 3.0.1
         version: 3.0.1
+      tar-stream:
+        specifier: 3.2.0
+        version: 3.2.0
       yaml:
         specifier: 2.8.3
         version: 2.8.3
@@ -608,6 +611,9 @@ importers:
       '@types/archiver':
         specifier: ^6.0.3
         version: 6.0.4
+      '@types/tar-stream':
+        specifier: ^3.1.5
+        version: 3.1.5
 
   libs/typescript-client:
     dependencies:
@@ -4813,6 +4819,9 @@ packages:
 
   '@types/statuses@2.0.6':
     resolution: {integrity: sha512-xMAgYwceFhRA2zY+XbEA7mxYbA093wdiW8Vu6gZPGWy9cmOyU9XesH1tNcEWsKFd5Vzrqx5T3D38PWx1FIIXkA==}
+
+  '@types/tar-stream@3.1.5':
+    resolution: {integrity: sha512-zCUA6CSDw0t2cpQiZixpyzfubpeuVZmBr5wztvuCG4bhy7reX/9wGXdZxEzz2CjMFLQ32UPR/01jzUUSRJeCeQ==}
 
   '@types/three@0.174.0':
     resolution: {integrity: sha512-De/+vZnfg2aVWNiuy1Ldu+n2ydgw1osinmiZTAn0necE++eOfsygL8JpZgFjR2uHmAPo89MkxBj3JJ+2BMe+Uw==}
@@ -16492,6 +16501,10 @@ snapshots:
   '@types/stats.js@0.17.4': {}
 
   '@types/statuses@2.0.6': {}
+
+  '@types/tar-stream@3.1.5':
+    dependencies:
+      '@types/node': 22.13.9
 
   '@types/three@0.174.0':
     dependencies:

@@ -10,6 +10,7 @@ import adminModels from '#i18n/en/adminModels.json';
 import auth from '#i18n/en/auth.json';
 import avatar from '#i18n/en/avatar.json';
 import breadcrumbs from '#i18n/en/breadcrumbs.json';
+import carLogs from '#i18n/en/carLogs.json';
 import common from '#i18n/en/common.json';
 import createEvaluation from '#i18n/en/createEvaluation.json';
 import createModel from '#i18n/en/createModel.json';
@@ -45,6 +46,7 @@ const resources = {
     auth,
     avatar,
     breadcrumbs,
+    carLogs,
     common,
     createEvaluation,
     createModel,

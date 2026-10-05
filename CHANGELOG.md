@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Car logs: fetch ROS bag logs from cars over SSM (from the Devices page or automatically when a run finishes in Timekeeping) or upload them manually, and turn them into videos with an AWS Batch job. Racers see their own logs and videos; admins and facilitators see all of them. Includes the new `car-log-video-processor` container image (`CAR_LOG_VIDEO_PROCESSOR_REPO_NAME`).
+- The on-car model folder name now ends with the model id (`<racerName>_<modelName>_<modelId>`) so that logs can be matched to the model and its owner.
+
 ## [1.3.1] - 2026-10-02
 
 ### Added

@@ -40,6 +40,8 @@
     "streamingOverlay": "Streaming overlay",
     "commentatorView": "Commentator view",
     "raceStats": "Race statistics",
-    "registerRacer": "Register racer"
+    "registerRacer": "Register racer",
+    "carLogs": "Car logs",
+    "adminCarLogs": "Car logs"
   }
 }

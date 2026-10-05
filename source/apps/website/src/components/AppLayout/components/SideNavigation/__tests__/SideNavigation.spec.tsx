@@ -13,6 +13,7 @@ import { PageId } from '../../../../../constants/pages.js';
 import { getPath } from '../../../../../utils/pageUtils.js';
 import {
   getAdminNavigationItems,
+  getLearningAndModelsNavigationItems,
   getModelManagementNavigationItems,
   getRaceManagementNavigationItems,
 } from '../itemsUtils.js';
@@ -37,6 +38,10 @@ vi.mock('react-i18next', () => ({
     t: (key: string) => key,
   }),
 }));
+
+// Sections render in a fixed order, so an item belongs to the section whose heading is the closest one before it.
+const comesAfter = (item: string, heading: string) =>
+  screen.getByText(item).compareDocumentPosition(screen.getByText(heading)) === Node.DOCUMENT_POSITION_PRECEDING;
 
 describe('SideNavigation', () => {
   const mockNavigate = vi.fn();
@@ -79,6 +84,8 @@ describe('SideNavigation', () => {
     // Verify base navigation links are present
     expect(screen.getByText(`breadcrumbs.${PageId.RACES}`)).toBeInTheDocument();
     expect(screen.getByText(`breadcrumbs.${PageId.GET_STARTED}`)).toBeInTheDocument();
+    expect(comesAfter(`breadcrumbs.${PageId.CAR_LOGS}`, 'sections.learningAndModels')).toBe(true);
+    expect(comesAfter(`breadcrumbs.${PageId.CAR_LOGS}`, 'sections.raceManagement')).toBe(false);
     expect(screen.getByText(`breadcrumbs.${PageId.MODELS}`)).toBeInTheDocument();
 
     // Verify admin section is not present
@@ -86,7 +93,7 @@ describe('SideNavigation', () => {
     expect(screen.queryByText(`breadcrumbs.${PageId.ADMIN_MODELS}`)).not.toBeInTheDocument();
   });
 
-  it('should not render Races or the Models section for a Commentator', async () => {
+  it('should not render Races or the model links for a Commentator', async () => {
     // Commentators have no defined use for the general race list or model training/management.
     (fetchAuthSession as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
       tokens: {
@@ -109,11 +116,13 @@ describe('SideNavigation', () => {
     });
 
     expect(screen.queryByText(`breadcrumbs.${PageId.RACES}`)).not.toBeInTheDocument();
-    expect(screen.queryByText('sections.learningAndModels')).not.toBeInTheDocument();
     expect(screen.queryByText(`breadcrumbs.${PageId.GET_STARTED}`)).not.toBeInTheDocument();
     expect(screen.queryByText(`breadcrumbs.${PageId.MODELS}`)).not.toBeInTheDocument();
 
-    // Commentator should still see their own role-appropriate link.
+    // Every role finds their car logs under Learning & Models, even without the model links.
+    expect(screen.getByText('sections.learningAndModels')).toBeInTheDocument();
+    expect(comesAfter(`breadcrumbs.${PageId.CAR_LOGS}`, 'sections.learningAndModels')).toBe(true);
+    expect(comesAfter(`breadcrumbs.${PageId.CAR_LOGS}`, 'sections.raceManagement')).toBe(false);
     expect(screen.getByText(`breadcrumbs.${PageId.COMMENTATOR_VIEW}`)).toBeInTheDocument();
   });
 
@@ -170,6 +179,9 @@ describe('SideNavigation', () => {
     });
 
     expect(screen.getByText(`breadcrumbs.${PageId.ADMIN_MODELS}`)).toBeInTheDocument();
+    // Facilitators get their own logs under Learning & Models and everyone's with the model administration.
+    expect(screen.getByText(`breadcrumbs.${PageId.CAR_LOGS}`)).toBeInTheDocument();
+    expect(screen.getByText(`breadcrumbs.${PageId.ADMIN_CAR_LOGS}`)).toBeInTheDocument();
     // Admin section and MANAGE_INSTANCE are admin-only; facilitators should not see them
     expect(screen.queryByText('sections.admin')).not.toBeInTheDocument();
     expect(screen.queryByText(`breadcrumbs.${PageId.MANAGE_INSTANCE}`)).not.toBeInTheDocument();
@@ -362,5 +374,57 @@ describe('getRaceManagementNavigationItems()', () => {
     expect(JSON.stringify(getRaceManagementNavigationItems([UserGroups.RACE_FACILITATORS], t))).not.toContain(
       getPath(PageId.RACE_STATS),
     );
+  });
+});
+
+describe('Car logs navigation placement', () => {
+  const hasPath = (items: unknown, pageId: PageId.CAR_LOGS | PageId.ADMIN_CAR_LOGS) =>
+    JSON.stringify(items).includes(`"${getPath(pageId)}"`);
+  const hasCarLogs = (items: unknown) => hasPath(items, PageId.CAR_LOGS);
+  const hasAdminCarLogs = (items: unknown) => hasPath(items, PageId.ADMIN_CAR_LOGS);
+  const everyRole = [
+    UserGroups.ADMIN,
+    UserGroups.RACE_FACILITATORS,
+    UserGroups.RACERS,
+    UserGroups.COMMENTATORS,
+    UserGroups.REGISTRATION_MANAGERS,
+  ];
+
+  it.each(everyRole)('lists the own-logs link under Learning & Models for %s', (group) => {
+    const items = getLearningAndModelsNavigationItems([group], t);
+    expect(hasCarLogs(items)).toBe(true);
+    expect(hasAdminCarLogs(items)).toBe(false);
+  });
+
+  it('shows Get started and Models only to roles that train models', () => {
+    [UserGroups.ADMIN, UserGroups.RACE_FACILITATORS, UserGroups.RACERS].forEach((group) => {
+      const items = JSON.stringify(getLearningAndModelsNavigationItems([group], t));
+      expect(items).toContain(getPath(PageId.GET_STARTED));
+      expect(items).toContain(getPath(PageId.MODELS));
+    });
+    [UserGroups.COMMENTATORS, UserGroups.REGISTRATION_MANAGERS].forEach((group) => {
+      const items = JSON.stringify(getLearningAndModelsNavigationItems([group], t));
+      expect(items).not.toContain(getPath(PageId.GET_STARTED));
+      expect(items).not.toContain(getPath(PageId.MODELS));
+    });
+  });
+
+  it('returns no section without a role that can open car logs', () => {
+    expect(getLearningAndModelsNavigationItems([], t)).toEqual([]);
+  });
+
+  it('lists the everyone-logs link under Model Management for ADMIN and RACE_FACILITATORS only', () => {
+    [UserGroups.ADMIN, UserGroups.RACE_FACILITATORS].forEach((group) => {
+      const items = getModelManagementNavigationItems([group], t);
+      expect(hasAdminCarLogs(items)).toBe(true);
+      expect(hasCarLogs(items)).toBe(false);
+    });
+    expect(hasAdminCarLogs(getModelManagementNavigationItems([UserGroups.RACERS], t))).toBe(false);
+  });
+
+  it('no longer lists the link under Race Management', () => {
+    everyRole.forEach((group) => {
+      expect(hasCarLogs(getRaceManagementNavigationItems([group], t))).toBe(false);
+    });
   });
 });

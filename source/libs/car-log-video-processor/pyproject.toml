@@ -1,0 +1,57 @@
+[project]
+name = "car-log-video-processor"
+version = "0.1.0"
+requires-python = ">=3.12"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+src = ["lib", "tests"]
+# Ported from the DREM video processor; kept close to the original to ease comparison.
+extend-exclude = ["lib/car_log_video_processor/bag_analysis.py", "lib/car_log_video_processor/combine_videos.py", "lib/car_log_video_processor/utils.py"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "S", "UP", "SIM", "TCH"]
+ignore = [
+    "S603",   # subprocess call with shell=False (each bag is analysed in its own process)
+    "S607",   # start process with partial path
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S108"]
+
+[tool.mypy]
+python_version = "3.12"
+mypy_path = "lib"
+check_untyped_defs = true
+warn_unused_configs = true
+
+[[tool.mypy.overrides]]
+module = ["boto3.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "car_log_video_processor.bag_analysis",
+    "car_log_video_processor.combine_videos",
+    "car_log_video_processor.utils",
+]
+ignore_errors = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["lib"]
+addopts = "--tb=short -q"
+
+[tool.coverage.run]
+source = ["lib/car_log_video_processor"]
+omit = [
+    "lib/car_log_video_processor/bag_analysis.py",
+    "lib/car_log_video_processor/combine_videos.py",
+    "lib/car_log_video_processor/utils.py",
+]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true

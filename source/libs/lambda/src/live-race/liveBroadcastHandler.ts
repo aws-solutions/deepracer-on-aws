@@ -16,6 +16,7 @@ import { LiveEventStatus } from '@deepracer-indy/typescript-client';
 import { logger } from '@deepracer-indy/utils';
 import type { DynamoDBBatchResponse, DynamoDBRecord, DynamoDBStreamEvent } from 'aws-lambda';
 
+import { buildCarLogBroadcast } from './carLogBroadcast.js';
 import { buildDeviceEvents, parseDeviceRecord, type ParsedDeviceRecord } from './deviceBroadcast.js';
 import { recomputeCombinedLeaderboard } from './physical/combinedLeaderboard.js';
 import {
@@ -40,7 +41,7 @@ if (!IOT_ENDPOINT || !TOPIC_PREFIX || !RACE_TOPIC_PREFIX || !PUBLIC_LEADERBOARD_
 
 // Device routing (Task 11) is optional: absent env means device broadcast/pruning is disabled,
 // keeping the shared handler backward compatible in contexts that don't set them.
-const { DEVICE_TOPIC_PREFIX, PRUNER_FUNCTION_NAME } = process.env;
+const { DEVICE_TOPIC_PREFIX, PRUNER_FUNCTION_NAME, CAR_LOG_TOPIC_PREFIX } = process.env;
 
 const iotClient = new IoTDataPlaneClient({ endpoint: `https://${IOT_ENDPOINT}` });
 const lambdaClient = new LambdaClient({});
@@ -360,6 +361,15 @@ export const publishToDeviceTopic = async (instanceId: string, event: Record<str
     throw new Error(`IoT payload exceeds 128 KB (${encoded.byteLength} bytes) for device ${instanceId}`);
   }
   await iotClient.send(new PublishCommand({ topic: `${DEVICE_TOPIC_PREFIX}/${instanceId}`, qos: 1, payload: encoded }));
+};
+
+/** Publish a car log job/asset change to the browser-facing car log topics. No-op if unset. */
+export const publishToCarLogTopic = async (topicSuffix: string, event: Record<string, unknown>): Promise<void> => {
+  if (!CAR_LOG_TOPIC_PREFIX) return;
+  const encoded = Buffer.from(JSON.stringify({ ...event, publishedAt: new Date().toISOString() }));
+  await iotClient.send(
+    new PublishCommand({ topic: `${CAR_LOG_TOPIC_PREFIX}/${topicSuffix}`, qos: 1, payload: encoded }),
+  );
 };
 
 /**
@@ -738,7 +748,7 @@ const processDeviceRecord = async (deviceRecord: ParsedDeviceRecord, pruneInstan
 };
 
 /**
- * Route a single stream record through the paths in order — device → ranking-remove → physical →
+ * Route a single stream record through the paths in order — device → car log → ranking-remove → physical →
  * virtual — recording a batch failure on error. Extracted from {@link handler} so the handler's
  * loop body is a single call (keeps each function's cognitive complexity within the SonarQube
  * threshold).
@@ -760,6 +770,19 @@ const processStreamRecord = async (record: DynamoDBRecord, ctx: RecordProcessing
       logger.error('Failed to process device record', { error, instanceId: deviceRecord.instanceId });
       recordBatchFailure(record, batchItemFailures);
     }
+    return;
+  }
+
+  // Car log job/asset records: distinct key prefixes, so no other path claims them.
+  try {
+    const carLog = buildCarLogBroadcast(record);
+    if (carLog) {
+      await publishToCarLogTopic(carLog.kind === 'job' ? 'jobs' : `assets/${carLog.profileId}`, carLog.event);
+      return;
+    }
+  } catch (error) {
+    logger.error('Failed to process car log record', { error });
+    recordBatchFailure(record, batchItemFailures);
     return;
   }
 

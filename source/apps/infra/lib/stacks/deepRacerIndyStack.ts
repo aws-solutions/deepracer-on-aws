@@ -22,6 +22,7 @@ import { SesProductionAccessCheck } from '#constructs/ses/sesProductionAccessChe
 import { UsageFunctions } from '#constructs/usage/usageFunctions.js';
 
 import { ApiStack } from './apiStack.js';
+import { CarLogsStack } from './carLogsStack.js';
 import { DeviceManagementStack } from './deviceManagementStack.js';
 import { EcrStack } from './ecrStack.js';
 import { EventManagementStack } from './eventManagementStack.js';
@@ -165,6 +166,12 @@ export class DeepRacerIndyStack extends Stack {
       defaultRepoName: this.node.getContext('MODEL_OPTIMIZER_REPO_NAME'),
       overrideRepoName: this.node.tryGetContext('OVERRIDE_MODEL_OPTIMIZER_REPO_NAME'),
     });
+    const { repoName: carLogVideoProcessorRepoName, registry: carLogVideoProcessorRegistry } = resolveImageSource({
+      defaultRegistry: defaultEcrRegistry,
+      overrideRegistry: overrideEcrRegistry,
+      defaultRepoName: this.node.getContext('CAR_LOG_VIDEO_PROCESSOR_REPO_NAME'),
+      overrideRepoName: this.node.tryGetContext('OVERRIDE_CAR_LOG_VIDEO_PROCESSOR_REPO_NAME'),
+    });
 
     const { version: solutionVersion } = readManifest();
 
@@ -199,6 +206,12 @@ export class DeepRacerIndyStack extends Stack {
           repositoryId: modelOptimizerRepoName,
           privateRepositoryName: `${namespace}-${modelOptimizerRepoName}`,
         },
+        {
+          publicImageUri: `${carLogVideoProcessorRegistry}/${carLogVideoProcessorRepoName}`,
+          imageTag: solutionVersion,
+          repositoryId: carLogVideoProcessorRepoName,
+          privateRepositoryName: `${namespace}-${carLogVideoProcessorRepoName}`,
+        },
       ],
       projectNamePrefix: 'DeepRacerIndy-ImageDownloader',
       downloadTimeout: Duration.hours(2), // Allow more time for large images
@@ -221,6 +234,14 @@ export class DeepRacerIndyStack extends Stack {
 
     if (!modelOptimizerMapping) {
       throw new Error('Could not find Model Optimizer repository in ECR stack');
+    }
+
+    const carLogVideoProcessorMapping = ecrStack.imageRepositoryMappings.find(
+      (mapping) => mapping.repositoryId === carLogVideoProcessorRepoName,
+    );
+
+    if (!carLogVideoProcessorMapping) {
+      throw new Error('Could not find Car Log Video Processor repository in ECR stack');
     }
 
     const { userExecutionVpc, userExecutionSecurityGroup } = new VpcConstruct(this, 'Vpc');
@@ -320,6 +341,20 @@ export class DeepRacerIndyStack extends Stack {
       encryptionKey: ecrStack.encryptionKey,
     });
 
+    const carLogsStack = new CarLogsStack(this, 'CarLogs', {
+      namespace,
+      dynamoDBTable,
+      userPool,
+      encryptionKey: ecrStack.encryptionKey,
+      deviceLogsBucket,
+      modelStorageBucket,
+      videoProcessorRepository: carLogVideoProcessorMapping.repository,
+      videoProcessorImageTag: carLogVideoProcessorMapping.imageTag,
+    });
+
+    // ECR dependency: CarLogs uses the video processor image from EcrStack
+    carLogsStack.node.addDependency(ecrStack);
+
     // ── API Gateway ────────────────────────────────────────────────────────────
     // Created AFTER every stack that owns API-backed Lambda functions, because it
     // consumes their handler ARNs and owns all of their invoke permissions. The props
@@ -333,6 +368,7 @@ export class DeepRacerIndyStack extends Stack {
         modelManagement: modelManagementStack.handlerArns,
         realTimeRoles: realTimeRolesStack.handlerArns,
         deviceManagement: deviceManagementStack.handlerArns,
+        carLogs: carLogsStack.handlerArns,
       },
     });
 
@@ -447,6 +483,7 @@ export class DeepRacerIndyStack extends Stack {
       modelStorageBucket: modelStorageBucket,
       identityPoolId: identityPool.ref,
       uploadBucket,
+      deviceLogsBucket,
       namespace,
       solutionVersion,
       iotEndpoint: liveRaceEvents.iotEndpoint,
@@ -482,11 +519,16 @@ export class DeepRacerIndyStack extends Stack {
       expression: Fn.conditionNot(Fn.conditionEquals(customDomainParam.valueAsString, '')),
     });
 
-    const allowedOrigin = Fn.conditionIf(
-      hasCustomDomain.logicalId,
-      customDomainParam.valueAsString,
-      `https://${website.cloudFrontDomainName}`,
-    );
+    // Enable wildcard CORS for local development: ENABLE_LOCAL_DEV_CORS=true
+    const enableLocalDevCors = process.env.ENABLE_LOCAL_DEV_CORS === 'true';
+
+    const allowedOrigin = enableLocalDevCors
+      ? '*'
+      : Fn.conditionIf(
+          hasCustomDomain.logicalId,
+          customDomainParam.valueAsString,
+          `https://${website.cloudFrontDomainName}`,
+        );
     new ApiCorsUpdate(this, 'UpdateApiCors', {
       apiId: api.restApiId,
       allowedOrigin: Token.asString(allowedOrigin),
@@ -521,6 +563,7 @@ export class DeepRacerIndyStack extends Stack {
         ...modelManagementStack.logGroups,
         ...realTimeRolesStack.logGroups,
         ...deviceManagementStack.logGroups,
+        ...carLogsStack.logGroups,
       ],
     });
 
@@ -590,6 +633,7 @@ export class DeepRacerIndyStack extends Stack {
           ...modelManagementStack.alarms,
           ...realTimeRolesStack.alarms,
           ...deviceManagementStack.alarms,
+          ...carLogsStack.alarms,
         ],
         emailAlarms: userIdentity.sesAlarms,
       },
