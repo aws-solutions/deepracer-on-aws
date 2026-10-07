@@ -875,7 +875,7 @@ scikit-image under the 0BSD license.
 scikit-learn under the BSD 3-Clause License.
 scipy under the 0BSD license.
 sensor_msgs under the Apache-2.0 license.
-shapely under the 0BSD license.
+shapely under the BSD-3-Clause license.
 std_msgs under the Apache-2.0 license.
 std_srvs license under the Apache-2.0 license.
 tensorflow under the Apache-2.0 license.
