@@ -38,6 +38,7 @@ export const Manager: Story = {
     onRefresh: () => undefined,
     onRequestDelete: () => undefined,
     onRequestDownload: () => undefined,
+    onRequestPlay: () => undefined,
     onRequestUpload: () => undefined,
   },
 };

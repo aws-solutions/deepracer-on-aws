@@ -5,12 +5,19 @@ import ContentLayout from '@cloudscape-design/components/content-layout';
 import Header from '@cloudscape-design/components/header';
 import Tabs from '@cloudscape-design/components/tabs';
 import { UserGroups, type CarLogAsset } from '@deepracer-indy/typescript-client';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import SubmissionVideoModal from '#components/SubmissionVideoModal';
+import { useAppDispatch } from '#hooks/useAppDispatch.js';
 import { useCarLogsMqtt } from '#hooks/useCarLogsMqtt.js';
-import { useListCarLogAssetsQuery, useListCarLogFetchesQuery } from '#services/deepRacer/carLogsApi.js';
+import {
+  useGetCarLogAssetUrlsMutation,
+  useListCarLogAssetsQuery,
+  useListCarLogFetchesQuery,
+} from '#services/deepRacer/carLogsApi.js';
 import { useGetProfileQuery } from '#services/deepRacer/profileApi.js';
+import { displayErrorNotification } from '#store/notifications/notificationsSlice.js';
 import { getUserGroups } from '#utils/authUtils.js';
 import { canManageCarLogJobs, resolveCarLogsAccess } from '#utils/carLogsAccess.js';
 
@@ -30,6 +37,9 @@ interface CarLogsProps {
 
 const CarLogs = ({ scope }: CarLogsProps) => {
   const { t } = useTranslation('carLogs');
+  const dispatch = useAppDispatch();
+  const [getCarLogAssetUrls] = useGetCarLogAssetUrlsMutation();
+  const [selectedVideo, setSelectedVideo] = useState<{ url: string; title: string } | null>(null);
   const [groups, setGroups] = useState<UserGroups[] | null>(null);
   const [downloadAssets, setDownloadAssets] = useState<CarLogAsset[] | null>(null);
   const [deleteAssets, setDeleteAssets] = useState<CarLogAsset[] | null>(null);
@@ -86,6 +96,22 @@ const CarLogs = ({ scope }: CarLogsProps) => {
 
   useCarLogsMqtt(scope);
 
+  const handlePlay = useCallback(
+    async (asset: CarLogAsset) => {
+      try {
+        const response = await getCarLogAssetUrls({
+          assets: [{ profileId: asset.profileId, assetId: asset.assetId }],
+        }).unwrap();
+        const url = response.urls.find((assetUrl) => assetUrl.assetId === asset.assetId)?.url;
+        if (!url) throw new Error('Missing URL');
+        setSelectedVideo({ url, title: asset.filename });
+      } catch {
+        dispatch(displayErrorNotification({ content: t('play.error') }));
+      }
+    },
+    [dispatch, getCarLogAssetUrls, t],
+  );
+
   const tabs = useMemo(
     () => [
       {
@@ -101,6 +127,7 @@ const CarLogs = ({ scope }: CarLogsProps) => {
             onRefresh={() => void refetchAssets()}
             onRequestDelete={(selectedAssets) => setDeleteAssets(selectedAssets)}
             onRequestDownload={(selectedAssets) => setDownloadAssets(selectedAssets)}
+            onRequestPlay={(asset) => void handlePlay(asset)}
             onRequestUpload={() => setIsUploadModalVisible(true)}
           />
         ),
@@ -122,7 +149,19 @@ const CarLogs = ({ scope }: CarLogsProps) => {
           ]
         : []),
     ],
-    [access, assets, fetchesQuery, isAllScope, isFetchingAssets, isLoadingAssets, isManager, jobs, refetchAssets, t],
+    [
+      access,
+      assets,
+      fetchesQuery,
+      handlePlay,
+      isAllScope,
+      isFetchingAssets,
+      isLoadingAssets,
+      isManager,
+      jobs,
+      refetchAssets,
+      t,
+    ],
   );
 
   const pageDescription =
@@ -143,6 +182,16 @@ const CarLogs = ({ scope }: CarLogsProps) => {
       >
         <Tabs tabs={tabs} variant="container" />
       </ContentLayout>
+      {selectedVideo && (
+        <SubmissionVideoModal
+          videoUrl={selectedVideo.url}
+          title={selectedVideo.title}
+          header={t('play.header', { title: selectedVideo.title })}
+          size="large"
+          maxVideoHeight="90vh"
+          onDismiss={() => setSelectedVideo(null)}
+        />
+      )}
       {downloadAssets && (
         <DownloadCarLogAssetsModal assets={downloadAssets} isVisible onDismiss={() => setDownloadAssets(null)} />
       )}

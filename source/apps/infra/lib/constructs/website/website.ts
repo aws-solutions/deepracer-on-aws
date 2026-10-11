@@ -98,7 +98,7 @@ export class StaticWebsite extends Construct {
           "frame-ancestors 'none'",
           "font-src 'self' data:",
           "img-src 'self' data:",
-          `media-src 'self' blob: https://${modelStorageBucket.bucketRegionalDomainName}`,
+          `media-src 'self' blob: https://${modelStorageBucket.bucketRegionalDomainName} https://${deviceLogsBucket.bucketRegionalDomainName}`,
           "object-src 'none'",
           "style-src 'self'",
           "script-src 'self' 'wasm-unsafe-eval'",

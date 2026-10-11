@@ -43,6 +43,7 @@
       "duration": "Duration"
     },
     "actions": {
+      "play": "Play video",
       "refresh": "Refresh assets",
       "upload": "Upload archive",
       "download": "Download",
@@ -116,6 +117,10 @@
       "wrapLinesDescription": "Wrap long cell content.",
       "contentDisplayTitle": "Select visible columns"
     }
+  },
+  "play": {
+    "header": "Car-log video – {{title}}",
+    "error": "Unable to load the video."
   },
   "download": {
     "header": "Download car-log assets",
