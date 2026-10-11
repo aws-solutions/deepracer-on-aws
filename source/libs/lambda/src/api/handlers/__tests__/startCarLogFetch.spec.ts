@@ -102,10 +102,10 @@ describe('StartCarLogFetch operation', () => {
     ).rejects.toThrow(BadRequestError);
   });
 
-  it('requires something to select the logs by', async () => {
-    await expect(StartCarLogFetchOperation({ instanceId: INSTANCE }, TEST_OPERATION_CONTEXT)).rejects.toThrow(
-      BadRequestError,
-    );
+  it('starts a fetch without any selector', async () => {
+    await expect(StartCarLogFetchOperation({ instanceId: INSTANCE }, TEST_OPERATION_CONTEXT)).resolves.toEqual({
+      jobId: expect.any(String),
+    });
   });
 
   it('rejects cars without the logging feature', async () => {

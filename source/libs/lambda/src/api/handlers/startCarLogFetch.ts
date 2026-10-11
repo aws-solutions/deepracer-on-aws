@@ -31,8 +31,8 @@ const CLOCK_SKEW_MS = 5 * 60 * 1000;
  *
  * Returns **202** with the `jobId`; the Step Functions workflow does the rest and progress is
  * delivered through the job status. When a `runId` is given the event, racer and start time are
- * read from the run on the server, so a caller cannot make up race context. Either `modelId` or
- * a racer name must be known, because the on-car bags are selected by them.
+ * read from the run on the server, so a caller cannot make up race context. Without `modelId`
+ * or a racer name, all bags on the car (optionally filtered by `laterThan`) are collected.
  */
 export const StartCarLogFetchOperation: Operation<
   StartCarLogFetchServerInput,
@@ -73,10 +73,6 @@ export const StartCarLogFetchOperation: Operation<
     eventId = event.eventId;
     eventName = event.name;
     laterThan = new Date(new Date(run.createdAt).getTime() - CLOCK_SKEW_MS);
-  }
-
-  if (!modelId && !racerName) {
-    throw new BadRequestError({ message: 'Specify a run, a model or a racer name to select the logs.' });
   }
 
   const activeJobs = await carLogFetchJobDao.listActiveByInstance({ instanceId });

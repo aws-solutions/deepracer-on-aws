@@ -32,13 +32,10 @@ export function buildCarLogUploadScript({
   if (!URL_PATTERN.test(uploadUrl)) {
     throw new Error('Invalid upload URL');
   }
-  if (!modelId && !racerName) {
-    throw new Error('A model id or racer name is required');
-  }
-  if (modelId && !MODEL_ID_PATTERN.test(modelId)) {
+  if (modelId !== undefined && !MODEL_ID_PATTERN.test(modelId)) {
     throw new Error('Invalid model id');
   }
-  if (!modelId && racerName && !RACER_NAME_PATTERN.test(racerName)) {
+  if (modelId === undefined && racerName !== undefined && !RACER_NAME_PATTERN.test(racerName)) {
     throw new Error('Invalid racer name');
   }
   if (laterThan && Number.isNaN(laterThan.getTime())) {
@@ -46,7 +43,7 @@ export function buildCarLogUploadScript({
   }
 
   // Folder names are `<racer>_<model>_<modelId>-<timestamp>`; the model id is unique, the racer name is not.
-  const namePattern = modelId ? `*_${modelId}-*` : `${racerName}_*`;
+  const namePattern = modelId ? `*_${modelId}-*` : racerName ? `${racerName}_*` : '*';
   const newerThan = laterThan ? ` -newermt '${laterThan.toISOString().slice(0, 19).replace('T', ' ')} UTC'` : '';
 
   return [
