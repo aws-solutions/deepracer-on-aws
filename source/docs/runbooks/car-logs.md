@@ -82,11 +82,17 @@ stateDiagram-v2
 
 ## How it works
 
-1. **Start.** A facilitator or admin starts a fetch for a car (`StartCarLogFetch`, from the Devices
-   page or the Timekeeping toggle), or a user uploads a `.tar.gz` of bag folders (`CreateCarLogUpload`
-   returns a presigned PUT URL for `staging/manual/<jobId>.tar.gz`).
+1. **Start.** A facilitator or admin starts a fetch for one or more cars (`StartCarLogFetch`, from the
+   Devices page or the Timekeeping toggle), or a user uploads a `.tar.gz` of bag folders
+   (`CreateCarLogUpload` returns a presigned PUT URL for `staging/manual/<jobId>.tar.gz`). The Devices
+   page dialog offers three optional filters, each with an "any" choice: a searchable **racer** list, a
+   searchable **model** list and a **later than** window (last 5, 10 or 30 minutes, 1, 6 or 24 hours).
+   With no filter, every bag on the car is collected. If both a model and a racer are chosen, only the
+   model is used.
 2. **Car fetch.** The `<namespace>-DeepRacerCarLogWorkflow` state machine sends an SSM
-   `AWS-RunShellScript` command to the car. The script packs the matching bag folders and uploads them
+   `AWS-RunShellScript` command to the car. The script packs the bag folders that match the filters
+   (`*_<modelId>-*`, `<racerName>_*` or everything) and, when set, are newer than the chosen time, and
+   uploads them
    to a one-time presigned URL under `staging/car/<jobId>.tar.gz`. The state machine polls the command
    every 15 seconds for up to about 35 minutes (the command itself times out after 30 minutes).
 3. **Manual upload.** An S3 `Object Created` event under `staging/manual/` starts the same workflow.
@@ -104,6 +110,13 @@ stateDiagram-v2
 
 A bag folder is matched to its owner by the trailing `modelId`. Models that were already on a car
 before this naming was introduced do not match and are ignored.
+
+### Playing videos
+
+On the Car logs pages, video rows have a play button in the **Type** column. It requests a presigned
+URL (`GetCarLogAssetUrls`) and opens the video in the same modal used for race submissions. The
+website Content-Security-Policy allows `media-src` from the device logs bucket for this. Roles that
+cannot download (commentators) do not get the button.
 
 ## Who can do what
 
@@ -143,7 +156,8 @@ compute environment is capped at 32 vCPU. Adjust the constants in
 | Symptom | Likely cause and action |
 |---|---|
 | Job `UPLOAD_FAILED` | The car is offline, has no matching logs or could not reach S3. The job message carries the tail of the script's error output. Check that the car is `ONLINE` and `loggingCapable`. |
-| "No matching rosbags" | No bag folder name ends with a known `modelId`. Check the folder names on the car (`<racerName>_<modelName>_<modelId>`). |
+| "No matching rosbags" | No bag folder name ends with a known `modelId`. Check the folder names on the car (`<racerName>_<modelName>_<modelId>`). If a racer, model or time filter was used, retry with fewer filters. |
+| Video does not play ("Failed to load video") | The browser blocked the media URL. Check the website CSP `media-src` includes the device logs bucket, and hard-refresh after a deploy. |
 | Job `FAILED` after upload | See the Batch log group. Typical causes are an out-of-memory job (raise `JOB_MEMORY_MIB`), a model that does not load for Grad-CAM (the bag is then skipped and listed as a failure), or a damaged bag. |
 | Manual upload does not start | The key must be `staging/manual/<jobId>.tar.gz` for a job created with `CreateCarLogUpload`, and the job must still be waiting for the upload. |
 
