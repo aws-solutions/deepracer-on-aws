@@ -35,8 +35,9 @@ describe('buildCarLogUploadScript', () => {
     expect(script).not.toContain('Alice');
   });
 
-  it('needs a model id or racer name', () => {
-    expect(() => buildCarLogUploadScript({ uploadUrl: URL })).toThrow();
+  it('collects every bag when no model id or racer name is given', () => {
+    const script = buildCarLogUploadScript({ uploadUrl: URL }).join('\n');
+    expect(script).toContain("-name '*'");
   });
 
   describe('injection attempts', () => {

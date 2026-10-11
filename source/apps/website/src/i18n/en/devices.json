@@ -193,18 +193,26 @@
       "cancel": "Cancel",
       "confirm": "Fetch logs",
       "description": "Start a log fetch job for the selected cars.",
-      "help": "Provide a racer name or model ID so the backend can identify the correct bag capture. Optionally restrict the search to logs created after an ISO 8601 timestamp.",
+      "help": "Optionally narrow the logs by racer, model, or age. Leave all filters empty to fetch every log on the car.",
       "racerNameLabel": "Racer name",
-      "racerNameDescription": "Optional unless you leave Model ID blank.",
-      "modelIdLabel": "Model ID",
-      "modelIdDescription": "Optional unless you leave Racer name blank.",
+      "racerNameDescription": "Optional. Only logs written for this racer.",
+      "anyRacer": "Any racer",
+      "modelIdLabel": "Model",
+      "modelIdDescription": "Optional. Only logs written by this model. Takes precedence over racer.",
+      "anyModel": "Any model",
       "laterThanLabel": "Later than",
-      "laterThanDescription": "Optional ISO 8601 timestamp, for example 2025-01-15T14:30:00Z.",
-      "laterThanPlaceholder": "2025-01-15T14:30:00Z",
-      "validation": {
-        "requiresSelector": "Provide a racer name or a model ID.",
-        "invalidLaterThan": "Later than must be a valid ISO 8601 timestamp."
-      }
+      "laterThanDescription": "Optional. Only logs created within the selected time.",
+      "anyTime": "Any time",
+      "laterThanOptions": {
+        "m5": "Last 5 minutes",
+        "m10": "Last 10 minutes",
+        "m30": "Last 30 minutes",
+        "h1": "Last hour",
+        "h6": "Last 6 hours",
+        "h24": "Last 24 hours"
+      },      "loading": "Loading...",
+      "searchPlaceholder": "Search",
+      "noMatch": "No matches found"
     },
     "notifications": {
       "fetchSuccess": "Started car-log fetch for {{count}} car.",

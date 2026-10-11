@@ -5,11 +5,16 @@ import Alert from '@cloudscape-design/components/alert';
 import Box from '@cloudscape-design/components/box';
 import Button from '@cloudscape-design/components/button';
 import FormField from '@cloudscape-design/components/form-field';
-import Input from '@cloudscape-design/components/input';
 import Modal from '@cloudscape-design/components/modal';
+import Select, { SelectProps } from '@cloudscape-design/components/select';
 import SpaceBetween from '@cloudscape-design/components/space-between';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+
+import { useListAdminModelsQuery, useListAdminProfilesQuery } from '#services/deepRacer/adminApi.js';
+
+const ANY_VALUE = '';
+const MINUTE_MS = 60 * 1000;
 
 export interface StartCarLogFetchFilters {
   laterThan?: Date;
@@ -33,40 +38,69 @@ const StartCarLogFetchModal = ({
   onSubmit,
 }: StartCarLogFetchModalProps) => {
   const { t } = useTranslation('devices');
-  const [racerName, setRacerName] = useState('');
-  const [modelId, setModelId] = useState('');
-  const [laterThanText, setLaterThanText] = useState('');
-  const [error, setError] = useState<string | undefined>(undefined);
+  const [racerName, setRacerName] = useState(ANY_VALUE);
+  const [modelId, setModelId] = useState(ANY_VALUE);
+  const [laterThanMinutes, setLaterThanMinutes] = useState(ANY_VALUE);
+
+  const { data: profiles = [], isFetching: isLoadingProfiles } = useListAdminProfilesQuery(undefined, {
+    skip: !isVisible,
+  });
+  const { data: models = [], isFetching: isLoadingModels } = useListAdminModelsQuery({}, { skip: !isVisible });
 
   useEffect(() => {
     if (!isVisible) {
-      setRacerName('');
-      setModelId('');
-      setLaterThanText('');
-      setError(undefined);
+      setRacerName(ANY_VALUE);
+      setModelId(ANY_VALUE);
+      setLaterThanMinutes(ANY_VALUE);
     }
   }, [isVisible]);
 
+  const racerOptions = useMemo<SelectProps.Option[]>(
+    () => [
+      { value: ANY_VALUE, label: t('carLogs.fetchModal.anyRacer') },
+      ...profiles
+        .map((profile) => ({ value: profile.alias, label: profile.alias }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    ],
+    [profiles, t],
+  );
+
+  const modelOptions = useMemo<SelectProps.Option[]>(
+    () => [
+      { value: ANY_VALUE, label: t('carLogs.fetchModal.anyModel') },
+      ...models
+        .map((model) => ({
+          value: model.modelId,
+          label: model.name,
+          description: model.username,
+          tags: [model.modelId],
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    ],
+    [models, t],
+  );
+
+  const laterThanOptions = useMemo<SelectProps.Option[]>(
+    () => [
+      { value: ANY_VALUE, label: t('carLogs.fetchModal.anyTime') },
+      { value: '5', label: t('carLogs.fetchModal.laterThanOptions.m5') },
+      { value: '10', label: t('carLogs.fetchModal.laterThanOptions.m10') },
+      { value: '30', label: t('carLogs.fetchModal.laterThanOptions.m30') },
+      { value: '60', label: t('carLogs.fetchModal.laterThanOptions.h1') },
+      { value: '360', label: t('carLogs.fetchModal.laterThanOptions.h6') },
+      { value: '1440', label: t('carLogs.fetchModal.laterThanOptions.h24') },
+    ],
+    [t],
+  );
+
+  const findOption = (options: SelectProps.Option[], value: string) =>
+    options.find((option) => option.value === value) ?? null;
+
   const handleSubmit = () => {
-    if (!racerName.trim() && !modelId.trim()) {
-      setError(t('carLogs.fetchModal.validation.requiresSelector'));
-      return;
-    }
-
-    let laterThan: Date | undefined;
-    if (laterThanText.trim()) {
-      laterThan = new Date(laterThanText.trim());
-      if (Number.isNaN(laterThan.getTime())) {
-        setError(t('carLogs.fetchModal.validation.invalidLaterThan'));
-        return;
-      }
-    }
-
-    setError(undefined);
     void onSubmit({
-      ...(racerName.trim() ? { racerName: racerName.trim() } : {}),
-      ...(modelId.trim() ? { modelId: modelId.trim() } : {}),
-      ...(laterThan ? { laterThan } : {}),
+      ...(racerName ? { racerName } : {}),
+      ...(modelId ? { modelId } : {}),
+      ...(laterThanMinutes ? { laterThan: new Date(Date.now() - Number(laterThanMinutes) * MINUTE_MS) } : {}),
     });
   };
 
@@ -96,25 +130,42 @@ const StartCarLogFetchModal = ({
           label={t('carLogs.fetchModal.racerNameLabel')}
           description={t('carLogs.fetchModal.racerNameDescription')}
         >
-          <Input value={racerName} onChange={({ detail }) => setRacerName(detail.value)} />
+          <Select
+            selectedOption={findOption(racerOptions, racerName)}
+            onChange={({ detail }) => setRacerName(detail.selectedOption.value ?? ANY_VALUE)}
+            options={racerOptions}
+            filteringType="auto"
+            statusType={isLoadingProfiles ? 'loading' : 'finished'}
+            loadingText={t('carLogs.fetchModal.loading')}
+            filteringPlaceholder={t('carLogs.fetchModal.searchPlaceholder')}
+            noMatch={t('carLogs.fetchModal.noMatch')}
+          />
         </FormField>
         <FormField
           label={t('carLogs.fetchModal.modelIdLabel')}
           description={t('carLogs.fetchModal.modelIdDescription')}
         >
-          <Input value={modelId} onChange={({ detail }) => setModelId(detail.value)} />
+          <Select
+            selectedOption={findOption(modelOptions, modelId)}
+            onChange={({ detail }) => setModelId(detail.selectedOption.value ?? ANY_VALUE)}
+            options={modelOptions}
+            filteringType="auto"
+            statusType={isLoadingModels ? 'loading' : 'finished'}
+            loadingText={t('carLogs.fetchModal.loading')}
+            filteringPlaceholder={t('carLogs.fetchModal.searchPlaceholder')}
+            noMatch={t('carLogs.fetchModal.noMatch')}
+          />
         </FormField>
         <FormField
           label={t('carLogs.fetchModal.laterThanLabel')}
           description={t('carLogs.fetchModal.laterThanDescription')}
         >
-          <Input
-            value={laterThanText}
-            onChange={({ detail }) => setLaterThanText(detail.value)}
-            placeholder={t('carLogs.fetchModal.laterThanPlaceholder')}
+          <Select
+            selectedOption={findOption(laterThanOptions, laterThanMinutes)}
+            onChange={({ detail }) => setLaterThanMinutes(detail.selectedOption.value ?? ANY_VALUE)}
+            options={laterThanOptions}
           />
         </FormField>
-        {error && <Alert type="error">{error}</Alert>}
         <ul>
           {deviceNames.map((deviceName) => (
             <li key={deviceName}>{deviceName}</li>
