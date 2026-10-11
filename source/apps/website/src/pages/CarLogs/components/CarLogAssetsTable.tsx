@@ -53,6 +53,7 @@ interface CarLogAssetsTableProps {
   onRefresh: () => void;
   onRequestDelete: (assets: CarLogAsset[]) => void;
   onRequestDownload: (assets: CarLogAsset[]) => void;
+  onRequestPlay: (asset: CarLogAsset) => void;
   onRequestUpload: () => void;
 }
 
@@ -90,6 +91,7 @@ const CarLogAssetsTable = ({
   onRefresh,
   onRequestDelete,
   onRequestDownload,
+  onRequestPlay,
   onRequestUpload,
 }: CarLogAssetsTableProps) => {
   const { t } = useTranslation('carLogs');
@@ -201,9 +203,22 @@ const CarLogAssetsTable = ({
       {
         id: AssetsColumn.TYPE,
         header: t('assets.columns.type'),
-        cell: (item) => item.typeLabel,
+        cell: (item) =>
+          item.type === CarLogAssetType.VIDEO && canDownload ? (
+            <SpaceBetween direction="horizontal" size="xs">
+              <Button
+                variant="inline-icon"
+                iconName="play"
+                ariaLabel={t('assets.actions.play')}
+                onClick={() => onRequestPlay(item)}
+              />
+              {item.typeLabel}
+            </SpaceBetween>
+          ) : (
+            item.typeLabel
+          ),
         sortingField: 'typeLabel',
-        minWidth: 140,
+        minWidth: 160,
       },
       {
         id: AssetsColumn.FILENAME,
@@ -260,7 +275,7 @@ const CarLogAssetsTable = ({
         minWidth: 140,
       },
     ],
-    [showUserColumn, t],
+    [canDownload, onRequestPlay, showUserColumn, t],
   );
 
   const visibleCount = filteredItemsCount ?? items.length;

@@ -27,6 +27,7 @@ vi.mock('#services/deepRacer/profileApi.js', () => ({
 vi.mock('#services/deepRacer/carLogsApi.js', () => ({
   useListCarLogAssetsQuery: (...args: unknown[]) => mockUseListCarLogAssetsQuery(...args),
   useListCarLogFetchesQuery: (...args: unknown[]) => mockUseListCarLogFetchesQuery(...args),
+  useGetCarLogAssetUrlsMutation: () => [vi.fn()],
 }));
 
 const mockAssets = [
