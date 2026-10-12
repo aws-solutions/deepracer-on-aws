@@ -21,11 +21,12 @@
       "plugin": "@nx/vite/plugin",
       "options": {
         "buildTargetName": "build",
-        "testTargetName": "test",
         "serveTargetName": "serve",
         "previewTargetName": "preview",
-        "serveStaticTargetName": "serve-static"
-      }
+        "serveStaticTargetName": "serve-static",
+        "typecheckTargetName": "vite:typecheck"
+      },
+      "exclude": ["vitest.config.ts"]
     },
     {
       "plugin": "@nx/eslint/plugin",
@@ -41,6 +42,13 @@
         "testStorybookTargetName": "test-storybook",
         "staticStorybookTargetName": "static-storybook"
       }
+    },
+    {
+      "plugin": "@nx/vitest",
+      "options": {
+        "testTargetName": "test"
+      },
+      "exclude": ["vitest.config.ts"]
     }
   ],
   "generators": {

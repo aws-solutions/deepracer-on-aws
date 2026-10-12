@@ -78,9 +78,12 @@ def convert_to_openvino_ir(model_pb_path: str, output_dir: str, agent_algorithm:
     """
     Convert model.pb to OpenVINO IR v11 via ov.convert_model().
 
-    Converts once with no constraints to detect graph outputs (names may carry a
-    ":0" suffix), then matches against the expected output tensor name. Raises
-    ConversionError if the expected output is not found or conversion fails.
+    Converts once with no constraints to detect graph inputs/outputs (names may
+    carry a ":0" suffix), then matches against the expected output tensor name
+    and pins the batch axis to 1 if dynamic. The car-side runtime expects fully
+    static input shapes. Raises ConversionError if the expected output is not
+    found, if a non-batch dimension is unexpectedly dynamic, or if conversion
+    fails.
 
     Returns the path to the written model.xml (model.bin is written alongside it
     by ov.save_model()). Raises ConversionError on any failure.
@@ -103,7 +106,19 @@ def convert_to_openvino_ir(model_pb_path: str, output_dir: str, agent_algorithm:
                 f"Detected outputs: {detected_outputs}"
             )
 
-        model = ov.convert_model(model_pb_path, output=output_spec)
+        input_specs = []
+        for model_input in probe_model.inputs:
+            dims = list(model_input.get_partial_shape())
+            for i, dim in enumerate(dims):
+                if not dim.is_static and i != 0:
+                    raise ConversionError(
+                        f"Unexpected dynamic non-batch dimension at axis {i} for input '{model_input.get_any_name()}'"
+                    )
+            if dims and not dims[0].is_static:
+                dims[0] = ov.Dimension(1)
+            input_specs.append((model_input.get_any_name(), ov.PartialShape(dims)))
+
+        model = ov.convert_model(model_pb_path, input=input_specs, output=output_spec)
         ov.save_model(model, xml_path)
         duration_ms = int((time.monotonic() - start) * 1000)
         logger.info("OpenVINO IR conversion succeeded", durationMs=duration_ms)
