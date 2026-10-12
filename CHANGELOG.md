@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.3] - 2026-10-12
+
+### Fixed
+
+- Fixed model optimizer OpenVINO IR conversion by pinning the dynamic batch dimension to a static size of 1. ([#100](https://github.com/aws-solutions/deepracer-on-aws/issues/100))
+
+### Security
+
+- Update dependencies to mitigate [CVE-2026-104854](https://nvd.nist.gov/vuln/detail/CVE-2026-104854), [CVE-2026-93749](https://nvd.nist.gov/vuln/detail/CVE-2026-93749), [CVE-2026-93748](https://nvd.nist.gov/vuln/detail/CVE-2026-93748), [CVE-2026-85730](https://nvd.nist.gov/vuln/detail/CVE-2026-85730), [CVE-2026-84373](https://nvd.nist.gov/vuln/detail/CVE-2026-84373), [CVE-2026-86472](https://nvd.nist.gov/vuln/detail/CVE-2026-86472), [CVE-2026-102277](https://nvd.nist.gov/vuln/detail/CVE-2026-102277), [CVE-2026-90771](https://nvd.nist.gov/vuln/detail/CVE-2026-90771), [CVE-2026-82417](https://nvd.nist.gov/vuln/detail/CVE-2026-82417), [CVE-2026-82562](https://nvd.nist.gov/vuln/detail/CVE-2026-82562), [CVE-2026-45820](https://nvd.nist.gov/vuln/detail/CVE-2026-45820), [GHSA-w2vw-w76x-qr89](https://github.com/advisories/GHSA-w2vw-w76x-qr89) and [GHSA-r4xh-jqrq-34v2](https://github.com/advisories/GHSA-r4xh-jqrq-34v2).
+
 ## [1.3.2] - 2026-10-07
 
 ### Documentation

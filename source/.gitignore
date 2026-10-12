@@ -48,3 +48,5 @@ Thumbs.db
 cdk.out
 
 storybook-static
+
+vite.config.*.timestamp*
