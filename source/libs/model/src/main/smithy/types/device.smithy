@@ -103,6 +103,10 @@ structure Device {
     /// DescribeInstanceInformation). Optional — absent until the device registers.
     ipAddress: String
 
+    /// Whether the car runs a software version that can record rosbag logs (derived from the
+    /// installed `aws-deepracer-core` version). Absent until the device has been synced.
+    loggingCapable: Boolean
+
     metadata: DeviceMetadata
 }
 

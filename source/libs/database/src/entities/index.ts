@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 export type { EvaluationItem } from './EvaluationsEntity.js';
+export type { CarLogAssetItem } from './CarLogAssetEntity.js';
+export type { CarLogFetchJobItem } from './CarLogFetchJobEntity.js';
 export type { DeploymentItem } from './DeploymentEntity.js';
 export type { DeviceItem } from './DeviceEntity.js';
 export type { FleetItem } from './FleetEntity.js';

@@ -33,6 +33,14 @@ export enum ResourceType {
   FLEETS = 'fleets',
   FLEET_EVENT = 'fleetevent',
 
+  // Car logs — rosbag fetch jobs and the bag/video assets they produce
+  CAR_LOG_JOB = 'carlogjob',
+  /** Fixed key value enabling list-all-jobs queries */
+  CAR_LOG_JOBS = 'carlogjobs',
+  CAR_LOG_ASSET = 'carlogasset',
+  /** Fixed key value enabling list-all-assets queries */
+  CAR_LOG_ASSETS = 'carlogassets',
+
   DEPLOYMENT = 'deployment',
   BATCH = 'batch',
   RACESTATS = 'racestats',

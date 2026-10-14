@@ -3,13 +3,18 @@
 
 import Alert from '@cloudscape-design/components/alert';
 import Box from '@cloudscape-design/components/box';
-import Modal from '@cloudscape-design/components/modal';
+import Modal, { type ModalProps } from '@cloudscape-design/components/modal';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 interface SubmissionVideoModalProps {
   videoUrl: string;
   title: string;
+  /** Overrides the default "Submission video" header. */
+  header?: string;
+  size?: ModalProps.Size;
+  /** CSS max-height of the video element. */
+  maxVideoHeight?: string;
   onDismiss: () => void;
 }
 
@@ -27,12 +32,19 @@ interface SubmissionVideoModalProps {
  * error) the `<video>` onError handler surfaces an error message instead of an empty
  * box; browsers without HTML5 video support show the fallback text.
  */
-const SubmissionVideoModal = ({ videoUrl, title, onDismiss }: SubmissionVideoModalProps) => {
+const SubmissionVideoModal = ({
+  videoUrl,
+  title,
+  header,
+  size = 'large',
+  maxVideoHeight = '70vh',
+  onDismiss,
+}: SubmissionVideoModalProps) => {
   const { t } = useTranslation('raceDetails');
   const [hasError, setHasError] = useState(false);
 
   return (
-    <Modal visible onDismiss={onDismiss} header={t('videoModal.header', { title })} size="large">
+    <Modal visible onDismiss={onDismiss} header={header ?? t('videoModal.header', { title })} size={size}>
       <Box textAlign="center">
         {hasError ? (
           <Alert type="error">{t('videoModal.loadError')}</Alert>
@@ -44,7 +56,7 @@ const SubmissionVideoModal = ({ videoUrl, title, onDismiss }: SubmissionVideoMod
             muted
             preload="auto"
             onError={() => setHasError(true)}
-            style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: '4px' }}
+            style={{ maxWidth: '100%', maxHeight: maxVideoHeight, borderRadius: '4px' }}
           >
             {t('videoModal.noVideoSupport')}
           </video>

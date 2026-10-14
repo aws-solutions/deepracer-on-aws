@@ -8,6 +8,50 @@ import { TFunction } from 'i18next';
 import { PageId } from '#constants/pages.js';
 import { getPath } from '#utils/pageUtils.js';
 
+const CAR_LOGS_GROUPS = [
+  UserGroups.ADMIN,
+  UserGroups.RACE_FACILITATORS,
+  UserGroups.RACERS,
+  UserGroups.COMMENTATORS,
+  UserGroups.REGISTRATION_MANAGERS,
+];
+
+const getCarLogsNavigationItem = (pageId: PageId.CAR_LOGS | PageId.ADMIN_CAR_LOGS, t: TFunction) =>
+  ({
+    type: 'link',
+    text: t(`breadcrumbs.${pageId}`, { ns: 'navigation' }),
+    href: getPath(pageId),
+  }) satisfies SideNavigationProps.Item;
+
+/**
+ * Get started and Your models are only relevant to roles that can train/manage models. Car logs is
+ * for every role that can open it and lists only the caller's own logs; admins and facilitators
+ * see every racer's logs in Model Management.
+ */
+export const getLearningAndModelsNavigationItems = (groups: UserGroups[], t: TFunction): SideNavigationProps.Item[] => {
+  const items: SideNavigationProps.Item[] = [];
+  if (groups.some((g) => g === UserGroups.ADMIN || g === UserGroups.RACE_FACILITATORS || g === UserGroups.RACERS)) {
+    items.push(
+      {
+        type: 'link',
+        text: t(`breadcrumbs.${PageId.GET_STARTED}`, { ns: 'navigation' }),
+        href: getPath(PageId.GET_STARTED),
+      },
+      {
+        type: 'link',
+        text: t(`breadcrumbs.${PageId.MODELS}`, { ns: 'navigation' }),
+        href: getPath(PageId.MODELS),
+      },
+    );
+  }
+  if (groups.some((g) => CAR_LOGS_GROUPS.includes(g))) {
+    items.push(getCarLogsNavigationItem(PageId.CAR_LOGS, t));
+  }
+  return items.length > 0
+    ? [{ type: 'section', text: t('sections.learningAndModels', { ns: 'navigation' }), items }]
+    : [];
+};
+
 export const getAdminNavigationItems = (groups: UserGroups[], t: TFunction): SideNavigationProps.Item[] => {
   if (!groups.includes(UserGroups.ADMIN)) return [];
   return [
@@ -68,6 +112,7 @@ export const getModelManagementNavigationItems = (groups: UserGroups[], t: TFunc
           text: t(`breadcrumbs.${PageId.UPLOAD_STATUS}`, { ns: 'navigation' }),
           href: getPath(PageId.UPLOAD_STATUS),
         },
+        getCarLogsNavigationItem(PageId.ADMIN_CAR_LOGS, t),
       ],
     },
   ];

@@ -16,7 +16,9 @@ export interface PushSendCommandOutput extends PushDeploymentContext {
  * Send SSM RunShellScript command to download and extract
  * model artifacts on the car.
  *
- * Target directory: /opt/aws/deepracer/artifacts/{modelName}/ (all car types, follows DREM pattern)
+ * Target directory: /opt/aws/deepracer/artifacts/{racerName}_{modelName}_{modelId}/ (all car types).
+ * The car's logging package derives rosbag directory names from this folder name; the car-log
+ * processor relies on the trailing modelId to match bags back to a model.
  * Includes md5sum checksum generation for car webserver verification.
  */
 const handler = async (input: PushDeploymentContext): Promise<PushSendCommandOutput> => {
@@ -25,9 +27,9 @@ const handler = async (input: PushDeploymentContext): Promise<PushSendCommandOut
   logger.info('Sending SSM command', { deploymentId, carInstanceId, carType });
 
   const artifactDir = '/opt/aws/deepracer/artifacts';
-  // Include modelId suffix so same-named models from same/different racers get separate folders on the car.
-  const sanitizedModelName = modelName.replace(/[^a-zA-Z0-9_-]/g, '') || 'model';
-  const foldername = `${sanitizedModelName}-${modelId}`;
+  const sanitize = (value: string, fallback: string) => value.replace(/[^a-zA-Z0-9_-]/g, '') || fallback;
+  // modelId is the unique, fixed-length trailing token; racer and model names are for readability only.
+  const foldername = `${sanitize(input.racerName ?? '', 'racer')}_${sanitize(modelName, 'model')}_${modelId}`;
 
   const script = [
     '#!/bin/bash',

@@ -6,3 +6,4 @@ export { jobNameHelper } from './JobNameHelper.js';
 export { s3PathHelper } from './S3PathHelper.js';
 export * from './cursorUtils.js';
 export * from './conditionalCheck.js';
+export * from './carLogPaths.js';

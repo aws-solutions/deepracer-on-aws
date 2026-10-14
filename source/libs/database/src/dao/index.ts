@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 export { evaluationDao } from './EvaluationDao.js';
+export { carLogAssetDao, CAR_LOG_ASSET_RETENTION_DAYS } from './CarLogAssetDao.js';
+export { carLogFetchJobDao, isTerminalCarLogFetchStatus } from './CarLogFetchJobDao.js';
 export { deploymentDao } from './DeploymentDao.js';
 export { deviceDao } from './DeviceDao.js';
 export { fleetDao } from './FleetDao.js';

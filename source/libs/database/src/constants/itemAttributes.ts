@@ -259,6 +259,28 @@ export enum DynamoDBItemAttribute {
   SKIPPED_COUNT = 'skippedCount',
   FAILED_COUNT = 'failedCount',
   RESULTS = 'results',
+
+  // Car log attributes
+  CAR_LOG_JOB_ID = 'jobId',
+  CAR_LOG_ASSET_ID = 'assetId',
+  CAR_LOG_ASSET_TYPE = 'assetType',
+  RESTRICT_TO_PROFILE_ID = 'restrictToProfileId',
+  S3_KEY = 's3Key',
+  FILENAME = 'filename',
+  UPLOADED_AT = 'uploadedAt',
+  MODELS = 'models',
+  EVENT_NAME = 'eventName',
+  FETCH_JOB_ID = 'fetchJobId',
+  MEDIA_METADATA = 'mediaMetadata',
+  RACER_NAME = 'racerName',
+  LATER_THAN = 'laterThan',
+  ENDED_AT = 'endedAt',
+  LOGGING_CAPABLE = 'loggingCapable',
+  EXECUTION_ARN = 'executionArn',
+  SSM_COMMAND_ID = 'ssmCommandId',
+  UPLOAD_KEY = 'uploadKey',
+  BATCH_JOB_ID = 'batchJobId',
+  SOURCE = 'source',
 }
 
 /**

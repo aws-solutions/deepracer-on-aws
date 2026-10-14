@@ -15,6 +15,7 @@ import { AwsCustomResource, AwsCustomResourcePolicy, PhysicalResourceId, Provide
 import { Construct } from 'constructs';
 
 import {
+  iotCarLogTopicPrefix,
   iotCountdownTopicFilter,
   iotDeviceTopicPrefix,
   iotRaceTopicPrefix,
@@ -65,6 +66,7 @@ export class LiveRaceEvents extends Construct {
     const topicPrefix = iotTopicPrefix(namespace);
     const raceTopicPrefix = iotRaceTopicPrefix(namespace);
     const deviceTopicPrefix = iotDeviceTopicPrefix(namespace);
+    const carLogTopicPrefix = iotCarLogTopicPrefix(namespace);
     this.spectatorPolicyName = policyName;
     this.facilitatorPolicyName = facilitatorPolicyName;
 
@@ -239,6 +241,7 @@ export class LiveRaceEvents extends Construct {
         TOPIC_PREFIX: topicPrefix,
         RACE_TOPIC_PREFIX: iotRaceTopicPrefix(namespace),
         DEVICE_TOPIC_PREFIX: deviceTopicPrefix,
+        CAR_LOG_TOPIC_PREFIX: carLogTopicPrefix,
         PRUNER_FUNCTION_NAME: props.devicePrunerFunction.functionName,
         ...(props.raceEventBusName ? { RACE_EVENT_BUS_NAME: props.raceEventBusName } : {}),
       },
@@ -260,6 +263,15 @@ export class LiveRaceEvents extends Construct {
         effect: Effect.ALLOW,
         actions: ['iot:Publish'],
         resources: [`arn:${partition}:iot:${region}:${account}:topic/${deviceTopicPrefix}/*`],
+      }),
+    );
+
+    // Car-log job and asset changes are pushed to the car-log topic tree.
+    this.liveBroadcastHandler.addToRolePolicy(
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        actions: ['iot:Publish'],
+        resources: [`arn:${partition}:iot:${region}:${account}:topic/${carLogTopicPrefix}/*`],
       }),
     );
 
@@ -366,6 +378,11 @@ export class LiveRaceEvents extends Construct {
         FilterCriteria.filter({
           eventName: FilterRule.isEqual('REMOVE'),
           dynamodb: { OldImage: { pk: { S: FilterRule.beginsWith('device#') } } },
+        }),
+        // Car-log assets that were deleted: REMOVE on a carlogasset_ row, so the UI list can drop it.
+        FilterCriteria.filter({
+          eventName: FilterRule.isEqual('REMOVE'),
+          dynamodb: { OldImage: { sk: { S: FilterRule.beginsWith('carlogasset_') } } },
         }),
       ],
     });

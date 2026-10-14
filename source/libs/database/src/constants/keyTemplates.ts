@@ -40,6 +40,13 @@ export const DEPLOYMENT_SK_TEMPLATE = `${ResourceType.DEPLOYMENT}_\${${DynamoDBI
 export const DEPLOYMENT_GSI1_PK_TEMPLATE = `${ResourceType.BATCH}_\${${DynamoDBItemAttribute.BATCH_ID}}`;
 export const DEPLOYMENT_GSI2_PK_TEMPLATE = `${ResourceType.EVENT}_\${${DynamoDBItemAttribute.EVENT_ID}}`;
 
+// Car logs
+export const CAR_LOG_JOB_KEY_TEMPLATE = `${ResourceType.CAR_LOG_JOB}_\${${DynamoDBItemAttribute.CAR_LOG_JOB_ID}}`;
+export const CAR_LOG_JOB_EVENT_GSI2_PK_TEMPLATE = `${ResourceType.CAR_LOG_JOB}#${ResourceType.EVENT}_\${${DynamoDBItemAttribute.EVENT_ID}}`;
+/** Assets live in the owning profile's partition, next to models. */
+export const CAR_LOG_ASSET_SK_TEMPLATE = `${ResourceType.CAR_LOG_ASSET}_\${${DynamoDBItemAttribute.CAR_LOG_ASSET_ID}}`;
+export const UPLOADED_AT_KEY_TEMPLATE = `${DynamoDBItemAttribute.UPLOADED_AT}_\${${DynamoDBItemAttribute.UPLOADED_AT}}`;
+
 // RaceStats: PK = 'racestats', SK = 'GLOBAL' (aggregate) or 'event#{eventId}' (per-event)
 export const RACESTATS_GLOBAL_SK = 'GLOBAL';
 export const RACESTATS_EVENT_SK_TEMPLATE = `${ResourceType.EVENT}#\${${DynamoDBItemAttribute.EVENT_ID}}`;

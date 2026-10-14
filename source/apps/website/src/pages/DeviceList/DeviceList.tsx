@@ -16,13 +16,19 @@ import { useNavigate } from 'react-router-dom';
 import { PageId } from '#constants/pages';
 import { useAppDispatch } from '#hooks/useAppDispatch';
 import { useDeviceMqtt } from '#hooks/useDeviceMqtt.js';
+import { useStartCarLogFetchMutation } from '#services/deepRacer/carLogsApi.js';
 import { useBatchUpdateDeviceMutation, useListDevicesQuery } from '#services/deepRacer/devicesApi';
 import { useListFleetsQuery } from '#services/deepRacer/fleetsApi';
-import { displayErrorNotification, displaySuccessNotification } from '#store/notifications/notificationsSlice.js';
+import {
+  displayErrorNotification,
+  displaySuccessNotification,
+  displayWarningNotification,
+} from '#store/notifications/notificationsSlice.js';
 import { checkUserGroupMembership } from '#utils/authUtils.js';
 import { getPath } from '#utils/pageUtils.js';
 
 import MoveToFleetModal from './components/MoveToFleetModal';
+import StartCarLogFetchModal, { type StartCarLogFetchFilters } from './components/StartCarLogFetchModal.js';
 import { useDevicesTableConfig } from './components/useDevicesTableConfig';
 
 const ALL_VALUE = 'ALL';
@@ -36,6 +42,7 @@ const DeviceList = () => {
   const [typeFilter, setTypeFilter] = useState<DeviceType | typeof ALL_VALUE>(ALL_VALUE);
   const [statusFilter, setStatusFilter] = useState<DeviceStatus | typeof ALL_VALUE>(ALL_VALUE);
   const [showMoveModal, setShowMoveModal] = useState(false);
+  const [showFetchCarLogsModal, setShowFetchCarLogsModal] = useState(false);
 
   const { data: allDevices = [], isLoading, isFetching, refetch } = useListDevicesQuery({});
   // ListFleets is gated to admin-or-facilitator — the same audience as this page's route guard —
@@ -43,6 +50,7 @@ const DeviceList = () => {
   const { data: fleets = [] } = useListFleetsQuery({});
   const fleetNamesById = useMemo(() => new Map(fleets.map((fleet) => [fleet.fleetId, fleet.name])), [fleets]);
   const [batchUpdateDevice, { isLoading: isMoving }] = useBatchUpdateDeviceMutation();
+  const [startCarLogFetch, { isLoading: isStartingCarLogFetch }] = useStartCarLogFetchMutation();
 
   // Page-level access is enforced by the RequiresAdminOrFacilitator route guard; this only
   // resolves admin status to gate the admin-only "Move to fleet" action.
@@ -104,6 +112,12 @@ const DeviceList = () => {
 
   const selectedDevice = selectedItems?.[0];
   const selectedCount = selectedItems?.length ?? 0;
+  const fetchCarLogsDisabledReason =
+    selectedCount === 0
+      ? t('list.fetchCarLogsDisabledReasonEmpty')
+      : selectedItems.some((device) => device.deviceType !== DeviceType.CAR || device.loggingCapable === false)
+        ? t('list.fetchCarLogsDisabledReasonUnsupported')
+        : undefined;
 
   const handleMoveToFleet = async (fleetId?: string) => {
     const instanceIds = (selectedItems ?? []).map((d) => d.instanceId);
@@ -123,6 +137,43 @@ const DeviceList = () => {
     } finally {
       setShowMoveModal(false);
     }
+  };
+
+  const handleFetchCarLogs = async (filters: StartCarLogFetchFilters) => {
+    const results = await Promise.all(
+      selectedItems.map(async (device) => {
+        try {
+          await startCarLogFetch({
+            instanceId: device.instanceId,
+            ...(filters.racerName ? { racerName: filters.racerName } : {}),
+            ...(filters.modelId ? { modelId: filters.modelId } : {}),
+            ...(filters.laterThan ? { laterThan: filters.laterThan } : {}),
+          }).unwrap();
+          return true;
+        } catch {
+          return false;
+        }
+      }),
+    );
+
+    const successCount = results.filter(Boolean).length;
+    const failureCount = results.length - successCount;
+
+    if (failureCount === 0) {
+      dispatch(
+        displaySuccessNotification({ content: t('carLogs.notifications.fetchSuccess', { count: successCount }) }),
+      );
+    } else if (successCount === 0) {
+      dispatch(displayErrorNotification({ content: t('carLogs.notifications.fetchError') }));
+    } else {
+      dispatch(
+        displayWarningNotification({
+          content: t('carLogs.notifications.fetchPartial', { successCount, failureCount }),
+        }),
+      );
+    }
+
+    setShowFetchCarLogsModal(false);
   };
 
   // filteredItemsCount is set by useCollection when a text filter is active;
@@ -153,6 +204,13 @@ const DeviceList = () => {
                   loading={isFetching}
                   onClick={() => refetch()}
                 />
+                <Button
+                  disabled={Boolean(fetchCarLogsDisabledReason)}
+                  disabledReason={fetchCarLogsDisabledReason}
+                  onClick={() => setShowFetchCarLogsModal(true)}
+                >
+                  {t('list.fetchCarLogsButton')}
+                </Button>
                 <Button
                   disabled={selectedCount !== 1}
                   onClick={() =>
@@ -224,6 +282,15 @@ const DeviceList = () => {
           isVisible
           onMove={handleMoveToFleet}
           onDismiss={() => setShowMoveModal(false)}
+        />
+      )}
+      {showFetchCarLogsModal && (
+        <StartCarLogFetchModal
+          deviceNames={selectedItems.map((device) => device.name)}
+          isSubmitting={isStartingCarLogFetch}
+          isVisible
+          onDismiss={() => setShowFetchCarLogsModal(false)}
+          onSubmit={handleFetchCarLogs}
         />
       )}
     </>

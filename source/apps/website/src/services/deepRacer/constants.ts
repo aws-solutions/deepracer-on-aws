@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 export enum DeepRacerApiQueryTagType {
+  CAR_LOG_ASSETS = 'CarLogAssets',
+  CAR_LOG_FETCHES = 'CarLogFetches',
   DEPLOYMENTS = 'Deployments',
   DEVICES = 'Devices',
   EVALUATIONS = 'Evaluations',

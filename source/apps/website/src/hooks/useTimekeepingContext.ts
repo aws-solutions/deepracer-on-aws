@@ -16,6 +16,7 @@ export type TimekeepingContext = TimekeepingSelection;
 export interface UseTimekeepingContextResult extends TimekeepingContext {
   setEventAndTrack: (eventId: string, leaderboardId: string, eventName?: string, trackName?: string) => void;
   clearEventAndTrack: () => void;
+  setFetchCarLogsOnRunFinish: (enabled: boolean) => void;
 }
 
 /**
@@ -34,10 +35,16 @@ export const useTimekeepingContext = (): UseTimekeepingContextResult => {
       ...selection,
       setEventAndTrack: (eventId: string, leaderboardId: string, eventName?: string, trackName?: string) =>
         setTimekeepingSelection({
+          fetchCarLogsOnRunFinish: selection.fetchCarLogsOnRunFinish,
           selectedEventId: eventId,
           selectedLeaderboardId: leaderboardId,
           selectedEventName: eventName,
           selectedTrackName: trackName,
+        }),
+      setFetchCarLogsOnRunFinish: (enabled: boolean) =>
+        setTimekeepingSelection({
+          ...selection,
+          fetchCarLogsOnRunFinish: enabled,
         }),
       clearEventAndTrack: clearTimekeepingSelection,
     }),
