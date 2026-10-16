@@ -49,7 +49,7 @@ export interface MfaRedirectState {
  * redirect state for the next challenge, or `null` when there is none (caller should proceed with
  * its own post-sign-in logic, e.g. navigatePostSignIn).
  */
-export const resolveNextSignInStep = (nextStep: NextSignInStep, accountName: string): MfaRedirectState | null => {
+export const resolveNextSignInStep = (nextStep: NextSignInStep): MfaRedirectState | null => {
   if (nextStep.signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
     return { authState: AuthState.NEW_PASSWORD_REQUIRED };
   }

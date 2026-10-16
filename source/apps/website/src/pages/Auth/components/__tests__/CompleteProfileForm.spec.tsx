@@ -68,7 +68,7 @@ describe('CompleteProfileForm', () => {
     expect(confirmSignIn as Mock).not.toHaveBeenCalled();
   });
 
-  it('submits the alias, refetches the profile, and navigates home by default', async () => {
+  it('submits the alias, waits for the refetch, and navigates home by default', async () => {
     render(<CompleteProfileForm />);
     fireEvent.change(screen.getByLabelText(/racer alias/i), { target: { value: 'NewRacer' } });
     fireEvent.click(screen.getByRole('button', { name: /continue/i }));
@@ -84,6 +84,13 @@ describe('CompleteProfileForm', () => {
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith(getPath(PageId.HOME));
     });
+
+    // Regression test: navigate must not fire before refetch resolves — otherwise RequiresAuth
+    // (reading the same cache) can see a still-stale blank-alias profile at the new route and
+    // bounce straight back to this screen.
+    const refetchOrder = mockRefetch.mock.invocationCallOrder[0];
+    const navigateOrder = mockNavigate.mock.invocationCallOrder[0];
+    expect(navigateOrder).toBeGreaterThan(refetchOrder);
   });
 
   it('navigates to the redirectUrl from router state when provided', async () => {

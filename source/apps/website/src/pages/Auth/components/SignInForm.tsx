@@ -57,7 +57,7 @@ const SignInForm = () => {
         password: data.password,
       });
 
-      const nextStepRedirect = resolveNextSignInStep(signInResult.nextStep, data.emailAddress);
+      const nextStepRedirect = resolveNextSignInStep(signInResult.nextStep);
       if (nextStepRedirect) {
         navigate(getPath(PageId.SIGN_IN), {
           state: { ...nextStepRedirect, email: data.emailAddress, redirectUrl: state?.redirectUrl },

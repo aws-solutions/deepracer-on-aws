@@ -17,7 +17,7 @@ vi.mock('aws-amplify/auth', () => ({
 }));
 
 const mockNavigate = vi.fn();
-let mockLocationState: { email?: string; redirectUrl?: string } = {};
+let mockLocationState: { email?: string; redirectUrl?: string; racerAlias?: string } = {};
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
   return {
@@ -61,6 +61,17 @@ describe('NewPasswordForm', () => {
     expect(screen.getByLabelText(/confirm password/i)).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: /show password/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /update password/i })).toBeInTheDocument();
+  });
+
+  // Regression test: when this screen is re-entered mid challenge-chain (see the "chains into
+  // another challenge" test below), the racer alias the user already typed used to be discarded
+  // — the form always rendered with a blank alias field, forcing them to retype it.
+  it('pre-fills the racer alias field from location state when re-entering mid challenge-chain', () => {
+    mockLocationState = { email: 'admin@example.com', racerAlias: 'TestRacer123' };
+
+    render(<NewPasswordForm />);
+
+    expect(screen.getByLabelText(/racer alias/i)).toHaveValue('TestRacer123');
   });
 });
 
