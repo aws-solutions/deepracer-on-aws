@@ -194,6 +194,73 @@ describe('PreSignUp lambda', () => {
     });
   });
 
+  describe('federated sign-up (PreSignUp_ExternalProvider)', () => {
+    const federatedEvent: lambda.PreSignUpTriggerEvent = {
+      ...event,
+      userName: 'ExternalIdP_01a2b3c4-d5e6-f7g8-h9i0-j1k2l3m4n5o6',
+      triggerSource: 'PreSignUp_ExternalProvider',
+    };
+
+    it('does not reject a Cognito-assigned federated username that fails the 15-char resource ID format', async () => {
+      vi.spyOn(profileDao, 'create').mockResolvedValue({
+        ...TEST_PROFILE_ITEM,
+        profileId: federatedEvent.userName as ResourceId,
+      });
+
+      const response = await PreSignUp(federatedEvent, context, callback);
+
+      expect(response.userName).toEqual(federatedEvent.userName);
+    });
+
+    it('creates the profile with a blank alias instead of the hardcoded default', async () => {
+      vi.spyOn(profileDao, 'create').mockResolvedValue({
+        ...TEST_PROFILE_ITEM,
+        profileId: federatedEvent.userName as ResourceId,
+      });
+
+      await PreSignUp(federatedEvent, context, callback);
+
+      expect(profileDao.create).toHaveBeenCalledWith(
+        expect.objectContaining({ profileId: federatedEvent.userName, alias: '' }),
+      );
+    });
+
+    it('still rejects a non-federated invalid username', async () => {
+      const event1: lambda.PreSignUpTriggerEvent = {
+        ...event,
+        userName: 'testUser',
+        triggerSource: 'PreSignUp_SignUp',
+      };
+
+      await expect(PreSignUp(event1, context, callback)).rejects.toEqual(new Error('Username is invalid'));
+    });
+
+    it('treats a conditional-check failure on create as success (profile already exists from a prior retry)', async () => {
+      vi.spyOn(profileDao, 'create').mockRejectedValue(new Error('Error thrown by DynamoDB client: "conditional request failed"'));
+
+      const response = await PreSignUp(federatedEvent, context, callback);
+
+      expect(response).toEqual(federatedEvent);
+      expect(metricsLogger.logCreateUser).not.toHaveBeenCalled();
+    });
+
+    it('still rejects a non-conditional-check failure on create', async () => {
+      vi.spyOn(profileDao, 'create').mockRejectedValue(new Error('Database connection failed'));
+
+      await expect(PreSignUp(federatedEvent, context, callback)).rejects.toThrow('Database connection failed');
+    });
+
+    it('does not swallow a conditional-check failure on the non-federated path', async () => {
+      const nativeEvent: lambda.PreSignUpTriggerEvent = {
+        ...event,
+        triggerSource: 'PreSignUp_SignUp',
+      };
+      vi.spyOn(profileDao, 'create').mockRejectedValue(new Error('Error thrown by DynamoDB client: "conditional request failed"'));
+
+      await expect(PreSignUp(nativeEvent, context, callback)).rejects.toThrow('conditional request failed');
+    });
+  });
+
   describe('error handling', () => {
     it('should throw error when global settings return undefined for compute minutes', async () => {
       mockGlobalSettingsHelper.getGlobalSetting.mockImplementation((key: string) => {

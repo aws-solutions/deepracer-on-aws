@@ -5,6 +5,10 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { confirmSignIn } from 'aws-amplify/auth';
 import { Mock, vi } from 'vitest';
 
+import { AuthState } from '#constants/auth';
+import { PageId } from '#constants/pages';
+import { getPath } from '#utils/pageUtils';
+
 import NewPasswordForm from '../NewPasswordForm';
 
 // Mock dependencies
@@ -12,11 +16,14 @@ vi.mock('aws-amplify/auth', () => ({
   confirmSignIn: vi.fn(),
 }));
 
+const mockNavigate = vi.fn();
+let mockLocationState: { email?: string; redirectUrl?: string } = {};
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
   return {
     ...actual,
-    useNavigate: () => vi.fn(),
+    useNavigate: () => mockNavigate,
+    useLocation: () => ({ state: mockLocationState }),
   };
 });
 
@@ -25,20 +32,27 @@ vi.mock('#hooks/useAppDispatch.js', () => ({
 }));
 
 const mockUpdateProfile = vi.fn();
+const mockRefetch = vi.fn();
 
 vi.mock('#services/deepRacer/profileApi', () => ({
   useGetProfileQuery: () => ({
-    refetch: vi.fn(),
+    refetch: mockRefetch,
   }),
   useUpdateProfileMutation: () => [mockUpdateProfile],
 }));
 
-describe('NewPasswordForm', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockUpdateProfile.mockResolvedValue({});
-  });
+// File-level (not nested in a single describe) so it applies to every sibling describe block
+// below — these tests used to pass with a describe-scoped beforeEach only because the old
+// component code never depended on updateProfile/refetch's resolved values; now that it does
+// (see the bugfix in NewPasswordForm.tsx), every describe block needs this setup.
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockLocationState = { email: 'admin@example.com' };
+  mockUpdateProfile.mockResolvedValue({});
+  mockRefetch.mockResolvedValue({ data: { alias: 'TestRacer123' } });
+});
 
+describe('NewPasswordForm', () => {
   it('renders the form with all required fields', () => {
     render(<NewPasswordForm />);
 
@@ -80,9 +94,9 @@ describe('password visibility toggle', () => {
 });
 
 describe('form submission', () => {
-  it('submits form with valid data and updates profile', async () => {
+  it('submits form with valid data, updates profile, and navigates home when no further challenge is pending', async () => {
     const mockConfirmSignIn = confirmSignIn as Mock;
-    mockConfirmSignIn.mockResolvedValueOnce({});
+    mockConfirmSignIn.mockResolvedValueOnce({ nextStep: { signInStep: 'DONE' } });
 
     render(<NewPasswordForm />);
     fireEvent.change(screen.getByLabelText(/racer alias/i), { target: { value: 'TestRacer123' } });
@@ -101,6 +115,40 @@ describe('form submission', () => {
         alias: 'TestRacer123',
       });
     });
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith(getPath(PageId.HOME));
+    });
+  });
+
+  // Regression test: setting a new password used to be treated as "fully signed in" even when
+  // Cognito chained straight into another challenge (e.g. NEW_PASSWORD_REQUIRED chaining further)
+  // — this called updateProfile/navigated home against a session that wasn't actually established
+  // yet, which is what made the user look logged out.
+  it('does NOT update the profile or navigate home when the password change chains into another challenge', async () => {
+    const mockConfirmSignIn = confirmSignIn as Mock;
+    mockConfirmSignIn.mockResolvedValueOnce({
+      nextStep: { signInStep: 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED' },
+    });
+
+    render(<NewPasswordForm />);
+    fireEvent.change(screen.getByLabelText(/racer alias/i), { target: { value: 'TestRacer123' } });
+    fireEvent.change(screen.getByLabelText(/new password/i), { target: { value: 'Password123!' } });
+    fireEvent.change(screen.getByLabelText(/confirm password/i), { target: { value: 'Password123!' } });
+    fireEvent.click(screen.getByRole('button', { name: /update password/i }));
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith(getPath(PageId.SIGN_IN), {
+        state: {
+          authState: AuthState.NEW_PASSWORD_REQUIRED,
+          email: 'admin@example.com',
+          racerAlias: 'TestRacer123',
+          redirectUrl: undefined,
+        },
+      });
+    });
+
+    expect(mockUpdateProfile).not.toHaveBeenCalled();
   });
 });
 

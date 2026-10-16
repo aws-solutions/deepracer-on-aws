@@ -42,6 +42,9 @@ vi.mock('#services/deepRacer/profileApi', () => ({
 describe('SignInForm', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Profile already has an alias, so navigatePostSignIn routes home instead of to the
+    // complete-profile screen.
+    mockRefetch.mockResolvedValue({ data: { alias: 'ExistingRacer' } });
   });
 
   it('renders the form with all required fields', () => {
@@ -115,7 +118,7 @@ describe('SignInForm', () => {
 
       await waitFor(() => {
         expect(mockNavigate).toHaveBeenCalledWith(getPath(PageId.SIGN_IN), {
-          state: { authState: AuthState.NEW_PASSWORD_REQUIRED },
+          state: { authState: AuthState.NEW_PASSWORD_REQUIRED, email: 'test@example.com', redirectUrl: undefined },
         });
       });
     });

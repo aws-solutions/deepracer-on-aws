@@ -4,6 +4,7 @@
 import { profileDao, TEST_ITEM_NOT_FOUND_ERROR, TEST_PROFILE_ITEM } from '@deepracer-indy/database';
 
 import { TEST_OPERATION_CONTEXT } from '../../constants/testConstants.js';
+import { globalSettingsHelper } from '../../../utils/GlobalSettingsHelper.js';
 import { GetProfileOperation } from '../getProfile.js';
 
 describe('GetProfile operation', () => {
@@ -24,9 +25,31 @@ describe('GetProfile operation', () => {
     expect(output.profile.maxModelCount).toEqual(TEST_PROFILE_ITEM.maxModelCount);
   });
 
-  it('should throw error if profile does not exist', async () => {
+  it('creates a fallback profile with a blank alias when the profile does not exist', async () => {
     vi.spyOn(profileDao, 'load').mockRejectedValueOnce(TEST_ITEM_NOT_FOUND_ERROR);
+    vi.spyOn(globalSettingsHelper, 'getGlobalSetting').mockResolvedValueOnce({
+      newUserComputeMinutesLimit: 240,
+      newUserModelCountLimit: 10,
+    });
+    const createSpy = vi.spyOn(profileDao, 'create').mockResolvedValue(TEST_PROFILE_ITEM);
 
-    return expect(GetProfileOperation({}, TEST_OPERATION_CONTEXT)).rejects.toStrictEqual(TEST_ITEM_NOT_FOUND_ERROR);
+    const output = await GetProfileOperation({}, TEST_OPERATION_CONTEXT);
+
+    expect(createSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        profileId: TEST_OPERATION_CONTEXT.profileId,
+        alias: '',
+        maxTotalComputeMinutes: 240,
+        maxModelCount: 10,
+      }),
+    );
+    expect(output.profile).toBeDefined();
+  });
+
+  it('propagates non-NotFoundError failures without falling back', async () => {
+    const unexpectedError = new Error('unexpected failure');
+    vi.spyOn(profileDao, 'load').mockRejectedValueOnce(unexpectedError);
+
+    return expect(GetProfileOperation({}, TEST_OPERATION_CONTEXT)).rejects.toStrictEqual(unexpectedError);
   });
 });
