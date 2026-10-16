@@ -11,7 +11,7 @@ import { confirmSignIn } from 'aws-amplify/auth';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import * as Yup from 'yup';
 
 import InputField from '#components/FormFields/InputField/InputField.js';
@@ -21,6 +21,8 @@ import i18n from '#i18n/index.js';
 import { useGetProfileQuery, useUpdateProfileMutation } from '#services/deepRacer/profileApi';
 import { displayErrorNotification } from '#store/notifications/notificationsSlice.js';
 import { getPath } from '#utils/pageUtils.js';
+
+import { navigatePostSignIn, resolveNextSignInStep } from '../utils/postSignInRouting';
 
 interface NewPasswordValues {
   newPassword: string;
@@ -56,6 +58,7 @@ const NewPasswordForm = () => {
   const { t } = useTranslation('auth');
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const { state } = useLocation();
   const { refetch } = useGetProfileQuery();
   const [updateProfile] = useUpdateProfileMutation();
   const { control, handleSubmit } = useForm<NewPasswordValues>({
@@ -69,17 +72,29 @@ const NewPasswordForm = () => {
   const onSubmit = async (data: NewPasswordValues) => {
     try {
       setIsLoading(true);
-      await confirmSignIn({
+      const result = await confirmSignIn({
         challengeResponse: data.newPassword,
       });
+
+      // Setting a new password can chain straight into another challenge — the user isn't fully
+      // authenticated yet in that case, so calling updateProfile/navigating home here would fail
+      // against a session that isn't established, leaving them looking "logged out". Defer the
+      // alias update until the full challenge chain completes.
+      const nextStepRedirect = resolveNextSignInStep(result.nextStep, state?.email ?? '');
+      if (nextStepRedirect) {
+        navigate(getPath(PageId.SIGN_IN), {
+          state: { ...nextStepRedirect, email: state?.email, racerAlias: data.racerAlias, redirectUrl: state?.redirectUrl },
+        });
+        return;
+      }
 
       // Update the user's profile with their chosen racer alias
       await updateProfile({
         alias: data.racerAlias,
       });
 
-      await refetch();
-      navigate(getPath(PageId.HOME));
+      const profileResult = await refetch();
+      navigatePostSignIn(navigate, profileResult.data, state?.redirectUrl);
     } catch (err) {
       setIsLoading(false);
       dispatch(

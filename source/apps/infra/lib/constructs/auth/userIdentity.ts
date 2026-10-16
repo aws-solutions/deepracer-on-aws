@@ -10,6 +10,7 @@ import {
   aws_events_targets,
   CfnCondition,
   CfnOutput,
+  CfnResource,
   CustomResource,
   Duration,
   Fn,
@@ -30,15 +31,21 @@ import {
   IUserPool,
   UserPoolClient,
   CfnUserPool,
+  CfnUserPoolDomain,
   CfnUserPoolGroup,
+  CfnUserPoolIdentityProvider,
   CfnIdentityPool,
   CfnIdentityPoolRoleAttachment,
   StringAttribute,
+  ProviderAttribute,
+  UserPoolClientIdentityProvider,
+  UserPoolIdentityProviderSaml,
+  UserPoolIdentityProviderSamlMetadata,
 } from 'aws-cdk-lib/aws-cognito';
 import { TableV2 } from 'aws-cdk-lib/aws-dynamodb';
 import { Rule } from 'aws-cdk-lib/aws-events';
 import { Effect, FederatedPrincipal, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
-import { Provider } from 'aws-cdk-lib/custom-resources';
+import { AwsCustomResource, AwsCustomResourcePolicy, PhysicalResourceId, Provider } from 'aws-cdk-lib/custom-resources';
 import { Construct } from 'constructs';
 
 import { iotRaceTopicPrefix } from '../../constants/iotTopics.js';
@@ -65,7 +72,25 @@ export interface UserIdentityProps {
   sesVerifiedEmail?: string;
   sesIdentity?: string;
   isSesIdentityProvided?: CfnCondition;
+  /** SAML IdP metadata URL — the actual metadata URL value, used when the IdP is actually
+   * provisioned. A concrete (possibly empty) string at synth time; provisioning itself is
+   * gated by isSamlIdpEnabled, not by this value being non-empty. */
+  samlMetadataUrl?: string;
+  /** Deploy-time condition: true when a SAML IdP should actually be provisioned. The SAML
+   * IdP, Hosted UI domain, and WebClient OAuth config are always present in the synthesized
+   * template but gated by this CfnCondition so they're never actually provisioned in AWS
+   * when it's false. */
+  isSamlIdpEnabled?: CfnCondition;
+  /** The SAML assertion attribute Name (a claim URI, not a friendly label) that carries the
+   * user's email address. Cognito's AttributeMapping matches this verbatim against the
+   * assertion, so it must exactly match what the configured IdP actually emits — this varies
+   * by IdP and even by how a given tenant's claim rules are configured (e.g. some Azure AD
+   * Enterprise Apps emit email under the "name" claim rather than "emailaddress"). Defaults to
+   * the SAML2-standard claim URI. */
+  samlEmailClaim?: string;
 }
+
+export const DEFAULT_SAML_EMAIL_CLAIM = 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress';
 
 export const BASE_IDENTITY_POOL_NAME = 'dr-idp';
 
@@ -81,15 +106,27 @@ export class UserIdentity extends Construct {
 
   readonly preSignUpErrorAlarm: Alarm;
   readonly postSignUpErrorAlarm: Alarm;
+  readonly postAuthenticationErrorAlarm: Alarm;
   readonly sesAlarms: CfnAlarm[];
 
+  /** Fixed identity provider name used for the (always-present-but-conditional) SAML IdP.
+   * Referenced by updateOAuthCallbackUrls, which can't rely on resolving isSamlIdpEnabled's
+   * actual deploy-time value at synth time. */
+  private static readonly EXTERNAL_IDP_NAME = 'ExternalIdP';
+
   private readonly namespace: string;
+  private readonly isSamlIdpEnabled?: CfnCondition;
+  private readonly samlMetadataUrl?: string;
+  private readonly samlEmailClaim: string;
 
   constructor(scope: Construct, id: string, props: UserIdentityProps) {
     super(scope, id);
 
-    const { dynamoDBTable, globalSettings, adminEmail, namespace } = props;
+    const { dynamoDBTable, globalSettings, adminEmail, namespace, samlMetadataUrl } = props;
+    this.samlMetadataUrl = samlMetadataUrl;
+    this.samlEmailClaim = props.samlEmailClaim ?? DEFAULT_SAML_EMAIL_CLAIM;
     this.namespace = namespace;
+    this.isSamlIdpEnabled = props.isSamlIdpEnabled;
     this.sesAlarms = [];
 
     // Configure the pre-signup hook
@@ -155,11 +192,51 @@ export class UserIdentity extends Construct {
       alarmDescription: 'Alert when a PostSignUpFunction failure occurs',
     });
 
+    // Configure the post-authentication hook — PostConfirmation above only fires for users who
+    // go through Cognito's native sign-up/confirm flow, never for federated (SAML/SSO) sign-in.
+    // PostAuthentication fires on every successful authentication (native and federated), so it's
+    // the mechanism that guarantees federated users land in dr-racers too.
+    const postAuthenticationFn = new NodeLambdaFunction(this, 'PostAuthenticationFunction', {
+      entry: path.join(__dirname, '../../../../../libs/lambda/src/cognito/handlers/postAuthentication.ts'),
+      functionName: `${functionNamePrefix}-PostAuthenticationFn`,
+      logGroupCategory: LogGroupCategory.USER_IDENTITY,
+      namespace: props.namespace,
+    });
+
+    const postAuthenticationFnErrorMetric = new Metric({
+      namespace: 'AWS/Lambda',
+      metricName: `${namespace}-PostAuthenticationFunctionErrors`,
+      dimensionsMap: {
+        FunctionName: postAuthenticationFn.functionName,
+      },
+      period: Duration.minutes(1),
+      statistic: 'Sum',
+    });
+
+    this.postAuthenticationErrorAlarm = new Alarm(this, 'PostAuthenticationErrorAlarm', {
+      metric: postAuthenticationFnErrorMetric,
+      threshold: 1,
+      evaluationPeriods: 1,
+      comparisonOperator: ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+      treatMissingData: TreatMissingData.NOT_BREACHING,
+      alarmDescription: 'Alert when a PostAuthenticationFunction failure occurs',
+    });
+
+    postAuthenticationFn.addToRolePolicy(
+      new PolicyStatement({
+        actions: ['cognito-idp:AdminListGroupsForUser', 'cognito-idp:AdminAddUserToGroup'],
+        resources: [
+          `arn:${Stack.of(this).partition}:cognito-idp:${Stack.of(this).region}:${Stack.of(this).account}:userpool/${Stack.of(this).region}_*`,
+        ],
+      }),
+    );
+
     // Configure the user pool
     this.userPool = new UserPool(this, 'UserPool', {
       lambdaTriggers: {
         preSignUp: preSignUpFn,
         postConfirmation: postConfirmationFn,
+        postAuthentication: postAuthenticationFn,
       },
       signInAliases: {
         email: true,
@@ -195,6 +272,10 @@ export class UserIdentity extends Construct {
 
     this.userPool.applyRemovalPolicy(RemovalPolicy.DESTROY); // TODO: link to config value
 
+    // L1 resource override handle, reused below for the CustomMessage trigger and the SES
+    // emailConfiguration (same mechanism used for conditional config elsewhere in this file).
+    const cfnUserPool = this.userPool.node.defaultChild as CfnUserPool;
+
     // Create CognitoEmailMetricFunction Lambda trigger for email metric tracking
     const cognitoEmailMetricFn = new NodeLambdaFunction(this, 'CognitoEmailMetricFunction', {
       entry: path.join(__dirname, '../../../../../libs/lambda/src/cognito/handlers/cognitoEmailMetric.ts'),
@@ -220,7 +301,6 @@ export class UserIdentity extends Construct {
     );
 
     // Add CognitoEmailMetricFunction trigger to the CfnUserPool
-    const cfnUserPool = this.userPool.node.defaultChild as CfnUserPool;
     cfnUserPool.addPropertyOverride('LambdaConfig.CustomMessage', cognitoEmailMetricFn.functionArn);
 
     // Grant Cognito permission to invoke the CognitoEmailMetricFunction
@@ -339,12 +419,69 @@ export class UserIdentity extends Construct {
       }),
     );
 
+    // ── Optional SAML IdP — now a real deploy-time CfnParameter/CfnCondition (isSamlIdpEnabled),
+    // so the SAML IdP and Hosted UI domain are ALWAYS present in the synthesized template, gated
+    // by a CfnCondition attached to their underlying L1 resources (same pattern as the SES
+    // reputation alarms above), meaning they're simply never provisioned in AWS when the
+    // condition is false — not absent from the template the way the previous synth-time
+    // (env-var-gated) design kept them. The `if (props.isSamlIdpEnabled)` guard below only keeps
+    // this block a no-op for call sites (e.g. most existing tests) that don't pass the new props
+    // at all; it is NOT gating on samlMetadataUrl being a non-empty string, since that's now
+    // always a concrete-but-possibly-empty Token at synth time.
+    if (props.isSamlIdpEnabled) {
+      const externalIdp = new UserPoolIdentityProviderSaml(this, 'ExternalIdP', {
+        userPool: this.userPool,
+        name: UserIdentity.EXTERNAL_IDP_NAME,
+        metadata: UserPoolIdentityProviderSamlMetadata.url(samlMetadataUrl ?? ''),
+        idpSignout: true,
+        attributeMapping: {
+          // racerAlias is intentionally not mapped from the IdP — federated users always land on
+          // CompleteProfileForm (see RequiresAuth/postSignInRouting's needsProfileCompletion) to
+          // set their alias manually instead.
+          email: ProviderAttribute.other(this.samlEmailClaim),
+        },
+      });
+      (externalIdp.node.defaultChild as CfnUserPoolIdentityProvider).cfnOptions.condition = props.isSamlIdpEnabled;
+
+      // Standard Cognito Hosted UI prefix domain (*.auth.<region>.amazoncognito.com) —
+      // intentionally no custom/vanity domain or ACM certificate.
+      const hostedUiDomain = this.userPool.addDomain('HostedUiDomain', {
+        cognitoDomain: {
+          domainPrefix: `${namespace}-dr-auth`,
+        },
+      });
+      (hostedUiDomain.node.defaultChild as CfnUserPoolDomain).cfnOptions.condition = props.isSamlIdpEnabled;
+
+      // Outputs are left unconditional — harmless even when the IdP wasn't actually provisioned.
+      new CfnOutput(this, 'SamlAcsUrl', {
+        value: `https://${namespace}-dr-auth.auth.${Stack.of(this).region}.amazoncognito.com/saml2/idpresponse`,
+        description: 'SAML ACS URL — register this as the Reply URL / ACS URL on the external IdP',
+      });
+
+      new CfnOutput(this, 'SamlEntityId', {
+        value: `urn:amazon:cognito:sp:${this.userPool.userPoolId}`,
+        description: 'SAML Entity ID (SP) — register this as the Identifier/Entity ID on the external IdP',
+      });
+    }
+
+    // Baseline-only config at creation — all OAuth/SAML identity-provider config is applied
+    // exclusively post-website-deploy, via updateOAuthCallbackUrls below. The WebClient must
+    // exist unconditionally (CloudFormation disallows an unconditional resource depending on a
+    // conditional one), so it can't declare a dependency on the conditionally-provisioned
+    // ExternalIdP — see updateOAuthCallbackUrls for the residual ordering risk this implies.
+    //
+    // supportedIdentityProviders is pinned to COGNITO-only here (rather than left for the L2's
+    // default auto-discovery of userPool.identityProviders) because that auto-discovery would
+    // otherwise emit an unconditional Ref to the conditionally-provisioned ExternalIdP resource
+    // whenever isSamlIdpEnabled is wired up at all — an invalid template shape (an unconditional
+    // resource referencing a conditional one), caught by `cdk synth`'s template validation.
     this.userPoolClient = this.userPool.addClient('WebClient', {
       refreshTokenValidity: Duration.days(1),
       authFlows: {
         userPassword: true,
         userSrp: true,
       },
+      supportedIdentityProviders: [UserPoolClientIdentityProvider.COGNITO],
     });
 
     this.userPoolClient.applyRemovalPolicy(RemovalPolicy.DESTROY); // TODO: link to config value
@@ -717,5 +854,104 @@ export class UserIdentity extends Construct {
       },
     });
     addCfnGuardSuppressionForAutoCreatedLambdas(this, 'UpdateEmailTemplateWithUrlProvider');
+  }
+
+  /**
+   * Patches the WebClient's OAuth callback/logout URLs to the real website URL.
+   * Mirrors updateEmailTemplateWithWebsiteUrl's post-website-deploy pattern (the website's
+   * CloudFront domain isn't known until the website construct has been created), but uses a
+   * one-shot AwsCustomResource instead of a dedicated sync Lambda since this is a single
+   * UpdateUserPoolClient API call.
+   *
+   * This ALWAYS runs one of two resources (never no-ops), because SAML can be disabled after
+   * having been enabled, and the WebClient needs to be reset back to Cognito-only OAuth config
+   * in that case. Split into two condition-gated custom resources — one with fully static
+   * "SAML enabled" parameters, one with fully static "SAML disabled" parameters — rather than a
+   * single resource with per-field Fn::If values.
+   *
+   * This split is required, not stylistic: AwsCustomResource serializes its `parameters` by
+   * concatenating literal JSON text with embedded CDK tokens (visible in the synthesized template
+   * as an `Fn::Join` building up the `Create`/`Update` call string). That serialization treats
+   * every embedded token as an opaque *string* substitution — fine for scalar tokens like
+   * UserPoolId/ClientId (a Ref that resolves to a string), but wrong for an Fn::If whose branches
+   * are arrays/booleans (e.g. SupportedIdentityProviders, AllowedOAuthFlowsUserPoolClient): the
+   * array/boolean value gets embedded inside quote marks as if it were a string, producing
+   * invalid JSON that CloudFormation rejects at template-validation time with "every Fn::Join
+   * object requires ... a list of strings to be joined" (confirmed by an actual failed deploy).
+   * Gating two whole resources via `.cfnOptions.condition` (the same mechanism already used for
+   * the SAML IdP and Hosted UI domain above) avoids this entirely — neither resource's payload
+   * contains any Fn::If, only genuine scalar tokens (UserPoolId, ClientId, websiteUrl).
+   *
+   * KNOWN RESIDUAL RISK (first-deploy-only): both custom resources are each conditional on
+   * isSamlIdpEnabled (true) / its negation (false), same as the IdP/domain, but exactly one of
+   * them still isn't explicitly DependsOn the (also-conditional) ExternalIdP/HostedUiDomain
+   * resources, since CloudFormation's dependency rules around shared conditions get fiddly here
+   * and the literal provider name 'ExternalIdP' is referenced as a plain string, not a Ref/GetAtt.
+   * On the very first deployment where SamlMetadataUrl goes from empty to populated, the
+   * "SAML enabled" custom resource's UpdateUserPoolClient call could in principle race ahead of
+   * the IdP's own creation within the same deployment. This is a narrow, one-time transition risk,
+   * not a steady-state problem (every subsequent deploy, the IdP already exists) — validate this
+   * specific transition in a test account before enabling SAML in an account for the first time.
+   */
+  updateOAuthCallbackUrls(websiteUrl: string) {
+    if (!this.isSamlIdpEnabled) {
+      return;
+    }
+
+    const basePolicy = AwsCustomResourcePolicy.fromSdkCalls({ resources: [this.userPool.userPoolArn] });
+
+    const enabledResource = new AwsCustomResource(this, 'UpdateOAuthCallbackUrlsEnabled', {
+      onUpdate: {
+        service: 'CognitoIdentityServiceProvider',
+        action: 'updateUserPoolClient',
+        parameters: {
+          UserPoolId: this.userPool.userPoolId,
+          ClientId: this.userPoolClient.userPoolClientId,
+          ExplicitAuthFlows: ['ALLOW_USER_PASSWORD_AUTH', 'ALLOW_USER_SRP_AUTH', 'ALLOW_REFRESH_TOKEN_AUTH'],
+          AllowedOAuthFlows: ['code'],
+          AllowedOAuthScopes: ['openid', 'email', 'profile'],
+          AllowedOAuthFlowsUserPoolClient: true,
+          SupportedIdentityProviders: ['COGNITO', UserIdentity.EXTERNAL_IDP_NAME],
+          CallbackURLs: [websiteUrl],
+          LogoutURLs: [websiteUrl],
+        },
+        physicalResourceId: PhysicalResourceId.of(`${functionNamePrefix}-UpdateOAuthCallbackUrlsEnabled`),
+      },
+      policy: basePolicy,
+    });
+    // AwsCustomResource.customResource (the inner CustomResource L2, named "Resource") is a
+    // private field at the TS type level, so reach it via the construct tree instead.
+    (enabledResource.node.findChild('Resource').node.defaultChild as CfnResource).cfnOptions.condition =
+      this.isSamlIdpEnabled;
+
+    const disabledResource = new AwsCustomResource(this, 'UpdateOAuthCallbackUrlsDisabled', {
+      onUpdate: {
+        service: 'CognitoIdentityServiceProvider',
+        action: 'updateUserPoolClient',
+        parameters: {
+          UserPoolId: this.userPool.userPoolId,
+          ClientId: this.userPoolClient.userPoolClientId,
+          ExplicitAuthFlows: ['ALLOW_USER_PASSWORD_AUTH', 'ALLOW_USER_SRP_AUTH', 'ALLOW_REFRESH_TOKEN_AUTH'],
+          AllowedOAuthFlows: [],
+          AllowedOAuthScopes: [],
+          AllowedOAuthFlowsUserPoolClient: false,
+          SupportedIdentityProviders: ['COGNITO'],
+          CallbackURLs: [],
+          LogoutURLs: [],
+        },
+        physicalResourceId: PhysicalResourceId.of(`${functionNamePrefix}-UpdateOAuthCallbackUrlsDisabled`),
+      },
+      policy: basePolicy,
+    });
+    // Built as the direct opposite of isSamlIdpEnabled's own expression (samlMetadataUrl === ''),
+    // rather than negating the isSamlIdpEnabled CfnCondition object itself — CloudFormation has no
+    // intrinsic for "the logical NOT of another named Condition" outside of Fn::And/Fn::Or/Fn::Not
+    // composition over condition *expressions*, and isSamlIdpEnabled's underlying expression isn't
+    // exposed to this construct, only its logicalId (usable for Fn::If, not for recomposing).
+    const isSamlIdpDisabled = new CfnCondition(this, 'IsSamlIdpDisabled', {
+      expression: Fn.conditionEquals(this.samlMetadataUrl ?? '', ''),
+    });
+    (disabledResource.node.findChild('Resource').node.defaultChild as CfnResource).cfnOptions.condition =
+      isSamlIdpDisabled;
   }
 }

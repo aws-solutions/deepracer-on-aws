@@ -8,6 +8,7 @@ export enum AuthState {
   FORGOT_PASSWORD_REQUEST = 'ForgotPasswordRequest',
   FORGOT_PASSWORD_RESET = 'ForgotPasswordReset',
   NEW_PASSWORD_REQUIRED = 'NewPasswordRequired',
+  COMPLETE_PROFILE = 'CompleteProfile',
 }
 
 export interface AuthValues {

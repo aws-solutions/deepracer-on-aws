@@ -44,6 +44,8 @@ export EMAIL_DELIVERY_METHOD := $(email_delivery_method)
 export SES_VERIFIED_EMAIL := $(ses_verified_email)
 export AWS_REGION := $(region)
 export ENABLE_LOCAL_DEV_CORS := $(enable_local_dev_cors)
+export SAML_METADATA_URL := $(saml_metadata_url)
+export SAML_EMAIL_CLAIM := $(saml_email_claim)
 
 .DEFAULT_GOAL := help
 

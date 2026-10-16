@@ -4,7 +4,7 @@
 import path from 'node:path';
 
 import { CloudFrontToS3 } from '@aws-solutions-constructs/aws-cloudfront-s3';
-import { CfnCondition, CfnOutput, CustomResource, Duration, Fn, Stack } from 'aws-cdk-lib';
+import { CfnCondition, CfnOutput, CustomResource, Duration, Fn, Stack, Token } from 'aws-cdk-lib';
 import {
   BehaviorOptions,
   CachePolicy,
@@ -37,6 +37,13 @@ interface StaticWebsiteProps {
   namespace: string;
   solutionVersion: string;
   iotEndpoint?: string;
+  /** Whether a SAML IdP was configured on the user pool — lets the frontend conditionally show
+   * an SSO sign-in button without inventing a new config delivery mechanism. May be a plain
+   * boolean (synth-time) or a CloudFormation Token string (deploy-time Fn::If result) — see
+   * the handling below for why that distinction matters for the emitted env.js. */
+  idpEnabled?: boolean | string;
+  /** The custom identity provider name to pass to Cognito Hosted UI when idpEnabled is true. */
+  idpName?: string;
 }
 
 export class StaticWebsite extends Construct {
@@ -56,6 +63,8 @@ export class StaticWebsite extends Construct {
       namespace,
       solutionVersion,
       iotEndpoint,
+      idpEnabled,
+      idpName,
     } = props;
 
     const region = Stack.of(this).region;
@@ -101,7 +110,13 @@ export class StaticWebsite extends Construct {
           "style-src 'self'",
           "script-src 'self' 'wasm-unsafe-eval'",
           "worker-src 'self' blob:",
-          `connect-src 'self' blob: ${apiEndpointUrl} https://cognito-idp.${region}.amazonaws.com https://cognito-identity.${region}.amazonaws.com https://*.kinesisvideo.${region}.amazonaws.com https://${uploadBucket.bucketRegionalDomainName} https://${modelStorageBucket.bucketRegionalDomainName} https://www.gstatic.com/draco/versioned/decoders/ https://api.github.com${iotEndpoint ? ` wss://${iotEndpoint}` : ''}`,
+          // The Hosted UI domain name is deterministic from namespace/region regardless of
+          // whether SSO is actually enabled for this deployment (see UserIdentity's addDomain
+          // call), so it's always allowlisted here rather than conditioned on idpEnabled — unused
+          // but harmless when SSO isn't configured. Amplify's signInWithRedirect code flow calls
+          // this domain directly (e.g. /oauth2/token), which cognito-idp.*.amazonaws.com above
+          // does not cover.
+          `connect-src 'self' blob: ${apiEndpointUrl} https://cognito-idp.${region}.amazonaws.com https://cognito-identity.${region}.amazonaws.com https://${namespace}-dr-auth.auth.${region}.amazoncognito.com https://*.kinesisvideo.${region}.amazonaws.com https://${uploadBucket.bucketRegionalDomainName} https://${modelStorageBucket.bucketRegionalDomainName} https://www.gstatic.com/draco/versioned/decoders/ https://api.github.com${iotEndpoint ? ` wss://${iotEndpoint}` : ''}`,
           'upgrade-insecure-requests',
         ].join('; '),
         override: true,
@@ -261,7 +276,15 @@ export class StaticWebsite extends Construct {
       onEventHandler: envFileFn,
     });
 
-    const environmentConfig = {
+    // idpEnabled may now be a deploy-time CloudFormation Token (an Fn::If result passed in as a
+    // string) rather than a plain synth-time boolean — JSON.stringify would wrap a token
+    // placeholder in quotes, which would corrupt the JS boolean semantics the frontend relies on
+    // (a quoted "false" string is truthy). So idpEnabled is spliced in unquoted after
+    // JSON.stringify-ing everything else, letting CloudFormation's resolved `true`/`false`
+    // literal land directly in the emitted env.js. idpName has no such boolean-vs-string
+    // ambiguity, so it's JSON.stringify'd normally (a Token embedded in a JS string is resolved
+    // to the right literal text wherever it appears, quoted or not).
+    const baseEnvironmentConfig = {
       apiEndpointUrl: apiEndpointUrl,
       userPoolId,
       userPoolClientId,
@@ -271,9 +294,14 @@ export class StaticWebsite extends Construct {
       iotEndpoint,
       solutionVersion,
       namespace,
+      idpName: idpName ?? '',
     };
+    const idpEnabledLiteral = Token.isUnresolved(idpEnabled) ? idpEnabled : JSON.stringify(Boolean(idpEnabled));
 
-    const envConfigContents = `window.EnvironmentConfig = ${JSON.stringify(environmentConfig)};`;
+    const envConfigContents = `window.EnvironmentConfig = ${JSON.stringify(baseEnvironmentConfig).replace(
+      /}$/,
+      `,"idpEnabled":${idpEnabledLiteral}}`,
+    )};`;
 
     const envFileResource = new CustomResource(this, 'CreateEnvFileResource', {
       serviceToken: createEnvFileProvider.serviceToken,

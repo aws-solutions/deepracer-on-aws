@@ -1,13 +1,14 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import Box from '@cloudscape-design/components/box';
 import Button from '@cloudscape-design/components/button';
 import Checkbox from '@cloudscape-design/components/checkbox';
 import Container from '@cloudscape-design/components/container';
 import Header from '@cloudscape-design/components/header';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import { yupResolver } from '@hookform/resolvers/yup';
-import { signIn } from 'aws-amplify/auth';
+import { signIn, signInWithRedirect } from 'aws-amplify/auth';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -15,13 +16,16 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import * as Yup from 'yup';
 
 import InputField from '#components/FormFields/InputField/InputField.js';
-import { AuthState, SignInValues } from '#constants/auth.js';
+import { SignInValues } from '#constants/auth.js';
 import { PageId } from '#constants/pages.js';
 import { useAppDispatch } from '#hooks/useAppDispatch.js';
 import i18n from '#i18n/index.js';
 import { useGetProfileQuery } from '#services/deepRacer/profileApi';
 import { displayErrorNotification } from '#store/notifications/notificationsSlice.js';
+import { environmentConfig } from '#utils/envUtils.js';
 import { getPath } from '#utils/pageUtils.js';
+
+import { navigatePostSignIn, resolveNextSignInStep } from '../utils/postSignInRouting';
 
 const authValidationSchema = Yup.object().shape({
   password: Yup.string().required(i18n.t('auth:required')),
@@ -44,6 +48,7 @@ const SignInForm = () => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoadingSignIn, setIsLoadingSignIn] = useState(false);
+  const [isLoadingSso, setIsLoadingSso] = useState(false);
   const onSubmit = async (data: SignInValues) => {
     try {
       setIsLoadingSignIn(true);
@@ -52,19 +57,41 @@ const SignInForm = () => {
         password: data.password,
       });
 
-      if (signInResult.nextStep.signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
-        navigate(getPath(PageId.SIGN_IN), { state: { authState: AuthState.NEW_PASSWORD_REQUIRED } });
+      const nextStepRedirect = resolveNextSignInStep(signInResult.nextStep, data.emailAddress);
+      if (nextStepRedirect) {
+        navigate(getPath(PageId.SIGN_IN), {
+          state: { ...nextStepRedirect, email: data.emailAddress, redirectUrl: state?.redirectUrl },
+        });
         return;
       }
 
-      navigate(state?.redirectUrl ?? getPath(PageId.HOME));
-      await refetch();
+      const profileResult = await refetch();
+      navigatePostSignIn(navigate, profileResult.data, state?.redirectUrl);
     } catch (err) {
       setIsLoadingSignIn(false);
       dispatch(
         displayErrorNotification({
           content: t('incorrectSignin'),
           id: t('incorrectSignin'),
+        }),
+      );
+    }
+  };
+
+  const onSsoSignIn = async () => {
+    try {
+      setIsLoadingSso(true);
+      // Bounces the browser to Cognito Hosted UI; on success it redirects back to this app's
+      // own origin (a full page load), at which point RequiresAuth's getCurrentUser() check
+      // picks up the now-established session and applies the same post-sign-in profile-
+      // completion check via navigatePostSignIn.
+      await signInWithRedirect({ provider: { custom: environmentConfig.idpName ?? '' } });
+    } catch (err) {
+      setIsLoadingSso(false);
+      dispatch(
+        displayErrorNotification({
+          content: t('ssoError'),
+          id: t('ssoError'),
         }),
       );
     }
@@ -99,6 +126,16 @@ const SignInForm = () => {
           <Button loading={isLoadingSignIn} variant="primary" formAction="submit">
             {t('signin')}
           </Button>
+          {environmentConfig.idpEnabled && (
+            <>
+              <Box textAlign="center" color="text-body-secondary">
+                {t('ssoDivider')}
+              </Box>
+              <Button loading={isLoadingSso} formAction="none" onClick={() => void onSsoSignIn()}>
+                {t('ssoSignIn', { idpName: environmentConfig.idpName })}
+              </Button>
+            </>
+          )}
           <SpaceBetween size="xxs" direction="horizontal">
             <span>{t('signupLink')}</span>
             <Button

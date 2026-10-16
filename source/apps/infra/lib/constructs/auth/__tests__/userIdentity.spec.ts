@@ -1055,3 +1055,130 @@ describe('UserIdentity - SES Reputation Alarms', () => {
     expect(Object.keys(sesAlarms)).toHaveLength(0);
   });
 });
+
+describe('UserIdentity - Conditional SAML IdP', () => {
+  // Returns the un-synthesized UserIdentity/Stack so callers can optionally invoke
+  // updateOAuthCallbackUrls (which adds constructs) BEFORE the first Template.fromStack call —
+  // CDK forbids modifying the construct tree after synthesis.
+  const createUserIdentity = (withSamlCondition: boolean) => {
+    const app = new App();
+    const stack = new Stack(app, 'TestStack');
+
+    const table = new TableV2(stack, 'TestTable', {
+      partitionKey: { name: 'pk', type: AttributeType.STRING },
+      sortKey: { name: 'sk', type: AttributeType.STRING },
+    });
+
+    const mockGlobalSettings = new GlobalSettings(stack, 'MockGlobalSettings', {
+      namespace: TEST_NAMESPACE,
+    });
+
+    const isSamlIdpEnabled = withSamlCondition
+      ? new CfnCondition(stack, 'IsSamlIdpEnabled', {
+          expression: Fn.conditionEquals('true', 'true'),
+        })
+      : undefined;
+
+    const userIdentity = new UserIdentity(stack, 'TestUserIdentity', {
+      dynamoDBTable: table,
+      globalSettings: mockGlobalSettings,
+      namespace: TEST_NAMESPACE,
+      samlMetadataUrl: withSamlCondition ? 'https://example.com/metadata.xml' : undefined,
+      isSamlIdpEnabled,
+    });
+
+    return { stack, userIdentity };
+  };
+
+  it('always constructs the SAML IdP and Hosted UI domain when isSamlIdpEnabled is passed, gated by Condition', () => {
+    const { stack } = createUserIdentity(true);
+    const template = Template.fromStack(stack);
+
+    const idps = template.findResources('AWS::Cognito::UserPoolIdentityProvider');
+    expect(Object.keys(idps)).toHaveLength(1);
+    expect(Object.values(idps)[0].Condition).toBe('IsSamlIdpEnabled');
+
+    const domains = template.findResources('AWS::Cognito::UserPoolDomain');
+    expect(Object.keys(domains)).toHaveLength(1);
+    expect(Object.values(domains)[0].Condition).toBe('IsSamlIdpEnabled');
+  });
+
+  it('does not construct a SAML IdP or Hosted UI domain when isSamlIdpEnabled is not passed at all', () => {
+    const { stack } = createUserIdentity(false);
+    const template = Template.fromStack(stack);
+
+    expect(Object.keys(template.findResources('AWS::Cognito::UserPoolIdentityProvider'))).toHaveLength(0);
+    expect(Object.keys(template.findResources('AWS::Cognito::UserPoolDomain'))).toHaveLength(0);
+  });
+
+  it('WebClient is pinned to COGNITO-only at initial creation, with no dependency on the conditional IdP', () => {
+    const { stack } = createUserIdentity(true);
+    const template = Template.fromStack(stack);
+
+    const clients = template.findResources('AWS::Cognito::UserPoolClient');
+    const [client] = Object.values(clients);
+    const props = client.Properties as Record<string, unknown>;
+    // Pinned explicitly to COGNITO-only — NOT left to the L2's default auto-discovery of
+    // userPool.identityProviders, which would otherwise emit an unconditional Ref to the
+    // conditionally-provisioned ExternalIdP (an invalid template shape). The real OAuth/IdP
+    // config is applied post-deploy by updateOAuthCallbackUrls instead.
+    expect(props.SupportedIdentityProviders).toEqual(['COGNITO']);
+    expect(client.DependsOn).toBeUndefined();
+  });
+
+  // UserPoolId/ClientId are themselves CDK tokens, so each Create payload is an Fn::Join of
+  // literal string fragments interleaved with Ref pieces (not a plain JSON string) — concatenate
+  // just the literal string fragments to assert on their content. Each resource's payload is now
+  // fully static (no Fn::If inside it at all — see the comment on updateOAuthCallbackUrls for
+  // why per-field Fn::If was unsafe here), so this no longer needs to stringify nested intrinsics.
+  const getCreateLiteralText = (resource: { Properties?: Record<string, any> }): string => {
+    const create = resource.Properties!.Create as { 'Fn::Join': [string, unknown[]] };
+    return create['Fn::Join'][1]
+      .map((fragment) => (typeof fragment === 'string' ? fragment : JSON.stringify(fragment)))
+      .join('');
+  };
+
+  it('updateOAuthCallbackUrls creates two condition-gated custom resources (enabled/disabled), each with fully static OAuth fields', () => {
+    const { stack, userIdentity } = createUserIdentity(true);
+    userIdentity.updateOAuthCallbackUrls('https://example.com');
+
+    const template = Template.fromStack(stack);
+    const customResources = template.findResources('Custom::AWS');
+    expect(Object.keys(customResources)).toHaveLength(2);
+
+    const resources = Object.values(customResources);
+    // IsSamlIdpEnabled is created directly on the test's Stack (clean logical ID), but
+    // IsSamlIdpDisabled is created inside UserIdentity's construct scope, so CDK mangles its
+    // logical ID with a construct-path prefix + hash (e.g. "TestUserIdentityIsSamlIdpDisabled...")
+    // — match by prefix rather than assuming an exact literal name.
+    const enabledResource = resources.find((r) => r.Condition === 'IsSamlIdpEnabled');
+    const disabledResource = resources.find((r) => typeof r.Condition === 'string' && r.Condition.includes('IsSamlIdpDisabled'));
+    expect(enabledResource).toBeDefined();
+    expect(disabledResource).toBeDefined();
+
+    const enabledText = getCreateLiteralText(enabledResource!);
+    expect(enabledText).toContain('updateUserPoolClient');
+    expect(enabledText).toContain('CognitoIdentityServiceProvider');
+    expect(enabledText).toContain('"SupportedIdentityProviders":["COGNITO","ExternalIdP"]');
+    expect(enabledText).toContain('"AllowedOAuthFlowsUserPoolClient":true');
+    // Neither payload should contain an embedded Fn::If — that's the whole point of the split.
+    expect(enabledText).not.toContain('Fn::If');
+
+    const disabledText = getCreateLiteralText(disabledResource!);
+    expect(disabledText).toContain('"SupportedIdentityProviders":["COGNITO"]');
+    expect(disabledText).toContain('"AllowedOAuthFlowsUserPoolClient":false');
+    expect(disabledText).not.toContain('Fn::If');
+  });
+
+  it('updateOAuthCallbackUrls is a no-op when no SAML condition was wired up at all', () => {
+    const { stack, userIdentity } = createUserIdentity(false);
+    expect(() => userIdentity.updateOAuthCallbackUrls('https://example.com')).not.toThrow();
+
+    const template = Template.fromStack(stack);
+    // In production this prop is always wired from deepRacerIndyStack.ts regardless of the
+    // SamlMetadataUrl parameter's actual value — this case only arises in a bare unit test that
+    // constructs UserIdentity without isSamlIdpEnabled at all, which this method treats as "SAML
+    // support isn't configured for this deployment," not "SAML is configured but off."
+    expect(Object.keys(template.findResources('Custom::AWS'))).toHaveLength(0);
+  });
+});

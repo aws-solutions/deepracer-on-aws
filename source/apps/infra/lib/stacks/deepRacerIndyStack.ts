@@ -30,7 +30,7 @@ import { ModelManagementStack } from './modelManagementStack.js';
 import { RealTimeRolesStack } from './realTimeRolesStack.js';
 import { SolutionStackProps } from './solutionStackProps.js';
 import { resolveImageSource } from './utils/helpers.js';
-import { UserIdentity } from '../constructs/auth/userIdentity.js';
+import { DEFAULT_SAML_EMAIL_CLAIM, UserIdentity } from '../constructs/auth/userIdentity.js';
 import { UserRolePolicies } from '../constructs/auth/userRolePolicies.js';
 import { BulkInviteWorkflow } from '../constructs/bulk-invite/bulkInviteWorkflow.js';
 import { applyDrTag } from '../constructs/common/taggingHelper.js';
@@ -227,6 +227,35 @@ export class DeepRacerIndyStack extends Stack {
 
     const globalSettings = new GlobalSettings(this, 'GlobalSettings', { namespace });
 
+    // This feature flag is a real deploy-time CfnParameter: the SAML IdP / Hosted UI domain
+    // resources are now ALWAYS present in the synthesized CloudFormation template, gated by a
+    // CfnCondition (same pattern already used in this file for the SES reputation alarms —
+    // anomalyDetector.cfnOptions.condition = isSesEnabled) so they're simply never *provisioned*
+    // in AWS when the condition is false, even though the resource definitions exist in the
+    // template JSON.
+    const samlMetadataUrlParam = new CfnParameter(this, 'SamlMetadataUrl', {
+      type: 'String',
+      description:
+        'SAML IdP metadata URL. When provided (non-empty), a SAML identity provider, Hosted UI domain, and OAuth client config are provisioned. Leave empty to keep the user pool Cognito-only.',
+      default: '',
+      allowedPattern: '^$|^https://.*',
+      constraintDescription: 'Must be empty or an https URL.',
+    });
+
+    const isSamlIdpEnabled = new CfnCondition(this, 'IsSamlIdpEnabled', {
+      expression: Fn.conditionNot(Fn.conditionEquals(samlMetadataUrlParam.valueAsString, '')),
+    });
+
+    // The SAML assertion attribute Name that carries the user's email — varies by IdP (and even
+    // by tenant claim-rule configuration for the same IdP), so it's configurable rather than
+    // hardcoded. Defaults to the SAML2-standard claim URI.
+    const samlEmailClaimParam = new CfnParameter(this, 'SamlEmailClaim', {
+      type: 'String',
+      description:
+        "SAML assertion attribute Name (a claim URI) that carries the user's email address. Only relevant when SamlMetadataUrl is set. Defaults to the SAML2-standard email claim URI.",
+      default: DEFAULT_SAML_EMAIL_CLAIM,
+    });
+
     const userIdentity = new UserIdentity(this, 'UserPool', {
       dynamoDBTable,
       adminEmail: adminEmailParam.valueAsString,
@@ -236,6 +265,9 @@ export class DeepRacerIndyStack extends Stack {
       sesVerifiedEmail: sesVerifiedEmailParam.valueAsString,
       sesIdentity: sesIdentityParam.valueAsString,
       isSesIdentityProvided,
+      samlMetadataUrl: samlMetadataUrlParam.valueAsString,
+      isSamlIdpEnabled,
+      samlEmailClaim: samlEmailClaimParam.valueAsString,
     });
 
     const { userPool, userPoolClient, identityPool, userRoles } = userIdentity;
@@ -450,6 +482,11 @@ export class DeepRacerIndyStack extends Stack {
       namespace,
       solutionVersion,
       iotEndpoint: liveRaceEvents.iotEndpoint,
+      // Computed directly from the deploy-time CfnCondition rather than read from UserIdentity:
+      // UserIdentity can't know isSamlIdpEnabled's actual resolved value at synth time either, so
+      // both idpEnabled/idpName must themselves be deploy-time-conditional Tokens.
+      idpEnabled: Token.asString(Fn.conditionIf(isSamlIdpEnabled.logicalId, true, false)),
+      idpName: Token.asString(Fn.conditionIf(isSamlIdpEnabled.logicalId, 'ExternalIdP', '')),
     });
 
     // The public leaderboard page fetches public/leaderboards/{id}.json through the website's
@@ -482,16 +519,20 @@ export class DeepRacerIndyStack extends Stack {
       expression: Fn.conditionNot(Fn.conditionEquals(customDomainParam.valueAsString, '')),
     });
 
-    // Enable wildcard CORS for local development: ENABLE_LOCAL_DEV_CORS=true
-    const enableLocalDevCors = process.env.ENABLE_LOCAL_DEV_CORS === 'true';
+    // The real website URL: custom domain if configured, otherwise the CloudFront URL. Anything
+    // that needs an actual URL (email templates, Cognito OAuth callback/logout URLs) must use
+    // this rather than allowedOrigin below — Cognito's UpdateUserPoolClient rejects '*' with
+    // "must contain a scheme", and a literal '*' in an email link would be equally broken.
+    const websiteUrl = Fn.conditionIf(
+      hasCustomDomain.logicalId,
+      customDomainParam.valueAsString,
+      `https://${website.cloudFrontDomainName}`,
+    );
 
-    const allowedOrigin = enableLocalDevCors
-      ? '*'
-      : Fn.conditionIf(
-          hasCustomDomain.logicalId,
-          customDomainParam.valueAsString,
-          `https://${website.cloudFrontDomainName}`,
-        );
+    // Enable wildcard CORS for local development: ENABLE_LOCAL_DEV_CORS=true. Only valid for API
+    // Gateway CORS, which tolerates '*' — not for the real-URL use cases above.
+    const enableLocalDevCors = process.env.ENABLE_LOCAL_DEV_CORS === 'true';
+    const allowedOrigin = enableLocalDevCors ? '*' : websiteUrl;
     new ApiCorsUpdate(this, 'UpdateApiCors', {
       apiId: api.restApiId,
       allowedOrigin: Token.asString(allowedOrigin),
@@ -499,8 +540,11 @@ export class DeepRacerIndyStack extends Stack {
     });
 
     // Update email template with website URL after website is deployed
-    // Use the same URL as the CORS allowed origin: custom domain if configured, otherwise CloudFront URL
-    userIdentity.updateEmailTemplateWithWebsiteUrl(Token.asString(allowedOrigin));
+    userIdentity.updateEmailTemplateWithWebsiteUrl(Token.asString(websiteUrl));
+
+    // Patch the WebClient's OAuth callback/logout URLs to the real website URL — no-op unless a
+    // SAML IdP was configured (see UserIdentity.updateOAuthCallbackUrls).
+    userIdentity.updateOAuthCallbackUrls(Token.asString(websiteUrl));
 
     new UsageFunctions(this, 'UsageFunctions', {
       dynamoDBTable,
@@ -583,6 +627,7 @@ export class DeepRacerIndyStack extends Stack {
         systemAlarms: [
           userIdentity.preSignUpErrorAlarm,
           userIdentity.postSignUpErrorAlarm,
+          userIdentity.postAuthenticationErrorAlarm,
           apiStack.apiConstruct.assetPackagingDLQAlarm,
           apiStack.apiConstruct.workflowJobDeadLetterQueueAlarm,
           apiStack.apiConstruct.importModelWorkflow.lambdaErrorsAlarm,
