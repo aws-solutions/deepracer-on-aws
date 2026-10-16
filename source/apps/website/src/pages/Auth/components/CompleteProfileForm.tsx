@@ -63,6 +63,12 @@ const CompleteProfileForm = () => {
         alias: data.racerAlias,
       });
 
+      // This refetch must be awaited before navigating, not left to invalidatesTags' own
+      // background refetch: that background refetch is NOT synchronized with this mutation
+      // resolving, so navigating immediately races it — RequiresAuth (reading the same cache)
+      // can see the still-stale blank-alias profile at the new route and bounce straight back
+      // here, even though the update genuinely succeeded (confirmed: this exact regression
+      // shipped once already from assuming invalidatesTags alone was sufficient).
       await refetch();
       navigate(state?.redirectUrl ?? getPath(PageId.HOME));
     } catch (err) {

@@ -48,12 +48,6 @@ const newPasswordValidationSchema = Yup.object().shape({
     .matches(/^[a-zA-Z0-9_-]+$/, i18n.t('auth:aliasInvalidChars')),
 });
 
-const initialValues: NewPasswordValues = {
-  newPassword: '',
-  confirmPassword: '',
-  racerAlias: '',
-};
-
 const NewPasswordForm = () => {
   const { t } = useTranslation('auth');
   const navigate = useNavigate();
@@ -61,6 +55,15 @@ const NewPasswordForm = () => {
   const { state } = useLocation();
   const { refetch } = useGetProfileQuery();
   const [updateProfile] = useUpdateProfileMutation();
+  // Seeded from state.racerAlias when this screen is re-entered mid challenge-chain (see
+  // onSubmit below) so a racer alias the user already typed isn't silently lost. Lazy-initialized
+  // once per mount (not recomputed every render) so its reference stays stable for useForm's
+  // `values` option below — a fresh object literal every render would fight the user's typing.
+  const [initialValues] = useState<NewPasswordValues>(() => ({
+    newPassword: '',
+    confirmPassword: '',
+    racerAlias: state?.racerAlias ?? '',
+  }));
   const { control, handleSubmit } = useForm<NewPasswordValues>({
     values: initialValues,
     resolver: yupResolver(newPasswordValidationSchema),
@@ -80,7 +83,7 @@ const NewPasswordForm = () => {
       // authenticated yet in that case, so calling updateProfile/navigating home here would fail
       // against a session that isn't established, leaving them looking "logged out". Defer the
       // alias update until the full challenge chain completes.
-      const nextStepRedirect = resolveNextSignInStep(result.nextStep, state?.email ?? '');
+      const nextStepRedirect = resolveNextSignInStep(result.nextStep);
       if (nextStepRedirect) {
         navigate(getPath(PageId.SIGN_IN), {
           state: { ...nextStepRedirect, email: state?.email, racerAlias: data.racerAlias, redirectUrl: state?.redirectUrl },

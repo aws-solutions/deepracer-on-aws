@@ -3,6 +3,7 @@
 
 import {
   AdminAddUserToGroupCommand,
+  AdminListGroupsForUserCommand,
   AdminUpdateUserAttributesCommand,
   CognitoIdentityProviderClient,
 } from '@aws-sdk/client-cognito-identity-provider';
@@ -20,6 +21,10 @@ describe('PostConfirmation lambda', () => {
 
   beforeEach(() => {
     cognitoMock.reset();
+    // A brand-new user (which is all PostConfirmation ever sees) has no existing group
+    // memberships — ensureDefaultRacerGroupMembership (shared with PostAuthentication) always
+    // checks first via AdminListGroupsForUser before adding.
+    cognitoMock.on(AdminListGroupsForUserCommand).resolves({ Groups: [] });
   });
 
   it('adds a new user to the racers group by default', async () => {
@@ -48,10 +53,8 @@ describe('PostConfirmation lambda', () => {
 
     const result = await PostConfirmation(event, context, callback);
 
-    // Verify Cognito API call
-    expect(cognitoMock.calls()).toHaveLength(1);
-    const call = cognitoMock.calls()[0];
-    expect(call.args[0].input).toEqual({
+    expect(cognitoMock.commandCalls(AdminAddUserToGroupCommand)).toHaveLength(1);
+    expect(cognitoMock.commandCalls(AdminAddUserToGroupCommand)[0].args[0].input).toEqual({
       UserPoolId: 'us-east-1_123456789',
       Username: 'testuser',
       GroupName: 'dr-racers',
@@ -84,7 +87,7 @@ describe('PostConfirmation lambda', () => {
 
     await PostConfirmation(event, context, callback);
 
-    expect(cognitoMock.calls()).toHaveLength(2);
+    expect(cognitoMock.commandCalls(AdminUpdateUserAttributesCommand)).toHaveLength(1);
     const updateCall = cognitoMock.commandCalls(AdminUpdateUserAttributesCommand)[0];
     expect(updateCall.args[0].input).toEqual({
       UserPoolId: 'us-east-1_123456789',

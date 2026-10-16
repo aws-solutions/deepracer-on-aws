@@ -116,14 +116,12 @@ export class UserIdentity extends Construct {
 
   private readonly namespace: string;
   private readonly isSamlIdpEnabled?: CfnCondition;
-  private readonly samlMetadataUrl?: string;
   private readonly samlEmailClaim: string;
 
   constructor(scope: Construct, id: string, props: UserIdentityProps) {
     super(scope, id);
 
     const { dynamoDBTable, globalSettings, adminEmail, namespace, samlMetadataUrl } = props;
-    this.samlMetadataUrl = samlMetadataUrl;
     this.samlEmailClaim = props.samlEmailClaim ?? DEFAULT_SAML_EMAIL_CLAIM;
     this.namespace = namespace;
     this.isSamlIdpEnabled = props.isSamlIdpEnabled;
@@ -894,7 +892,8 @@ export class UserIdentity extends Construct {
    * specific transition in a test account before enabling SAML in an account for the first time.
    */
   updateOAuthCallbackUrls(websiteUrl: string) {
-    if (!this.isSamlIdpEnabled) {
+    const isSamlIdpEnabled = this.isSamlIdpEnabled;
+    if (!isSamlIdpEnabled) {
       return;
     }
 
@@ -922,7 +921,7 @@ export class UserIdentity extends Construct {
     // AwsCustomResource.customResource (the inner CustomResource L2, named "Resource") is a
     // private field at the TS type level, so reach it via the construct tree instead.
     (enabledResource.node.findChild('Resource').node.defaultChild as CfnResource).cfnOptions.condition =
-      this.isSamlIdpEnabled;
+      isSamlIdpEnabled;
 
     const disabledResource = new AwsCustomResource(this, 'UpdateOAuthCallbackUrlsDisabled', {
       onUpdate: {
@@ -943,13 +942,12 @@ export class UserIdentity extends Construct {
       },
       policy: basePolicy,
     });
-    // Built as the direct opposite of isSamlIdpEnabled's own expression (samlMetadataUrl === ''),
-    // rather than negating the isSamlIdpEnabled CfnCondition object itself — CloudFormation has no
-    // intrinsic for "the logical NOT of another named Condition" outside of Fn::And/Fn::Or/Fn::Not
-    // composition over condition *expressions*, and isSamlIdpEnabled's underlying expression isn't
-    // exposed to this construct, only its logicalId (usable for Fn::If, not for recomposing).
+    // Fn::Not accepts another named Condition directly (CfnCondition.resolve() emits the valid
+    // { Condition: logicalId } form) — so this negates isSamlIdpEnabled itself rather than
+    // re-deriving an equivalent expression from samlMetadataUrl, which would otherwise need to be
+    // kept in sync by hand with isSamlIdpEnabled's own expression in deepRacerIndyStack.ts.
     const isSamlIdpDisabled = new CfnCondition(this, 'IsSamlIdpDisabled', {
-      expression: Fn.conditionEquals(this.samlMetadataUrl ?? '', ''),
+      expression: Fn.conditionNot(isSamlIdpEnabled),
     });
     (disabledResource.node.findChild('Resource').node.defaultChild as CfnResource).cfnOptions.condition =
       isSamlIdpDisabled;
