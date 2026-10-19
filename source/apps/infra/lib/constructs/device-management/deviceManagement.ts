@@ -191,6 +191,18 @@ export class DeviceManagement extends Construct {
       }),
     );
 
+    // Both sync paths retire the managed instance a re-activated device superseded
+    // (PreviousInstanceId tag), so both may deregister onboarded instances.
+    for (const fn of [statusPollerFn, stateChangeFn]) {
+      fn.addToRolePolicy(
+        new PolicyStatement({
+          actions: ['ssm:DeregisterManagedInstance'],
+          resources: [anyManagedInstance],
+          conditions: { StringEquals: { 'ssm:resourceTag/deepracer:managed': 'true' } },
+        }),
+      );
+    }
+
     // ── Pruning Lambda.
     const prunerLogGroup = new LogGroup(this, 'DevicePrunerLogGroup', {
       retention: RetentionDays.TEN_YEARS,

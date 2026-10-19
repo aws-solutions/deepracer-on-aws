@@ -202,11 +202,11 @@ describe('DeviceManagementInfra', () => {
       // Exactly one: the hybrid-activation role's self-tag grant (the ActivationLambdaRole's
       // AddTagsToResource is resource '*' for CreateActivation and is not counted here).
       expect(scopedAddTags).toHaveLength(1);
-      // Scoped to onboarded instances AND restricted to the CarType key only, so a device
-      // cannot overwrite the Type/Name/fleetId tags the poller trusts.
+      // Scoped to onboarded instances AND restricted to the CarType and PreviousInstanceId keys
+      // only, so a device cannot overwrite the Type/Name/fleetId tags the poller trusts.
       expect(scopedAddTags[0].Condition).toEqual({
         StringEquals: { 'ssm:resourceTag/deepracer:managed': 'true' },
-        'ForAllValues:StringEquals': { 'aws:TagKeys': ['CarType'] },
+        'ForAllValues:StringEquals': { 'aws:TagKeys': ['CarType', 'PreviousInstanceId'] },
       });
     });
 

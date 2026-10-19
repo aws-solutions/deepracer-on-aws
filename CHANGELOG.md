@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.4] - 2026-10-19
+
+### Fixed
+
+- Fixed re-activating a DeepRacer car with an SSM override leaving a duplicate, stale device record.
+- Fixed the device console falling back to a broken login page (`TemplateNotFound`) on cars where no custom login page is shipped.
+- Fixed the device console password not being set reliably during car activation, and stopped recording it in the activation log.
+- Fixed five simulation tracks (AWS Summit Raceway, Toronto Turnpike Training, Shanghai Sudu Training, Cumulo Carrera Training, and Roger Raceway) that failed to load in the simulator.
+
+### Security
+
+- Update dependencies to mitigate [ALAS2023-2026-3182](https://alas.aws.amazon.com/AL2023/ALAS2023-2026-3182.html), [CVE-2026-15176](https://nvd.nist.gov/vuln/detail/CVE-2026-15176), [CVE-2026-93479](https://nvd.nist.gov/vuln/detail/CVE-2026-93479), [CVE-2026-97205](https://nvd.nist.gov/vuln/detail/CVE-2026-97205) and [CVE-2026-92392](https://nvd.nist.gov/vuln/detail/CVE-2026-92392).
+
 ## [1.3.3] - 2026-10-12
 
 ### Fixed
