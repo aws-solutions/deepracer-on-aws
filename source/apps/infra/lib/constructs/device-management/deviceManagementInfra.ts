@@ -59,7 +59,13 @@ export class DeviceManagementInfra extends Construct {
         resources: [ssmManagedInstance],
         conditions: {
           ...DEEPRACER_MANAGED_TAG_CONDITION,
-          'ForAllValues:StringEquals': { 'aws:TagKeys': ['CarType'] },
+          // CarType: self-reported car sub-type. PreviousInstanceId: the managed instance this
+          // device replaced when re-activated with an SSM override (see deviceSync).
+          // The resource is every onboarded instance, not only the caller's own, so any device
+          // can set these keys on any onboarded instance. deviceSync therefore never acts on
+          // PreviousInstanceId alone: the linked row must match the activation-set Type, Name
+          // and fleetId tags (which devices cannot set) and the old instance must be offline.
+          'ForAllValues:StringEquals': { 'aws:TagKeys': ['CarType', 'PreviousInstanceId'] },
         },
       }),
     );

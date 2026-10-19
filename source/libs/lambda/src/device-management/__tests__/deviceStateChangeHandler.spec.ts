@@ -5,6 +5,7 @@ import { deviceDao } from '@deepracer-indy/database';
 import { DeviceStatus } from '@deepracer-indy/typescript-server-client';
 import { metrics } from '@deepracer-indy/utils';
 
+import { deregisteredIds, fakeSsm, managedCarTags } from './ssmTestUtils.js';
 import { ssmClient } from '../../utils/clients/ssmClient.js';
 import { HandleDeviceStateChange } from '../deviceStateChangeHandler.js';
 
@@ -13,13 +14,8 @@ vi.mock('../../utils/clients/ssmClient.js', () => ({
 }));
 
 const now = new Date();
-const managedCarTags = [
-  { Key: 'deepracer:managed', Value: 'true' },
-  { Key: 'Type', Value: 'CAR' },
-  { Key: 'Name', Value: 'Car One' },
-];
+const carOneTags = managedCarTags('Car One');
 
-type Cmd = { constructor: { name: string }; input: Record<string, unknown> };
 const invoke = (event: unknown) => HandleDeviceStateChange(event as never, {} as never, vi.fn());
 
 describe('HandleDeviceStateChange', () => {
@@ -30,16 +26,13 @@ describe('HandleDeviceStateChange', () => {
 
   describe('registration (Instance-Associated Configuration Change)', () => {
     it('describes the instance and upserts it ONLINE', async () => {
-      vi.mocked(ssmClient.send).mockImplementation((cmd: unknown) => {
-        const c = cmd as Cmd;
-        if (c.constructor.name === 'DescribeInstanceInformationCommand') {
-          return Promise.resolve({
-            InstanceInformationList: [
-              { InstanceId: 'mi-1', PingStatus: 'Online', LastPingDateTime: now, RegistrationDate: now },
-            ],
-          }) as never;
-        }
-        return Promise.resolve({ TagList: managedCarTags }) as never;
+      fakeSsm(vi.mocked(ssmClient.send), {
+        instances: {
+          'mi-1': {
+            info: { InstanceId: 'mi-1', PingStatus: 'Online', LastPingDateTime: now, RegistrationDate: now },
+            tags: carOneTags,
+          },
+        },
       });
 
       await invoke({
@@ -56,6 +49,48 @@ describe('HandleDeviceStateChange', () => {
       await invoke({ 'detail-type': 'EC2 Instance-Associated Configuration Change', detail: {} });
       expect(ssmClient.send).not.toHaveBeenCalled();
       expect(deviceDao.upsertStatus).not.toHaveBeenCalled();
+    });
+
+    it('retires the superseded device when a re-activated instance registers', async () => {
+      vi.spyOn(deviceDao, 'get').mockImplementation(((key: { instanceId: string }) =>
+        Promise.resolve(
+          key.instanceId === 'mi-0aaa'
+            ? { instanceId: 'mi-0aaa', name: 'Car One', deviceType: 'CAR', fleetId: 'MADRIDFLEET0001' }
+            : null,
+        )) as never);
+      vi.spyOn(deviceDao, 'delete').mockResolvedValue({} as never);
+      fakeSsm(vi.mocked(ssmClient.send), {
+        instances: {
+          'mi-0bbb': {
+            info: {
+              InstanceId: 'mi-0bbb',
+              PingStatus: 'Online',
+              LastPingDateTime: now,
+              RegistrationDate: new Date('2026-10-08T09:45:00Z'),
+            },
+            tags: managedCarTags('Car One', [{ Key: 'PreviousInstanceId', Value: 'mi-0aaa' }]),
+          },
+          'mi-0aaa': {
+            info: {
+              InstanceId: 'mi-0aaa',
+              PingStatus: 'ConnectionLost',
+              LastPingDateTime: new Date('2026-10-08T09:44:50Z'),
+            },
+            tags: carOneTags,
+          },
+        },
+      });
+
+      await invoke({
+        'detail-type': 'EC2 Instance-Associated Configuration Change',
+        detail: { 'instance-id': 'mi-0bbb' },
+      });
+
+      expect(deviceDao.upsertStatus).toHaveBeenCalledWith(
+        expect.objectContaining({ instanceId: 'mi-0bbb', fleetId: 'MADRIDFLEET0001' }),
+      );
+      expect(deregisteredIds(vi.mocked(ssmClient.send))).toEqual(['mi-0aaa']);
+      expect(deviceDao.delete).toHaveBeenCalledWith({ instanceId: 'mi-0aaa' });
     });
   });
 

@@ -3,6 +3,7 @@
 USAGE()
 {
     echo -e -n "\nUsage, run as root: $0 -h HOSTNAME -p PASSWORD [ -c SSMCODE -i SSMID -r AWS_REGION ] [ -s SSID -w WIFI_PASSWORD]"
+    echo -e -n "\n-p sets the device console (web UI) password, not the OS/SSH password of the deepracer user"
     echo -e -n "\nIf no details are provided for SSM the agent is installed but not activated\n\n"
     exit 0
 }
@@ -22,6 +23,10 @@ ssmRegion=NULL
 ssid=NULL
 wifiPass=NULL
 upgradeConsole=NULL
+# Managed instance id this device was registered as before this run, if any (see SSM_ACTIVATION)
+prevMiId=""
+# Steps that failed; reported at the end so the remaining steps still run (see end of script)
+activationErrors=()
 
 optstring=":h:p:c:i:r:s:w:u"
 
@@ -44,6 +49,12 @@ if [ $OPTIND -eq 1 ]; then
     USAGE
 fi
 
+# Quote a value for a generated shell script: wrap it in single quotes and escape any single
+# quotes inside, so spaces, '*', '$' and quotes in an SSID or password are passed literally.
+SHELL_QUOTE()
+{
+    printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"
+}
 
 # Disable IPV6 networking
 DISABLE_IPV6() {
@@ -61,7 +72,7 @@ CREATE_WIFI_SERVICE()
     echo -e -n "\n\nCREATE_WIFI_SERVICE\n"
 
     # Sort out the Wifi (if we have SSID + Password)
-    if [ ${ssid} != NULL ] && [ ${wifiPass} != NULL ]; then
+    if [ "${ssid}" != NULL ] && [ "${wifiPass}" != NULL ]; then
         echo -e -n "\n- Adding WiFi as a service: ${ssid} \n"
 
         mkdir /etc/deepracer-wifi
@@ -71,9 +82,9 @@ CREATE_WIFI_SERVICE()
 # This should add the hidden DeepRacer network, configure it, then connect to it
 #
 
-nmcli c add type wifi con-name reinvent ifname mlan0 ssid ${ssid}
+nmcli c add type wifi con-name reinvent ifname mlan0 ssid $(SHELL_QUOTE "${ssid}")
 nmcli con modify reinvent wifi-sec.key-mgmt wpa-psk
-nmcli con modify reinvent wifi-sec.psk ${wifiPass}
+nmcli con modify reinvent wifi-sec.psk $(SHELL_QUOTE "${wifiPass}")
 nmcli con up reinvent
 
 exit 0
@@ -124,17 +135,35 @@ EOF
     fi
 }
 
-# Set the device and car console password
+# Set the device console (web UI) password. This is the console's own credential store, not
+# the OS/SSH password of the deepracer user, which this script does not change.
 SET_PASSWORD()
 {
     echo -e -n "\n\nSET_PASSWORD\n"
 
-    # Update the DeepRacer console password
-    echo -e -n "\n- Updating password to: ${varPass}"
-    tempPass=$(echo -n ${varPass} | sha224sum)
-    IFS=' ' read -ra encryptedPass <<< ${tempPass}
-    cp /opt/aws/deepracer/password.txt ${backupDir}/password.txt.bak
-    sudo printf "${encryptedPass[0]}" > /opt/aws/deepracer/password.txt
+    # The console stores the SHA-224 hex digest of the password and compares it with the digest
+    # of the password typed at login (webserver_pkg login.py). If the file is missing at login,
+    # the console resets it to the default printed on the car.
+    local consolePasswordFile=/opt/aws/deepracer/password.txt
+    local passwordHash
+    # printf '%s' hashes the value exactly as given: no word splitting, globbing, or echo
+    # option parsing, so passwords with spaces, '*', or a leading '-' are stored correctly.
+    passwordHash=$(printf '%s' "${varPass}" | sha224sum | cut -d ' ' -f1)
+
+    # Never log the password itself.
+    echo -e -n "\n- Setting the device console password (the OS/SSH password is not changed)"
+    if [ -f "${consolePasswordFile}" ]; then
+        cp "${consolePasswordFile}" "${backupDir}/password.txt.bak"
+    fi
+    printf '%s' "${passwordHash}" > "${consolePasswordFile}"
+
+    # Confirm the console will accept the new password.
+    if [ "$(cat "${consolePasswordFile}" 2>/dev/null)" = "${passwordHash}" ]; then
+        echo -e -n "\n- Device console password set"
+    else
+        echo -e -n "\n- ERROR: failed to set the device console password; it may still be the default printed on the car"
+        return 1
+    fi
 }
 
 # Update original AWS DeepRacer car software
@@ -187,7 +216,7 @@ SET_HOSTNAME()
 
     echo -e -n "\n- Set hostname: ${varHost}"
     oldHost=$HOSTNAME
-    hostnamectl set-hostname ${varHost}
+    hostnamectl set-hostname "${varHost}"
     cp /etc/hosts ${backupDir}/hosts.bak
     rm /etc/hosts
     cat ${backupDir}/hosts.bak | sed -e "s/${oldHost}/${varHost}/" > /etc/hosts
@@ -225,11 +254,25 @@ SSM_ACTIVATION()
     rm -rf /tmp/ssm
 
     # Enable, Configure and Start SSM if we have the right info
-    if [ ${ssmCode} != NULL ]; then
+    if [ "${ssmCode}" != NULL ]; then
         echo -e -n "\n- Activate SSM"
+
+        # Record the existing registration before it is overridden. Accepting the override
+        # issues a new managed instance id and leaves the old one registered; TAG_CAR_TYPE
+        # links the two so the console replaces the old device record instead of adding one.
+        if [ -f /var/lib/amazon/ssm/registration ]; then
+            prevMiId=$(grep -o 'mi-[0-9a-f]*' /var/lib/amazon/ssm/registration | head -n1)
+            if [ -n "$prevMiId" ]; then
+                echo -e -n "\n- Existing registration found: ${prevMiId}"
+            fi
+        fi
+
         systemctl enable amazon-ssm-agent
         service amazon-ssm-agent stop
-        amazon-ssm-agent -register -code "${ssmCode}" -id "${ssmId}" -region "${ssmRegion}"
+        # -y accepts the "Instance already registered ... override?" prompt: running this
+        # script with a new activation code means the operator is re-activating the device,
+        # and the prompt otherwise defaults to No and keeps the old registration.
+        amazon-ssm-agent -register -y -code "${ssmCode}" -id "${ssmId}" -region "${ssmRegion}"
         service amazon-ssm-agent start
 
         echo -e -n "\n- Car ${varHost} should be visible in DREM in ~5 minutes"
@@ -292,6 +335,7 @@ INSTALL_AWS_CLI()
 # Self-report the car sub-type (CarType) by tagging this managed instance after SSM
 # registration. The device-management backend (deviceSync / status poller) reads this tag
 # into the device row, where it drives model-optimization artifact selection at deploy time.
+# On re-activation it also adds the PreviousInstanceId tag (see the end of this function).
 #
 # Derivation mirrors the enum in the backend model:
 #   rpi                  -> DEEPRACER_RPI     (Raspberry Pi build, TFLite)
@@ -305,7 +349,7 @@ TAG_CAR_TYPE()
 {
     echo -e -n "\n\nTAG_CAR_TYPE\n"
 
-    if [ ${ssmCode} = NULL ]; then
+    if [ "${ssmCode}" = NULL ]; then
         echo -e -n "\n- SSM not activated; skipping CarType tag"
         return 0
     fi
@@ -320,7 +364,8 @@ TAG_CAR_TYPE()
     fi
 
     # Managed instance id (mi-...) assigned by SSM at registration, written to the agent's
-    # registration file. Only this instance's own id is used, so the device can only tag itself.
+    # registration file. The script only tags this instance; the IAM grant itself allows tagging
+    # any onboarded instance, so the backend does not trust these tags on their own (see deviceSync).
     local miId=""
     if [ -f /var/lib/amazon/ssm/registration ]; then
         miId=$(grep -o 'mi-[0-9a-f]*' /var/lib/amazon/ssm/registration | head -n1)
@@ -346,6 +391,22 @@ TAG_CAR_TYPE()
         echo -e -n "\n- CarType tag applied"
     else
         echo -e -n "\n- Failed to apply CarType tag (non-fatal); car type can be set later from the console"
+    fi
+
+    # Re-activation with an SSM override: point the new managed instance at the one it
+    # replaces, so the console retires the old device record. Skipped if registration
+    # failed and the registration file still holds the old id.
+    if [ -n "$prevMiId" ] && [ "$prevMiId" != "$miId" ]; then
+        echo -e -n "\n- Tagging ${miId} with PreviousInstanceId=${prevMiId}"
+        if aws ssm add-tags-to-resource \
+            --resource-type ManagedInstance \
+            --resource-id "${miId}" \
+            --tags "Key=PreviousInstanceId,Value=${prevMiId}" \
+            --region "${ssmRegion}" >/dev/null 2>&1; then
+            echo -e -n "\n- PreviousInstanceId tag applied"
+        else
+            echo -e -n "\n- Failed to apply PreviousInstanceId tag (non-fatal); delete the old ${prevMiId} device from the console"
+        fi
     fi
 }
 
@@ -465,11 +526,16 @@ EOF
 
 CONSOLE_TWEAKS() 
 {
-    # Replace the login page
-    echo -e -n "\n- Replace the login.html page"
-    cp ${templatesPath}/login.html ${backupDir}/login.html.bak
-    rm ${templatesPath}/login.html
-    mv login.html ${templatesPath}/login.html
+    # Replace the login page, only if a replacement was shipped alongside this script. The
+    # activation command downloads car_activation.sh alone, so without this guard the stock
+    # page is deleted and the console fails with jinja2 TemplateNotFound: login.html.
+    if [ -f login.html ]; then
+        echo -e -n "\n- Replace the login.html page"
+        cp ${templatesPath}/login.html ${backupDir}/login.html.bak
+        mv login.html ${templatesPath}/login.html
+    else
+        echo -e -n "\n- No replacement login.html found; keeping the stock login page"
+    fi
 
     # Disable video stream by default
     echo -e -n "\n- Disable video stream"
@@ -582,9 +648,9 @@ elif [ $DISTRIB_RELEASE = "20.04" ] || [ $DISTRIB_RELEASE = "22.04" ] || [ $DIST
     fi
 
     # Check for upgrade option
-    if [ ${upgradeConsole} = "YES" ]; then
+    if [ "${upgradeConsole}" = "YES" ]; then
         echo -e -n "\n- Upgrade console"
-        INSTALL_CUSTOM_CONSOLE
+        INSTALL_CUSTOM_CONSOLE || activationErrors+=("community device console install")
     fi
 
     echo -e -n "\n- Checking if aws-deepracer-community-device-console is installed"
@@ -599,10 +665,18 @@ elif [ $DISTRIB_RELEASE = "20.04" ] || [ $DISTRIB_RELEASE = "22.04" ] || [ $DIST
     # fi
 
     # All cars
-    if [ $varPass != NULL ]; then
-        SET_PASSWORD
+    # Quote the values: unquoted, a password with a space or '*' breaks the test
+    # ("too many arguments") and the step is silently skipped.
+    if [ "$varPass" != NULL ]; then
+        if [ -n "$varPass" ]; then
+            SET_PASSWORD || activationErrors+=("device console password")
+        else
+            # An explicit -p '' would otherwise set an empty console password.
+            echo -e -n "\n- ERROR: empty password given with -p; device console password not changed"
+            activationErrors+=("device console password (empty value)")
+        fi
     fi
-    if [ $varHost != NULL ]; then
+    if [ "$varHost" != NULL ]; then
         SET_HOSTNAME
     fi
 
@@ -615,5 +689,16 @@ fi
 echo -e -n "\n- Restarting services\n"
 systemctl restart deepracer-core
 service nginx restart
+
+# Report steps that failed after the remaining steps have run, so activation does not claim
+# success when the console was not swapped or the password was not set.
+if [ ${#activationErrors[@]} -gt 0 ]; then
+    echo -e -n "\nDone with errors. Failed steps:"
+    for step in "${activationErrors[@]}"; do
+        echo -e -n "\n- ${step}"
+    done
+    echo -e -n "\n\n"
+    exit 1
+fi
 
 echo -e -n "\nDone!\n\n"

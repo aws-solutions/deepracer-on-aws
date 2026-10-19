@@ -131,4 +131,28 @@ describe('DeviceManagement (Task 5 status pipeline wiring)', () => {
       }),
     ).not.toThrow();
   });
+
+  it.each(['DeviceStatusPollerFunction', 'DeviceStateChangeFunction'])(
+    'grants %s tag-scoped DeregisterManagedInstance to retire a superseded device',
+    (functionLogicalId) => {
+      const policies = Object.values(template.findResources('AWS::IAM::Policy')).filter((p) =>
+        JSON.stringify(p.Properties.Roles).includes(functionLogicalId),
+      );
+      const statements = policies.flatMap(
+        (p) =>
+          p.Properties.PolicyDocument.Statement as Array<{
+            Effect: string;
+            Action: unknown;
+            Resource: unknown;
+            Condition?: unknown;
+          }>,
+      );
+      const deregister = statements.filter((s) => s.Action === 'ssm:DeregisterManagedInstance');
+
+      expect(deregister).toHaveLength(1);
+      expect(deregister[0].Effect).toBe('Allow');
+      expect(JSON.stringify(deregister[0].Resource)).toContain('managed-instance/*');
+      expect(deregister[0].Condition).toEqual({ StringEquals: { 'ssm:resourceTag/deepracer:managed': 'true' } });
+    },
+  );
 });

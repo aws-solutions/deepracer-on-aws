@@ -15,8 +15,11 @@ import { instrumentHandler } from '../utils/instrumentation/instrumentHandler.js
  * Scheduled device status poller.
  */
 /** Sync one instance and report whether it counted toward the total and whether it is offline. */
-const tallyInstance = async (info: InstanceInformation): Promise<{ synced: boolean; offline: boolean }> => {
-  if (!(await syncInstance(info))) {
+const tallyInstance = async (
+  info: InstanceInformation,
+  retiredInstanceIds: Set<string>,
+): Promise<{ synced: boolean; offline: boolean }> => {
+  if (!(await syncInstance(info, retiredInstanceIds))) {
     return { synced: false, offline: false };
   }
   return { synced: true, offline: info.PingStatus !== 'Online' };
@@ -36,6 +39,9 @@ export const PollDeviceStatus: EventBridgeHandler<'Scheduled Event', Record<stri
   let synced = 0;
   let seen = 0;
   let offline = 0;
+  // Instances retired by a re-activation during this poll; their entries may still appear
+  // later in the pages fetched before they were deregistered.
+  const retiredInstanceIds = new Set<string>();
 
   do {
     const response = await ssmClient.send(
@@ -45,7 +51,7 @@ export const PollDeviceStatus: EventBridgeHandler<'Scheduled Event', Record<stri
     for (const info of response.InstanceInformationList ?? []) {
       seen += 1;
       try {
-        const tally = await tallyInstance(info);
+        const tally = await tallyInstance(info, retiredInstanceIds);
         if (tally.synced) synced += 1;
         if (tally.offline) offline += 1;
       } catch (error) {
