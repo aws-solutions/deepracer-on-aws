@@ -27,7 +27,8 @@ source/apps/infra/cdk.out.*
 script_*.sh
 
 # Local Makefile config (copy build.config.example to build.config)
-build.config
+build.config*
+!build.config.example
 cfn.outputs
 
 #e2e tests
