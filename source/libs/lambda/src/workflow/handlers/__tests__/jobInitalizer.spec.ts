@@ -532,6 +532,50 @@ describe('JobInitializer', () => {
       expect(createTrainingJobSpy).not.toHaveBeenCalled();
       expect(stsMock.commandCalls(AssumeRoleCommand)).toHaveLength(0);
     });
+
+    it('should accept a federated (SSO) profileId and tag the full value', async () => {
+      // Federated sign-ins get a Cognito-assigned username like "ExternalIdP_<subject>" instead
+      // of the generateResourceId() format — this must not be rejected as an invalid ResourceId.
+      const federatedProfileId = 'externalidp_pdmqeteshcjzzmrcjkpgypzjyjs2odmzrxltrlh2ntq';
+      const federatedContext = { ...mockInitTrainingContext, profileId: federatedProfileId as never };
+
+      getJobSpy.mockResolvedValueOnce(TEST_TRAINING_ITEM);
+      modelLoadSpy.mockResolvedValueOnce(TEST_MODEL_ITEM);
+      profileLoadSpy.mockResolvedValueOnce(TEST_PROFILE_ITEM);
+      createStreamSpy.mockResolvedValueOnce(expectedTrainingPostInitContext.videoStream.arn);
+      writeJobFilesToS3Spy.mockResolvedValueOnce([]);
+      createTrainingJobSpy.mockResolvedValueOnce(expectedTrainingPostInitContext.trainingJob.arn);
+
+      await jobInitializer.initializeJob(federatedContext);
+
+      const assumeRoleCalls = stsMock.commandCalls(AssumeRoleCommand);
+      expect(assumeRoleCalls).toHaveLength(1);
+      // The S3 ABAC policy scopes on the full, untruncated tag value — truncating it would
+      // silently narrow (or break) the training container's S3 access.
+      expect(assumeRoleCalls[0].args[0].input.Tags).toEqual([{ Key: 'profile-id', Value: federatedProfileId }]);
+    });
+
+    it('should truncate RoleSessionName to 64 chars without truncating the profile-id tag', async () => {
+      // RoleSessionName is capped at 64 chars by STS; a long IdP subject must not make
+      // AssumeRole itself fail with a ValidationException.
+      const longFederatedProfileId = `externalidp_${'a'.repeat(100)}`;
+      const longContext = { ...mockInitTrainingContext, profileId: longFederatedProfileId as never };
+
+      getJobSpy.mockResolvedValueOnce(TEST_TRAINING_ITEM);
+      modelLoadSpy.mockResolvedValueOnce(TEST_MODEL_ITEM);
+      profileLoadSpy.mockResolvedValueOnce(TEST_PROFILE_ITEM);
+      createStreamSpy.mockResolvedValueOnce(expectedTrainingPostInitContext.videoStream.arn);
+      writeJobFilesToS3Spy.mockResolvedValueOnce([]);
+      createTrainingJobSpy.mockResolvedValueOnce(expectedTrainingPostInitContext.trainingJob.arn);
+
+      await jobInitializer.initializeJob(longContext);
+
+      const assumeRoleCalls = stsMock.commandCalls(AssumeRoleCommand);
+      expect(assumeRoleCalls).toHaveLength(1);
+      expect(assumeRoleCalls[0].args[0].input.RoleSessionName).toHaveLength(64);
+      expect(assumeRoleCalls[0].args[0].input.RoleSessionName).toBe(`training-${longFederatedProfileId}`.slice(0, 64));
+      expect(assumeRoleCalls[0].args[0].input.Tags).toEqual([{ Key: 'profile-id', Value: longFederatedProfileId }]);
+    });
   });
 
   describe('writeJobFilesToS3', () => {

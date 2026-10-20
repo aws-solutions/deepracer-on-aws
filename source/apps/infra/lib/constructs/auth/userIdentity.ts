@@ -111,8 +111,9 @@ export class UserIdentity extends Construct {
 
   /** Fixed identity provider name used for the (always-present-but-conditional) SAML IdP.
    * Referenced by updateOAuthCallbackUrls, which can't rely on resolving isSamlIdpEnabled's
-   * actual deploy-time value at synth time. */
-  private static readonly EXTERNAL_IDP_NAME = 'ExternalIdP';
+   * actual deploy-time value at synth time, and by deepRacerIndyStack's idpName (must match
+   * the lambda-side copy in cognito/handlers/common/constants.ts too — see its comment). */
+  static readonly EXTERNAL_IDP_NAME = 'sso';
 
   private readonly namespace: string;
   private readonly isSamlIdpEnabled?: CfnCondition;
@@ -884,7 +885,7 @@ export class UserIdentity extends Construct {
    * isSamlIdpEnabled (true) / its negation (false), same as the IdP/domain, but exactly one of
    * them still isn't explicitly DependsOn the (also-conditional) ExternalIdP/HostedUiDomain
    * resources, since CloudFormation's dependency rules around shared conditions get fiddly here
-   * and the literal provider name 'ExternalIdP' is referenced as a plain string, not a Ref/GetAtt.
+   * and EXTERNAL_IDP_NAME is referenced as a plain string value, not a Ref/GetAtt.
    * On the very first deployment where SamlMetadataUrl goes from empty to populated, the
    * "SAML enabled" custom resource's UpdateUserPoolClient call could in principle race ahead of
    * the IdP's own creation within the same deployment. This is a narrow, one-time transition risk,

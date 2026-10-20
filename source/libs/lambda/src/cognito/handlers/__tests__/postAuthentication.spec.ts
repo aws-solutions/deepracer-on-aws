@@ -23,7 +23,7 @@ describe('PostAuthentication lambda', () => {
     version: '1',
     region: 'us-east-1',
     userPoolId: 'us-east-1_123456789',
-    userName: 'externalidp_01a2b3c4-d5e6-f7g8-h9i0',
+    userName: 'sso_01a2b3c4-d5e6-f7g8-h9i0',
     callerContext: {
       awsSdkVersion: 'aws-sdk-unknown-unknown',
       clientId: 'client123',
@@ -51,7 +51,7 @@ describe('PostAuthentication lambda', () => {
     expect(cognitoMock.commandCalls(AdminAddUserToGroupCommand)).toHaveLength(1);
     expect(cognitoMock.commandCalls(AdminAddUserToGroupCommand)[0].args[0].input).toEqual({
       UserPoolId: 'us-east-1_123456789',
-      Username: 'externalidp_01a2b3c4-d5e6-f7g8-h9i0',
+      Username: 'sso_01a2b3c4-d5e6-f7g8-h9i0',
       GroupName: 'dr-racers',
     });
     expect(result).toEqual(event);
@@ -74,7 +74,7 @@ describe('PostAuthentication lambda', () => {
     expect(result).toEqual(event);
     expect(loggerSpy).toHaveBeenCalledWith(
       'Failed to ensure user group membership',
-      expect.objectContaining({ userName: 'externalidp_01a2b3c4-d5e6-f7g8-h9i0' }),
+      expect.objectContaining({ userName: 'sso_01a2b3c4-d5e6-f7g8-h9i0' }),
     );
   });
 

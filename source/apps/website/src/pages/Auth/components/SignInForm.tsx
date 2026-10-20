@@ -132,7 +132,7 @@ const SignInForm = () => {
                 {t('ssoDivider')}
               </Box>
               <Button loading={isLoadingSso} formAction="none" onClick={() => void onSsoSignIn()}>
-                {t('ssoSignIn', { idpName: environmentConfig.idpName })}
+                {t('ssoSignIn')}
               </Button>
             </>
           )}
