@@ -197,7 +197,7 @@ describe('PreSignUp lambda', () => {
   describe('federated sign-up (PreSignUp_ExternalProvider)', () => {
     const federatedEvent: lambda.PreSignUpTriggerEvent = {
       ...event,
-      userName: 'ExternalIdP_01a2b3c4-d5e6-f7g8-h9i0-j1k2l3m4n5o6',
+      userName: 'sso_01a2b3c4-d5e6-f7g8-h9i0-j1k2l3m4n5o6',
       triggerSource: 'PreSignUp_ExternalProvider',
     };
 

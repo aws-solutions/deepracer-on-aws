@@ -24,7 +24,7 @@ export const PreSignUp: PreSignUpTriggerHandler = async (event) => {
 
   const { userName, request, triggerSource } = event;
 
-  // Federated (SAML/SSO) sign-ins get a Cognito-assigned username (e.g. "ExternalIdP_<subject>"),
+  // Federated (SAML/SSO) sign-ins get a Cognito-assigned username (e.g. "sso_<subject>"),
   // not the 15-char generateResourceId() format native sign-up/admin-create explicitly pass as
   // username — so the format check only applies to those non-federated paths.
   const isFederatedSignUp = triggerSource === 'PreSignUp_ExternalProvider';

@@ -18,7 +18,7 @@ export enum UserGroups {
  * imported from infra, since the lambda and infra apps are separate deployables with no shared
  * package between them for this value.
  */
-export const EXTERNAL_IDP_NAME = 'ExternalIdP';
+export const EXTERNAL_IDP_NAME = 'sso';
 
 // The user pool has signInCaseSensitive: false, so Cognito lowercases every username, including
 // the federated ones — compare case-insensitively.

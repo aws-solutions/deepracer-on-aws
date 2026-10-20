@@ -486,7 +486,7 @@ export class DeepRacerIndyStack extends Stack {
       // UserIdentity can't know isSamlIdpEnabled's actual resolved value at synth time either, so
       // both idpEnabled/idpName must themselves be deploy-time-conditional Tokens.
       idpEnabled: Token.asString(Fn.conditionIf(isSamlIdpEnabled.logicalId, true, false)),
-      idpName: Token.asString(Fn.conditionIf(isSamlIdpEnabled.logicalId, 'ExternalIdP', '')),
+      idpName: Token.asString(Fn.conditionIf(isSamlIdpEnabled.logicalId, UserIdentity.EXTERNAL_IDP_NAME, '')),
     });
 
     // The public leaderboard page fetches public/leaderboards/{id}.json through the website's

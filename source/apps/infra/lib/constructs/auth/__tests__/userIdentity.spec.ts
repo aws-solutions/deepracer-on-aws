@@ -1159,7 +1159,7 @@ describe('UserIdentity - Conditional SAML IdP', () => {
     const enabledText = getCreateLiteralText(enabledResource!);
     expect(enabledText).toContain('updateUserPoolClient');
     expect(enabledText).toContain('CognitoIdentityServiceProvider');
-    expect(enabledText).toContain('"SupportedIdentityProviders":["COGNITO","ExternalIdP"]');
+    expect(enabledText).toContain('"SupportedIdentityProviders":["COGNITO","sso"]');
     expect(enabledText).toContain('"AllowedOAuthFlowsUserPoolClient":true');
     // Neither payload should contain an embedded Fn::If — that's the whole point of the split.
     expect(enabledText).not.toContain('Fn::If');

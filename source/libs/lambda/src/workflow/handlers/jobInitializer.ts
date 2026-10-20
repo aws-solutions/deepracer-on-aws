@@ -104,7 +104,10 @@ class JobInitializer implements WorkflowTaskHandler {
     const { Credentials } = await stsClient.send(
       new AssumeRoleCommand({
         RoleArn: jobCreationRoleArn,
-        RoleSessionName: `training-${profileId}`,
+        // RoleSessionName is audit-only (no IAM policy matches on it) and AWS caps it at 64 chars,
+        // so it's truncated independently of the profile-id tag below, which carries the untruncated
+        // value the ABAC S3 policy actually scopes on.
+        RoleSessionName: `training-${profileId}`.slice(0, 64),
         Tags: [{ Key: 'profile-id', Value: profileId }],
       }),
     );

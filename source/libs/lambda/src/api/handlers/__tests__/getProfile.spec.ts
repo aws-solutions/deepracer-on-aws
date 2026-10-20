@@ -11,7 +11,7 @@ import { GetProfileOperation } from '../getProfile.js';
 // Cognito's actual stored username (the user pool has signInCaseSensitive: false).
 const FEDERATED_CONTEXT = {
   ...TEST_OPERATION_CONTEXT,
-  profileId: 'externalidp_01a2b3c4-d5e6-f7g8-h9i0' as ResourceId,
+  profileId: 'sso_01a2b3c4-d5e6-f7g8-h9i0' as ResourceId,
 };
 
 describe('GetProfile operation', () => {
