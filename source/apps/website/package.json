@@ -71,7 +71,7 @@
     "msw": "^2.7.3",
     "msw-storybook-addon": "^2.0.4",
     "patch-package": "^8.0.0",
-    "storybook": "8.6.17"
+    "storybook": "8.6.19"
   },
   "imports": {
     "#*": [
