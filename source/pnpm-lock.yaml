@@ -368,7 +368,7 @@ importers:
         version: 7.14.0
       i18next:
         specifier: ^24.2.2
-        version: 24.2.3(typescript@5.9.3)
+        version: 24.2.3(typescript@5.8.2)
       i18next-intervalplural-postprocessor:
         specifier: ^3.0.0
         version: 3.0.0
@@ -386,7 +386,7 @@ importers:
         version: 7.54.2(react@18.3.1)
       react-i18next:
         specifier: ^15.4.1
-        version: 15.7.4(i18next@24.2.3(typescript@5.9.3))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)
+        version: 15.7.4(i18next@24.2.3(typescript@5.8.2))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.8.2)
       react-multi-carousel:
         specifier: ^2.8.5
         version: 2.8.6
@@ -425,20 +425,20 @@ importers:
         specifier: 8.6.17
         version: 8.6.17(react@18.3.1)(storybook@8.6.17(prettier@3.9.6))
       '@storybook/core-server':
-        specifier: 8.6.3
-        version: 8.6.3(storybook@8.6.17(prettier@3.9.6))
+        specifier: 8.6.19
+        version: 8.6.19(storybook@8.6.17(prettier@3.9.6))
       '@storybook/react':
         specifier: 8.6.17
-        version: 8.6.17(@storybook/test@8.6.17(storybook@8.6.17(prettier@3.9.6)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(storybook@8.6.17(prettier@3.9.6))(typescript@5.9.3)
+        version: 8.6.17(@storybook/test@8.6.17(storybook@8.6.17(prettier@3.9.6)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(storybook@8.6.17(prettier@3.9.6))(typescript@5.8.2)
       '@storybook/react-vite':
         specifier: 8.6.17
-        version: 8.6.17(@storybook/test@8.6.17(storybook@8.6.17(prettier@3.9.6)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rollup@4.62.2)(storybook@8.6.17(prettier@3.9.6))(typescript@5.9.3)(vite@6.4.3(@types/node@22.13.9)(jiti@2.4.2)(terser@5.49.0)(tsx@4.23.1)(yaml@2.8.3))
+        version: 8.6.17(@storybook/test@8.6.17(storybook@8.6.17(prettier@3.9.6)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rollup@4.62.2)(storybook@8.6.17(prettier@3.9.6))(typescript@5.8.2)(vite@6.4.3(@types/node@22.13.9)(jiti@2.4.2)(terser@5.49.0)(tsx@4.23.1)(yaml@2.8.3))
       '@storybook/test':
         specifier: 8.6.17
         version: 8.6.17(storybook@8.6.17(prettier@3.9.6))
       '@storybook/test-runner':
         specifier: 0.19.1
-        version: 0.19.1(@swc/helpers@0.5.23)(@types/node@22.13.9)(babel-plugin-macros@3.1.0)(storybook@8.6.17(prettier@3.9.6))(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.9.3))
+        version: 0.19.1(@swc/helpers@0.5.23)(@types/node@22.13.9)(babel-plugin-macros@3.1.0)(storybook@8.6.17(prettier@3.9.6))(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.8.2))
       '@testing-library/jest-dom':
         specifier: ^6.6.3
         version: 6.10.0(@testing-library/dom@10.4.0)
@@ -468,13 +468,13 @@ importers:
         version: 0.4.26(eslint@8.57.1)
       eslint-plugin-storybook:
         specifier: 0.11.3
-        version: 0.11.3(eslint@8.57.1)(typescript@5.9.3)
+        version: 0.11.3(eslint@8.57.1)(typescript@5.8.2)
       msw:
         specifier: ^2.7.3
-        version: 2.15.0(@types/node@22.13.9)(typescript@5.9.3)
+        version: 2.15.0(@types/node@22.13.9)(typescript@5.8.2)
       msw-storybook-addon:
         specifier: ^2.0.4
-        version: 2.0.7(msw@2.15.0(@types/node@22.13.9)(typescript@5.9.3))
+        version: 2.0.7(msw@2.15.0(@types/node@22.13.9)(typescript@5.8.2))
       patch-package:
         specifier: ^8.0.0
         version: 8.0.1
@@ -882,6 +882,13 @@ packages:
 
   '@aws-cdk/cloud-assembly-schema@54.12.0':
     resolution: {integrity: sha512-u8G9RZGW7vWq0KpEj1MYAin8yc+Mw7wYU2UjM5C2juZIHavXcerj6q7UsoOWd0N2TWtBw9WT9w3gknqR1GzAmg==}
+    engines: {node: '>= 18.0.0'}
+    bundledDependencies:
+      - jsonschema
+      - semver
+
+  '@aws-cdk/cloud-assembly-schema@54.26.0':
+    resolution: {integrity: sha512-zYI3XhQ/bpuSXuPaF77f7u2q6rZBPwdrPh8a0v+e/B3IxbRQAtQv0fmacQ8uYh9RPVuIVnExE6IsFJBSALH7BA==}
     engines: {node: '>= 18.0.0'}
     bundledDependencies:
       - jsonschema
@@ -2840,6 +2847,9 @@ packages:
   '@jridgewell/sourcemap-codec@1.5.5':
     resolution: {integrity: sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og==}
 
+  '@jridgewell/sourcemap-codec@1.6.0':
+    resolution: {integrity: sha512-T7jf+5zgsZHwNJ4lvQ7/aezbyk0nNX+zJVWpmHA7VYsEx7a7qr5Rg5IbtJFqkgze5Y2sruq1RUY8Q837Od7iFw==}
+
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
@@ -4476,8 +4486,8 @@ packages:
     peerDependencies:
       storybook: ^8.2.0 || ^8.3.0-0 || ^8.4.0-0 || ^8.5.0-0 || ^8.6.0-0
 
-  '@storybook/core-server@8.6.3':
-    resolution: {integrity: sha512-nmn5d/Czl6SF7NpHnHuPzEXV95Cjogyi4rucE6dNUELjPr07jtBxzovxaXei+wTObJZALDsHfCZzFq31g6tzsw==}
+  '@storybook/core-server@8.6.19':
+    resolution: {integrity: sha512-JtkmbrZlyUOo1/RjaP7M4cZLWkCeDuZKyXLWHrz7cUH8kiTDYSvgPgaSewR7+HcChGlG1pI8OfUsafNkGYGZQQ==}
     peerDependencies:
       storybook: ^8.2.0 || ^8.3.0-0 || ^8.4.0-0 || ^8.5.0-0 || ^8.6.0-0
 
@@ -4837,8 +4847,8 @@ packages:
     peerDependencies:
       '@testing-library/dom': '>=7.21.4'
 
-  '@tsconfig/node10@1.0.12':
-    resolution: {integrity: sha512-UCYBaeFvM11aU2y3YPZ//O5Rhj+xKyzy7mvcIoAjASbigy8mHMryP5cK7dgjlz2hWxh1g5pLw084E0a/wlUSFQ==}
+  '@tsconfig/node10@1.0.13':
+    resolution: {integrity: sha512-gcLdvR9HO1ZJBypsOGqaP6TFEzb6vIta0KSTLt9NAQ6pXQO3cRgSVyCN6pzYqI9DlJgY71XKO0dpDhCf08b3pg==}
 
   '@tsconfig/node12@1.0.11':
     resolution: {integrity: sha512-cqefuRsh12pWyGsIoBKJA9luFu3mRxCA+ORZvA4ktLSzIuCUtWVxGIuXigEwO5/ywWFMZ2QEGKWvkZG1zDMTag==}
@@ -5503,6 +5513,11 @@ packages:
 
   acorn@8.17.0:
     resolution: {integrity: sha512-xRQbDb9BnwDafYNn6Vwl839DYVjqXYb1XVGtWAZ1kcDc6iwAL4hg3B1dZlRiuENFeO2H53gFG3in621AdERVAg==}
+    engines: {node: '>=0.4.0'}
+    hasBin: true
+
+  acorn@8.19.0:
+    resolution: {integrity: sha512-oJlA3XiRm7Cyk6qFD2Jn8ak9B7jSy0qy00ADO3+8dpT0LSjFihQYv4C02LFCSYJV3Q37xYwwRy5m+IpIiUzqWw==}
     engines: {node: '>=0.4.0'}
     hasBin: true
 
@@ -10467,6 +10482,8 @@ snapshots:
 
   '@aws-cdk/cloud-assembly-schema@54.12.0': {}
 
+  '@aws-cdk/cloud-assembly-schema@54.26.0': {}
+
   '@aws-crypto/crc32@3.0.0':
     dependencies:
       '@aws-crypto/util': 3.0.0
@@ -10974,10 +10991,10 @@ snapshots:
     dependencies:
       '@aws-crypto/sha256-browser': 5.2.0
       '@aws-crypto/sha256-js': 5.2.0
-      '@aws-sdk/client-sso-oidc': 3.621.0(@aws-sdk/client-sts@3.654.0(aws-crt@1.31.0))(aws-crt@1.31.0)
+      '@aws-sdk/client-sso-oidc': 3.621.0(@aws-sdk/client-sts@3.621.0(aws-crt@1.31.0))(aws-crt@1.31.0)
       '@aws-sdk/client-sts': 3.621.0(aws-crt@1.31.0)
       '@aws-sdk/core': 3.621.0
-      '@aws-sdk/credential-provider-node': 3.621.0(@aws-sdk/client-sso-oidc@3.621.0(@aws-sdk/client-sts@3.621.0(aws-crt@1.31.0))(aws-crt@1.31.0))(@aws-sdk/client-sts@3.654.0(aws-crt@1.31.0))(aws-crt@1.31.0)
+      '@aws-sdk/credential-provider-node': 3.621.0(@aws-sdk/client-sso-oidc@3.621.0(@aws-sdk/client-sts@3.621.0(aws-crt@1.31.0))(aws-crt@1.31.0))(@aws-sdk/client-sts@3.621.0(aws-crt@1.31.0))(aws-crt@1.31.0)
       '@aws-sdk/middleware-host-header': 3.620.0
       '@aws-sdk/middleware-logger': 3.609.0
       '@aws-sdk/middleware-recursion-detection': 3.620.0
@@ -11254,10 +11271,10 @@ snapshots:
     dependencies:
       '@aws-crypto/sha256-browser': 5.2.0
       '@aws-crypto/sha256-js': 5.2.0
-      '@aws-sdk/client-sso-oidc': 3.621.0(@aws-sdk/client-sts@3.621.0(aws-crt@1.31.0))(aws-crt@1.31.0)
+      '@aws-sdk/client-sso-oidc': 3.621.0(@aws-sdk/client-sts@3.654.0(aws-crt@1.31.0))(aws-crt@1.31.0)
       '@aws-sdk/client-sts': 3.621.0(aws-crt@1.31.0)
       '@aws-sdk/core': 3.621.0
-      '@aws-sdk/credential-provider-node': 3.621.0(@aws-sdk/client-sso-oidc@3.621.0(@aws-sdk/client-sts@3.621.0(aws-crt@1.31.0))(aws-crt@1.31.0))(@aws-sdk/client-sts@3.654.0(aws-crt@1.31.0))(aws-crt@1.31.0)
+      '@aws-sdk/credential-provider-node': 3.621.0(@aws-sdk/client-sso-oidc@3.621.0(@aws-sdk/client-sts@3.621.0(aws-crt@1.31.0))(aws-crt@1.31.0))(@aws-sdk/client-sts@3.621.0(aws-crt@1.31.0))(aws-crt@1.31.0)
       '@aws-sdk/middleware-host-header': 3.620.0
       '@aws-sdk/middleware-logger': 3.609.0
       '@aws-sdk/middleware-recursion-detection': 3.620.0
@@ -11358,7 +11375,7 @@ snapshots:
       '@aws-sdk/client-sso-oidc': 3.621.0(@aws-sdk/client-sts@3.621.0(aws-crt@1.31.0))(aws-crt@1.31.0)
       '@aws-sdk/client-sts': 3.621.0(aws-crt@1.31.0)
       '@aws-sdk/core': 3.621.0
-      '@aws-sdk/credential-provider-node': 3.621.0(@aws-sdk/client-sso-oidc@3.621.0(@aws-sdk/client-sts@3.621.0(aws-crt@1.31.0))(aws-crt@1.31.0))(@aws-sdk/client-sts@3.654.0(aws-crt@1.31.0))(aws-crt@1.31.0)
+      '@aws-sdk/credential-provider-node': 3.621.0(@aws-sdk/client-sso-oidc@3.621.0(@aws-sdk/client-sts@3.621.0(aws-crt@1.31.0))(aws-crt@1.31.0))(@aws-sdk/client-sts@3.621.0(aws-crt@1.31.0))(aws-crt@1.31.0)
       '@aws-sdk/middleware-host-header': 3.620.0
       '@aws-sdk/middleware-logger': 3.609.0
       '@aws-sdk/middleware-recursion-detection': 3.620.0
@@ -11749,7 +11766,7 @@ snapshots:
       '@aws-crypto/sha256-js': 5.2.0
       '@aws-sdk/client-sts': 3.621.0(aws-crt@1.31.0)
       '@aws-sdk/core': 3.621.0
-      '@aws-sdk/credential-provider-node': 3.621.0(@aws-sdk/client-sso-oidc@3.621.0(@aws-sdk/client-sts@3.621.0(aws-crt@1.31.0))(aws-crt@1.31.0))(@aws-sdk/client-sts@3.654.0(aws-crt@1.31.0))(aws-crt@1.31.0)
+      '@aws-sdk/credential-provider-node': 3.621.0(@aws-sdk/client-sso-oidc@3.621.0(@aws-sdk/client-sts@3.621.0(aws-crt@1.31.0))(aws-crt@1.31.0))(@aws-sdk/client-sts@3.621.0(aws-crt@1.31.0))(aws-crt@1.31.0)
       '@aws-sdk/middleware-host-header': 3.620.0
       '@aws-sdk/middleware-logger': 3.609.0
       '@aws-sdk/middleware-recursion-detection': 3.620.0
@@ -11970,7 +11987,7 @@ snapshots:
       '@aws-crypto/sha256-js': 5.2.0
       '@aws-sdk/client-sso-oidc': 3.621.0(@aws-sdk/client-sts@3.621.0(aws-crt@1.31.0))(aws-crt@1.31.0)
       '@aws-sdk/core': 3.621.0
-      '@aws-sdk/credential-provider-node': 3.621.0(@aws-sdk/client-sso-oidc@3.621.0(@aws-sdk/client-sts@3.621.0(aws-crt@1.31.0))(aws-crt@1.31.0))(@aws-sdk/client-sts@3.654.0(aws-crt@1.31.0))(aws-crt@1.31.0)
+      '@aws-sdk/credential-provider-node': 3.621.0(@aws-sdk/client-sso-oidc@3.621.0(@aws-sdk/client-sts@3.621.0(aws-crt@1.31.0))(aws-crt@1.31.0))(@aws-sdk/client-sts@3.621.0(aws-crt@1.31.0))(aws-crt@1.31.0)
       '@aws-sdk/middleware-host-header': 3.620.0
       '@aws-sdk/middleware-logger': 3.609.0
       '@aws-sdk/middleware-recursion-detection': 3.620.0
@@ -12158,6 +12175,24 @@ snapshots:
       '@smithy/types': 4.16.1
       tslib: 2.8.1
 
+  '@aws-sdk/credential-provider-ini@3.621.0(@aws-sdk/client-sso-oidc@3.621.0(@aws-sdk/client-sts@3.621.0(aws-crt@1.31.0))(aws-crt@1.31.0))(@aws-sdk/client-sts@3.621.0(aws-crt@1.31.0))(aws-crt@1.31.0)':
+    dependencies:
+      '@aws-sdk/client-sts': 3.621.0(aws-crt@1.31.0)
+      '@aws-sdk/credential-provider-env': 3.620.1
+      '@aws-sdk/credential-provider-http': 3.621.0
+      '@aws-sdk/credential-provider-process': 3.620.1
+      '@aws-sdk/credential-provider-sso': 3.621.0(@aws-sdk/client-sso-oidc@3.621.0(@aws-sdk/client-sts@3.621.0(aws-crt@1.31.0))(aws-crt@1.31.0))(aws-crt@1.31.0)
+      '@aws-sdk/credential-provider-web-identity': 3.621.0(@aws-sdk/client-sts@3.621.0(aws-crt@1.31.0))
+      '@aws-sdk/types': 3.609.0
+      '@smithy/credential-provider-imds': 3.2.8
+      '@smithy/property-provider': 3.1.11
+      '@smithy/shared-ini-file-loader': 3.1.12
+      '@smithy/types': 3.7.2
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - '@aws-sdk/client-sso-oidc'
+      - aws-crt
+
   '@aws-sdk/credential-provider-ini@3.621.0(@aws-sdk/client-sso-oidc@3.621.0(@aws-sdk/client-sts@3.621.0(aws-crt@1.31.0))(aws-crt@1.31.0))(@aws-sdk/client-sts@3.654.0(aws-crt@1.31.0))(aws-crt@1.31.0)':
     dependencies:
       '@aws-sdk/client-sts': 3.654.0(aws-crt@1.31.0)
@@ -12218,6 +12253,25 @@ snapshots:
       '@smithy/core': 3.31.1
       '@smithy/types': 4.16.1
       tslib: 2.8.1
+
+  '@aws-sdk/credential-provider-node@3.621.0(@aws-sdk/client-sso-oidc@3.621.0(@aws-sdk/client-sts@3.621.0(aws-crt@1.31.0))(aws-crt@1.31.0))(@aws-sdk/client-sts@3.621.0(aws-crt@1.31.0))(aws-crt@1.31.0)':
+    dependencies:
+      '@aws-sdk/credential-provider-env': 3.620.1
+      '@aws-sdk/credential-provider-http': 3.621.0
+      '@aws-sdk/credential-provider-ini': 3.621.0(@aws-sdk/client-sso-oidc@3.621.0(@aws-sdk/client-sts@3.621.0(aws-crt@1.31.0))(aws-crt@1.31.0))(@aws-sdk/client-sts@3.621.0(aws-crt@1.31.0))(aws-crt@1.31.0)
+      '@aws-sdk/credential-provider-process': 3.620.1
+      '@aws-sdk/credential-provider-sso': 3.621.0(@aws-sdk/client-sso-oidc@3.621.0(@aws-sdk/client-sts@3.621.0(aws-crt@1.31.0))(aws-crt@1.31.0))(aws-crt@1.31.0)
+      '@aws-sdk/credential-provider-web-identity': 3.621.0(@aws-sdk/client-sts@3.621.0(aws-crt@1.31.0))
+      '@aws-sdk/types': 3.609.0
+      '@smithy/credential-provider-imds': 3.2.8
+      '@smithy/property-provider': 3.1.11
+      '@smithy/shared-ini-file-loader': 3.1.12
+      '@smithy/types': 3.7.2
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - '@aws-sdk/client-sso-oidc'
+      - '@aws-sdk/client-sts'
+      - aws-crt
 
   '@aws-sdk/credential-provider-node@3.621.0(@aws-sdk/client-sso-oidc@3.621.0(@aws-sdk/client-sts@3.621.0(aws-crt@1.31.0))(aws-crt@1.31.0))(@aws-sdk/client-sts@3.654.0(aws-crt@1.31.0))(aws-crt@1.31.0)':
     dependencies:
@@ -12329,6 +12383,14 @@ snapshots:
       '@aws-sdk/types': 3.974.2
       '@smithy/core': 3.31.1
       '@smithy/types': 4.16.1
+      tslib: 2.8.1
+
+  '@aws-sdk/credential-provider-web-identity@3.621.0(@aws-sdk/client-sts@3.621.0(aws-crt@1.31.0))':
+    dependencies:
+      '@aws-sdk/client-sts': 3.621.0(aws-crt@1.31.0)
+      '@aws-sdk/types': 3.609.0
+      '@smithy/property-provider': 3.1.11
+      '@smithy/types': 3.7.2
       tslib: 2.8.1
 
   '@aws-sdk/credential-provider-web-identity@3.621.0(@aws-sdk/client-sts@3.654.0(aws-crt@1.31.0))':
@@ -12748,7 +12810,7 @@ snapshots:
 
   '@aws-solutions-constructs/core@2.103.0(aws-cdk-lib@2.262.0(constructs@10.7.1))(constructs@10.7.1)':
     dependencies:
-      '@aws-cdk/cloud-assembly-schema': 54.12.0
+      '@aws-cdk/cloud-assembly-schema': 54.26.0
       aws-cdk-lib: 2.262.0(constructs@10.7.1)
       constructs: 10.7.1
 
@@ -14171,7 +14233,7 @@ snapshots:
       jest-util: 29.7.0
       slash: 3.0.0
 
-  '@jest/core@29.7.0(babel-plugin-macros@3.1.0)(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.9.3))':
+  '@jest/core@29.7.0(babel-plugin-macros@3.1.0)(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.8.2))':
     dependencies:
       '@jest/console': 29.7.0
       '@jest/reporters': 29.7.0
@@ -14185,7 +14247,7 @@ snapshots:
       exit: 0.1.2
       graceful-fs: 4.2.11
       jest-changed-files: 29.7.0
-      jest-config: 29.7.0(@types/node@22.13.9)(babel-plugin-macros@3.1.0)(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.9.3))
+      jest-config: 29.7.0(@types/node@22.13.9)(babel-plugin-macros@3.1.0)(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.8.2))
       jest-haste-map: 29.7.0
       jest-message-util: 29.7.0
       jest-regex-util: 29.6.3
@@ -14349,14 +14411,14 @@ snapshots:
       '@types/yargs': 17.0.35
       chalk: 4.1.2
 
-  '@joshwooding/vite-plugin-react-docgen-typescript@0.5.0(typescript@5.9.3)(vite@6.4.3(@types/node@22.13.9)(jiti@2.4.2)(terser@5.49.0)(tsx@4.23.1)(yaml@2.8.3))':
+  '@joshwooding/vite-plugin-react-docgen-typescript@0.5.0(typescript@5.8.2)(vite@6.4.3(@types/node@22.13.9)(jiti@2.4.2)(terser@5.49.0)(tsx@4.23.1)(yaml@2.8.3))':
     dependencies:
       glob: 10.5.0
       magic-string: 0.27.0
-      react-docgen-typescript: 2.4.0(typescript@5.9.3)
+      react-docgen-typescript: 2.4.0(typescript@5.8.2)
       vite: 6.4.3(@types/node@22.13.9)(jiti@2.4.2)(terser@5.49.0)(tsx@4.23.1)(yaml@2.8.3)
     optionalDependencies:
-      typescript: 5.9.3
+      typescript: 5.8.2
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:
@@ -14377,6 +14439,9 @@ snapshots:
 
   '@jridgewell/sourcemap-codec@1.5.5': {}
 
+  '@jridgewell/sourcemap-codec@1.6.0':
+    optional: true
+
   '@jridgewell/trace-mapping@0.3.31':
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
@@ -14385,7 +14450,7 @@ snapshots:
   '@jridgewell/trace-mapping@0.3.9':
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
-      '@jridgewell/sourcemap-codec': 1.5.5
+      '@jridgewell/sourcemap-codec': 1.6.0
     optional: true
 
   '@juggle/resize-observer@3.4.0': {}
@@ -16338,7 +16403,7 @@ snapshots:
     dependencies:
       storybook: 8.6.17(prettier@3.9.6)
 
-  '@storybook/core-server@8.6.3(storybook@8.6.17(prettier@3.9.6))':
+  '@storybook/core-server@8.6.19(storybook@8.6.17(prettier@3.9.6))':
     dependencies:
       storybook: 8.6.17(prettier@3.9.6)
 
@@ -16407,12 +16472,12 @@ snapshots:
       react-dom: 18.3.1(react@18.3.1)
       storybook: 8.6.17(prettier@3.9.6)
 
-  '@storybook/react-vite@8.6.17(@storybook/test@8.6.17(storybook@8.6.17(prettier@3.9.6)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rollup@4.62.2)(storybook@8.6.17(prettier@3.9.6))(typescript@5.9.3)(vite@6.4.3(@types/node@22.13.9)(jiti@2.4.2)(terser@5.49.0)(tsx@4.23.1)(yaml@2.8.3))':
+  '@storybook/react-vite@8.6.17(@storybook/test@8.6.17(storybook@8.6.17(prettier@3.9.6)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rollup@4.62.2)(storybook@8.6.17(prettier@3.9.6))(typescript@5.8.2)(vite@6.4.3(@types/node@22.13.9)(jiti@2.4.2)(terser@5.49.0)(tsx@4.23.1)(yaml@2.8.3))':
     dependencies:
-      '@joshwooding/vite-plugin-react-docgen-typescript': 0.5.0(typescript@5.9.3)(vite@6.4.3(@types/node@22.13.9)(jiti@2.4.2)(terser@5.49.0)(tsx@4.23.1)(yaml@2.8.3))
+      '@joshwooding/vite-plugin-react-docgen-typescript': 0.5.0(typescript@5.8.2)(vite@6.4.3(@types/node@22.13.9)(jiti@2.4.2)(terser@5.49.0)(tsx@4.23.1)(yaml@2.8.3))
       '@rollup/pluginutils': 5.4.0(rollup@4.62.2)
       '@storybook/builder-vite': 8.6.17(storybook@8.6.17(prettier@3.9.6))(vite@6.4.3(@types/node@22.13.9)(jiti@2.4.2)(terser@5.49.0)(tsx@4.23.1)(yaml@2.8.3))
-      '@storybook/react': 8.6.17(@storybook/test@8.6.17(storybook@8.6.17(prettier@3.9.6)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(storybook@8.6.17(prettier@3.9.6))(typescript@5.9.3)
+      '@storybook/react': 8.6.17(@storybook/test@8.6.17(storybook@8.6.17(prettier@3.9.6)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(storybook@8.6.17(prettier@3.9.6))(typescript@5.8.2)
       find-up: 5.0.0
       magic-string: 0.30.21
       react: 18.3.1
@@ -16429,7 +16494,7 @@ snapshots:
       - supports-color
       - typescript
 
-  '@storybook/react@8.6.17(@storybook/test@8.6.17(storybook@8.6.17(prettier@3.9.6)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(storybook@8.6.17(prettier@3.9.6))(typescript@5.9.3)':
+  '@storybook/react@8.6.17(@storybook/test@8.6.17(storybook@8.6.17(prettier@3.9.6)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(storybook@8.6.17(prettier@3.9.6))(typescript@5.8.2)':
     dependencies:
       '@storybook/components': 8.6.17(storybook@8.6.17(prettier@3.9.6))
       '@storybook/global': 5.0.0
@@ -16442,9 +16507,9 @@ snapshots:
       storybook: 8.6.17(prettier@3.9.6)
     optionalDependencies:
       '@storybook/test': 8.6.17(storybook@8.6.17(prettier@3.9.6))
-      typescript: 5.9.3
+      typescript: 5.8.2
 
-  '@storybook/test-runner@0.19.1(@swc/helpers@0.5.23)(@types/node@22.13.9)(babel-plugin-macros@3.1.0)(storybook@8.6.17(prettier@3.9.6))(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.9.3))':
+  '@storybook/test-runner@0.19.1(@swc/helpers@0.5.23)(@types/node@22.13.9)(babel-plugin-macros@3.1.0)(storybook@8.6.17(prettier@3.9.6))(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.8.2))':
     dependencies:
       '@babel/core': 7.29.6
       '@babel/generator': 7.29.7
@@ -16458,14 +16523,14 @@ snapshots:
       '@swc/core': 1.16.2(@swc/helpers@0.5.23)
       '@swc/jest': 0.2.39(@swc/core@1.16.2(@swc/helpers@0.5.23))
       expect-playwright: 0.8.0
-      jest: 29.7.0(@types/node@22.13.9)(babel-plugin-macros@3.1.0)(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.9.3))
+      jest: 29.7.0(@types/node@22.13.9)(babel-plugin-macros@3.1.0)(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.8.2))
       jest-circus: 29.7.0(babel-plugin-macros@3.1.0)
       jest-environment-node: 29.7.0
       jest-junit: 16.0.0
-      jest-playwright-preset: 4.0.0(jest-circus@29.7.0(babel-plugin-macros@3.1.0))(jest-environment-node@29.7.0)(jest-runner@29.7.0)(jest@29.7.0(@types/node@22.13.9)(babel-plugin-macros@3.1.0)(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.9.3)))
+      jest-playwright-preset: 4.0.0(jest-circus@29.7.0(babel-plugin-macros@3.1.0))(jest-environment-node@29.7.0)(jest-runner@29.7.0)(jest@29.7.0(@types/node@22.13.9)(babel-plugin-macros@3.1.0)(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.8.2)))
       jest-runner: 29.7.0
       jest-serializer-html: 7.1.0
-      jest-watch-typeahead: 2.2.2(jest@29.7.0(@types/node@22.13.9)(babel-plugin-macros@3.1.0)(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.9.3)))
+      jest-watch-typeahead: 2.2.2(jest@29.7.0(@types/node@22.13.9)(babel-plugin-macros@3.1.0)(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.8.2)))
       nyc: 15.1.0
       playwright: 1.61.1
     transitivePeerDependencies:
@@ -16765,7 +16830,7 @@ snapshots:
     dependencies:
       '@testing-library/dom': 10.4.0
 
-  '@tsconfig/node10@1.0.12':
+  '@tsconfig/node10@1.0.13':
     optional: true
 
   '@tsconfig/node12@1.0.11':
@@ -16990,15 +17055,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@typescript-eslint/project-service@8.65.0(typescript@5.9.3)':
-    dependencies:
-      '@typescript-eslint/tsconfig-utils': 8.65.0(typescript@5.9.3)
-      '@typescript-eslint/types': 8.65.0
-      debug: 4.4.3(supports-color@7.2.0)
-      typescript: 5.9.3
-    transitivePeerDependencies:
-      - supports-color
-
   '@typescript-eslint/project-service@8.71.1(typescript@5.8.2)':
     dependencies:
       '@typescript-eslint/tsconfig-utils': 8.71.1(typescript@5.8.2)
@@ -17031,10 +17087,6 @@ snapshots:
   '@typescript-eslint/tsconfig-utils@8.65.0(typescript@5.8.2)':
     dependencies:
       typescript: 5.8.2
-
-  '@typescript-eslint/tsconfig-utils@8.65.0(typescript@5.9.3)':
-    dependencies:
-      typescript: 5.9.3
 
   '@typescript-eslint/tsconfig-utils@8.71.1(typescript@5.8.2)':
     dependencies:
@@ -17116,21 +17168,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@typescript-eslint/typescript-estree@8.65.0(typescript@5.9.3)':
-    dependencies:
-      '@typescript-eslint/project-service': 8.65.0(typescript@5.9.3)
-      '@typescript-eslint/tsconfig-utils': 8.65.0(typescript@5.9.3)
-      '@typescript-eslint/types': 8.65.0
-      '@typescript-eslint/visitor-keys': 8.65.0
-      debug: 4.4.3(supports-color@7.2.0)
-      minimatch: 10.2.5
-      semver: 7.8.5
-      tinyglobby: 0.2.17
-      ts-api-utils: 2.5.0(typescript@5.9.3)
-      typescript: 5.9.3
-    transitivePeerDependencies:
-      - supports-color
-
   '@typescript-eslint/typescript-estree@8.71.1(typescript@5.8.2)':
     dependencies:
       '@typescript-eslint/project-service': 8.71.1(typescript@5.8.2)
@@ -17180,17 +17217,6 @@ snapshots:
       '@typescript-eslint/typescript-estree': 8.65.0(typescript@5.8.2)
       eslint: 8.57.1
       typescript: 5.8.2
-    transitivePeerDependencies:
-      - supports-color
-
-  '@typescript-eslint/utils@8.65.0(eslint@8.57.1)(typescript@5.9.3)':
-    dependencies:
-      '@eslint-community/eslint-utils': 4.10.1(eslint@8.57.1)
-      '@typescript-eslint/scope-manager': 8.65.0
-      '@typescript-eslint/types': 8.65.0
-      '@typescript-eslint/typescript-estree': 8.65.0(typescript@5.9.3)
-      eslint: 8.57.1
-      typescript: 5.9.3
     transitivePeerDependencies:
       - supports-color
 
@@ -17324,7 +17350,7 @@ snapshots:
       obug: 2.1.4
       std-env: 4.2.0
       tinyrainbow: 3.1.0
-      vitest: 4.1.11(@types/node@22.13.9)(@vitest/coverage-v8@4.1.11)(@vitest/ui@4.1.11)(jsdom@26.0.0)(msw@2.15.0(@types/node@22.13.9)(typescript@5.8.2))(vite@6.4.3(@types/node@22.13.9)(jiti@2.4.2)(terser@5.49.0)(tsx@4.23.1)(yaml@2.8.3))
+      vitest: 4.1.11(@types/node@22.13.9)(@vitest/coverage-v8@4.1.11)(@vitest/ui@4.1.11)(jsdom@26.0.0)(msw@2.15.0(@types/node@22.13.9)(typescript@5.9.3))(vite@6.4.3(@types/node@22.13.9)(jiti@2.4.2)(terser@5.49.0)(tsx@4.23.1)(yaml@2.8.3))
 
   '@vitest/expect@2.0.5':
     dependencies:
@@ -17415,7 +17441,7 @@ snapshots:
       sirv: 3.0.2
       tinyglobby: 0.2.17
       tinyrainbow: 3.1.0
-      vitest: 4.1.11(@types/node@22.13.9)(@vitest/coverage-v8@4.1.11)(@vitest/ui@4.1.11)(jsdom@26.0.0)(msw@2.15.0(@types/node@22.13.9)(typescript@5.8.2))(vite@6.4.3(@types/node@22.13.9)(jiti@2.4.2)(terser@5.49.0)(tsx@4.23.1)(yaml@2.8.3))
+      vitest: 4.1.11(@types/node@22.13.9)(@vitest/coverage-v8@4.1.11)(@vitest/ui@4.1.11)(jsdom@26.0.0)(msw@2.15.0(@types/node@22.13.9)(typescript@5.9.3))(vite@6.4.3(@types/node@22.13.9)(jiti@2.4.2)(terser@5.49.0)(tsx@4.23.1)(yaml@2.8.3))
 
   '@vitest/utils@2.0.5':
     dependencies:
@@ -17579,10 +17605,13 @@ snapshots:
 
   acorn-walk@8.3.5:
     dependencies:
-      acorn: 8.17.0
+      acorn: 8.19.0
     optional: true
 
   acorn@8.17.0: {}
+
+  acorn@8.19.0:
+    optional: true
 
   address@2.0.3: {}
 
@@ -18417,13 +18446,13 @@ snapshots:
       crc-32: 1.2.2
       readable-stream: 4.7.0
 
-  create-jest@29.7.0(@types/node@22.13.9)(babel-plugin-macros@3.1.0)(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.9.3)):
+  create-jest@29.7.0(@types/node@22.13.9)(babel-plugin-macros@3.1.0)(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.8.2)):
     dependencies:
       '@jest/types': 29.6.3
       chalk: 4.1.2
       exit: 0.1.2
       graceful-fs: 4.2.11
-      jest-config: 29.7.0(@types/node@22.13.9)(babel-plugin-macros@3.1.0)(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.9.3))
+      jest-config: 29.7.0(@types/node@22.13.9)(babel-plugin-macros@3.1.0)(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.8.2))
       jest-util: 29.7.0
       prompts: 2.4.2
     transitivePeerDependencies:
@@ -19144,13 +19173,13 @@ snapshots:
       string.prototype.matchall: 4.0.12
       string.prototype.repeat: 1.0.0
 
-  eslint-plugin-storybook@0.11.3(eslint@8.57.1)(typescript@5.9.3):
+  eslint-plugin-storybook@0.11.3(eslint@8.57.1)(typescript@5.8.2):
     dependencies:
       '@storybook/csf': 0.1.13
-      '@typescript-eslint/utils': 8.65.0(eslint@8.57.1)(typescript@5.9.3)
+      '@typescript-eslint/utils': 8.65.0(eslint@8.57.1)(typescript@5.8.2)
       eslint: 8.57.1
       ts-dedent: 2.3.0
-      typescript: 5.9.3
+      typescript: 5.8.2
     transitivePeerDependencies:
       - supports-color
 
@@ -19832,11 +19861,11 @@ snapshots:
 
   i18next-intervalplural-postprocessor@3.0.0: {}
 
-  i18next@24.2.3(typescript@5.9.3):
+  i18next@24.2.3(typescript@5.8.2):
     dependencies:
       '@babel/runtime': 7.29.7
     optionalDependencies:
-      typescript: 5.9.3
+      typescript: 5.8.2
 
   iconv-lite@0.4.24:
     dependencies:
@@ -20204,16 +20233,16 @@ snapshots:
       - babel-plugin-macros
       - supports-color
 
-  jest-cli@29.7.0(@types/node@22.13.9)(babel-plugin-macros@3.1.0)(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.9.3)):
+  jest-cli@29.7.0(@types/node@22.13.9)(babel-plugin-macros@3.1.0)(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.8.2)):
     dependencies:
-      '@jest/core': 29.7.0(babel-plugin-macros@3.1.0)(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.9.3))
+      '@jest/core': 29.7.0(babel-plugin-macros@3.1.0)(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.8.2))
       '@jest/test-result': 29.7.0
       '@jest/types': 29.6.3
       chalk: 4.1.2
-      create-jest: 29.7.0(@types/node@22.13.9)(babel-plugin-macros@3.1.0)(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.9.3))
+      create-jest: 29.7.0(@types/node@22.13.9)(babel-plugin-macros@3.1.0)(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.8.2))
       exit: 0.1.2
       import-local: 3.2.0
-      jest-config: 29.7.0(@types/node@22.13.9)(babel-plugin-macros@3.1.0)(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.9.3))
+      jest-config: 29.7.0(@types/node@22.13.9)(babel-plugin-macros@3.1.0)(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.8.2))
       jest-util: 29.7.0
       jest-validate: 29.7.0
       yargs: 17.7.3
@@ -20223,7 +20252,7 @@ snapshots:
       - supports-color
       - ts-node
 
-  jest-config@29.7.0(@types/node@22.13.9)(babel-plugin-macros@3.1.0)(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.9.3)):
+  jest-config@29.7.0(@types/node@22.13.9)(babel-plugin-macros@3.1.0)(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.8.2)):
     dependencies:
       '@babel/core': 7.29.6
       '@jest/test-sequencer': 29.7.0
@@ -20249,7 +20278,7 @@ snapshots:
       strip-json-comments: 3.1.1
     optionalDependencies:
       '@types/node': 22.13.9
-      ts-node: 10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.9.3)
+      ts-node: 10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.8.2)
     transitivePeerDependencies:
       - babel-plugin-macros
       - supports-color
@@ -20337,10 +20366,10 @@ snapshots:
       '@types/node': 22.13.9
       jest-util: 29.7.0
 
-  jest-playwright-preset@4.0.0(jest-circus@29.7.0(babel-plugin-macros@3.1.0))(jest-environment-node@29.7.0)(jest-runner@29.7.0)(jest@29.7.0(@types/node@22.13.9)(babel-plugin-macros@3.1.0)(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.9.3))):
+  jest-playwright-preset@4.0.0(jest-circus@29.7.0(babel-plugin-macros@3.1.0))(jest-environment-node@29.7.0)(jest-runner@29.7.0)(jest@29.7.0(@types/node@22.13.9)(babel-plugin-macros@3.1.0)(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.8.2))):
     dependencies:
       expect-playwright: 0.8.0
-      jest: 29.7.0(@types/node@22.13.9)(babel-plugin-macros@3.1.0)(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.9.3))
+      jest: 29.7.0(@types/node@22.13.9)(babel-plugin-macros@3.1.0)(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.8.2))
       jest-circus: 29.7.0(babel-plugin-macros@3.1.0)
       jest-environment-node: 29.7.0
       jest-process-manager: 0.4.0
@@ -20496,11 +20525,11 @@ snapshots:
       leven: 3.1.0
       pretty-format: 29.7.0
 
-  jest-watch-typeahead@2.2.2(jest@29.7.0(@types/node@22.13.9)(babel-plugin-macros@3.1.0)(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.9.3))):
+  jest-watch-typeahead@2.2.2(jest@29.7.0(@types/node@22.13.9)(babel-plugin-macros@3.1.0)(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.8.2))):
     dependencies:
       ansi-escapes: 6.2.1
       chalk: 5.6.2
-      jest: 29.7.0(@types/node@22.13.9)(babel-plugin-macros@3.1.0)(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.9.3))
+      jest: 29.7.0(@types/node@22.13.9)(babel-plugin-macros@3.1.0)(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.8.2))
       jest-regex-util: 29.6.3
       jest-watcher: 29.7.0
       slash: 5.1.0
@@ -20531,12 +20560,12 @@ snapshots:
       merge-stream: 2.0.0
       supports-color: 8.1.1
 
-  jest@29.7.0(@types/node@22.13.9)(babel-plugin-macros@3.1.0)(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.9.3)):
+  jest@29.7.0(@types/node@22.13.9)(babel-plugin-macros@3.1.0)(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.8.2)):
     dependencies:
-      '@jest/core': 29.7.0(babel-plugin-macros@3.1.0)(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.9.3))
+      '@jest/core': 29.7.0(babel-plugin-macros@3.1.0)(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.8.2))
       '@jest/types': 29.6.3
       import-local: 3.2.0
-      jest-cli: 29.7.0(@types/node@22.13.9)(babel-plugin-macros@3.1.0)(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.9.3))
+      jest-cli: 29.7.0(@types/node@22.13.9)(babel-plugin-macros@3.1.0)(ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.8.2))
     transitivePeerDependencies:
       - '@types/node'
       - babel-plugin-macros
@@ -20965,10 +20994,10 @@ snapshots:
 
   ms@2.1.3: {}
 
-  msw-storybook-addon@2.0.7(msw@2.15.0(@types/node@22.13.9)(typescript@5.9.3)):
+  msw-storybook-addon@2.0.7(msw@2.15.0(@types/node@22.13.9)(typescript@5.8.2)):
     dependencies:
       is-node-process: 1.2.0
-      msw: 2.15.0(@types/node@22.13.9)(typescript@5.9.3)
+      msw: 2.15.0(@types/node@22.13.9)(typescript@5.8.2)
 
   msw@2.15.0(@types/node@22.13.9)(typescript@5.8.2):
     dependencies:
@@ -20994,7 +21023,6 @@ snapshots:
       typescript: 5.8.2
     transitivePeerDependencies:
       - '@types/node'
-    optional: true
 
   msw@2.15.0(@types/node@22.13.9)(typescript@5.9.3):
     dependencies:
@@ -21020,6 +21048,7 @@ snapshots:
       typescript: 5.9.3
     transitivePeerDependencies:
       - '@types/node'
+    optional: true
 
   mute-stream@3.0.0: {}
 
@@ -21663,9 +21692,9 @@ snapshots:
       prop-types: 15.8.1
       react: 18.3.1
 
-  react-docgen-typescript@2.4.0(typescript@5.9.3):
+  react-docgen-typescript@2.4.0(typescript@5.8.2):
     dependencies:
-      typescript: 5.9.3
+      typescript: 5.8.2
 
   react-docgen@7.1.1:
     dependencies:
@@ -21692,15 +21721,15 @@ snapshots:
     dependencies:
       react: 18.3.1
 
-  react-i18next@15.7.4(i18next@24.2.3(typescript@5.9.3))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3):
+  react-i18next@15.7.4(i18next@24.2.3(typescript@5.8.2))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.8.2):
     dependencies:
       '@babel/runtime': 7.29.7
       html-parse-stringify: 3.0.1
-      i18next: 24.2.3(typescript@5.9.3)
+      i18next: 24.2.3(typescript@5.8.2)
       react: 18.3.1
     optionalDependencies:
       react-dom: 18.3.1(react@18.3.1)
-      typescript: 5.9.3
+      typescript: 5.8.2
 
   react-is@16.13.1: {}
 
@@ -22600,27 +22629,23 @@ snapshots:
     dependencies:
       typescript: 5.8.2
 
-  ts-api-utils@2.5.0(typescript@5.9.3):
-    dependencies:
-      typescript: 5.9.3
-
   ts-dedent@2.3.0: {}
 
-  ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.9.3):
+  ts-node@10.9.1(@swc/core@1.16.2(@swc/helpers@0.5.23))(@types/node@22.13.9)(typescript@5.8.2):
     dependencies:
       '@cspotcode/source-map-support': 0.8.1
-      '@tsconfig/node10': 1.0.12
+      '@tsconfig/node10': 1.0.13
       '@tsconfig/node12': 1.0.11
       '@tsconfig/node14': 1.0.3
       '@tsconfig/node16': 1.0.4
       '@types/node': 22.13.9
-      acorn: 8.17.0
+      acorn: 8.19.0
       acorn-walk: 8.3.5
       arg: 4.1.3
       create-require: 1.1.1
       diff: 4.0.4
       make-error: 1.3.6
-      typescript: 5.9.3
+      typescript: 5.8.2
       v8-compile-cache-lib: 3.0.1
       yn: 3.1.1
     optionalDependencies:
