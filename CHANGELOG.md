@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.5] - 2026-10-26
+
+### Security
+
+- Update dependencies to mitigate [CVE-2026-112403](https://nvd.nist.gov/vuln/detail/cve-2026-112403), [CVE-2026-111755](https://github.com/advisories/GHSA-8r9p-f939-6h3c), [CVE-2026-111756](https://github.com/advisories/GHSA-q3jh-wrc6-jgq8), [CVE-2026-112942](https://github.com/advisories/GHSA-587h-7wmj-h5pm) and [CVE-2026-114125](https://nvd.nist.gov/vuln/detail/CVE-2026-114125).
+
 ## [1.3.4] - 2026-10-19
 
 ### Fixed
