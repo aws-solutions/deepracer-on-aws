@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.6] - 2026-10-30
+
+### Security
+
+- Update dependencies to mitigate [CVE-2026-111497](https://nvd.nist.gov/vuln/detail/CVE-2026-111497), [CVE-2026-109869](https://nvd.nist.gov/vuln/detail/CVE-2026-109869), [GHSA-27r3-jxmh-p828](https://github.com/advisories/GHSA-27r3-jxmh-p828) and [ALAS2023-2026-3255](https://alas.aws.amazon.com/AL2023/ALAS2023-2026-3255.html).
+
+### Fixed
+
+- Fixed the model optimizer's AWS SDK calls not including the solution user agent.
+
 ## [1.3.5] - 2026-10-26
 
 ### Security
@@ -36,7 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.3.2] - 2026-10-07
 
-### Documentation
+### Changed
 
 - Updated the architecture diagram and component descriptions in the `README.md`.
 
@@ -60,14 +70,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Removed the Timekeeping page from the Racer persona.
+- Updated the architecture diagram in `README.md`.
 
 ### Security
 
 - Update dependencies to mitigate [CVE-2026-84394](https://nvd.nist.gov/vuln/detail/CVE-2026-84394), [CVE-2026-101894](https://avd.aquasec.com/nvd/2026/cve-2026-101894/), [CVE-2026-89161](https://nvd.nist.gov/vuln/detail/CVE-2026-89161), [CVE-2026-84233](https://nvd.nist.gov/vuln/detail/CVE-2026-84233), [CVE-2026-80230](https://nvd.nist.gov/vuln/detail/CVE-2026-80230), [CVE-2026-78367](https://nvd.nist.gov/vuln/detail/CVE-2026-78367), [CVE-2026-86142](https://nvd.nist.gov/vuln/detail/CVE-2026-86142), [CVE-2026-86144](https://nvd.nist.gov/vuln/detail/CVE-2026-86144), [CVE-2026-86143](https://nvd.nist.gov/vuln/detail/CVE-2026-86143), [CVE-2026-86138](https://nvd.nist.gov/vuln/detail/CVE-2026-86138), [CVE-2026-86140](https://nvd.nist.gov/vuln/detail/CVE-2026-86140), [CVE-2026-97687](https://nvd.nist.gov/vuln/detail/CVE-2026-97687), [CVE-2026-97689](https://nvd.nist.gov/vuln/detail/CVE-2026-97689) and [CVE-2026-74860](https://nvd.nist.gov/vuln/detail/CVE-2026-74860).
-
-### Documentation
-
-- Updated the architecture diagram in `README.md`.
 
 ## [1.3.0] - 2026-09-24
 

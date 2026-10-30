@@ -32,6 +32,7 @@ from .constants import (
     PHYSICAL_MODEL_METADATA_ENTRY,
     PHYSICAL_MODEL_PB_ENTRY,
 )
+from .custom_user_agent import get_boto_config
 
 logger = Logger(service="model_optimizer")
 
@@ -51,7 +52,7 @@ class InvalidArchiveStructureError(Exception):
 def _client() -> S3Client:
     global _s3_client
     if _s3_client is None:
-        _s3_client = boto3.client("s3")
+        _s3_client = boto3.client("s3", config=get_boto_config())
     return _s3_client
 
 
