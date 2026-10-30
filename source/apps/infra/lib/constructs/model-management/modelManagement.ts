@@ -31,6 +31,7 @@ import { CompositeAlarmWrapper } from '#constructs/common/compositeAlarmWrapper.
 import { isDevMode } from '#constructs/common/deploymentModeHelper.js';
 import { createEpicFunctions, EpicFunctionProps, lambdaEntryPath } from '#constructs/common/epicConstructHelpers.js';
 import { DefaultLogRemovalPolicy, DefaultLogRetentionDays } from '#constructs/common/logGroupsHelper.js';
+import { getCustomUserAgent } from '#constructs/common/manifestReader.js';
 import { NodeLambdaFunction } from '#constructs/common/nodeLambdaFunction.js';
 
 import { PushWorkflow } from './pushWorkflow.js';
@@ -126,6 +127,7 @@ export class ModelManagement extends Construct {
       logGroup: optimizerLogGroup,
       environment: {
         POWERTOOLS_METRICS_NAMESPACE: 'DeepRacerIndyModelOptimizer',
+        CUSTOM_USER_AGENT: getCustomUserAgent(),
         DATABASE_NAME: dynamoDBTable.tableName,
         MODEL_DATA_BUCKET_NAME: modelStorageBucket.bucketName,
         UPLOAD_BUCKET_NAME: uploadBucket.bucketName,

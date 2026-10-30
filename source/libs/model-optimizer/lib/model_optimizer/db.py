@@ -31,6 +31,7 @@ from .constants import (
     OPTIMIZATION_STATUS_IN_PROGRESS,
     OPTIMIZATION_STATUS_OPTIMIZED,
 )
+from .custom_user_agent import get_boto_config
 
 logger = Logger(service="model_optimizer")
 
@@ -40,7 +41,7 @@ _dynamodb_resource = None
 def _table() -> Table:
     global _dynamodb_resource
     if _dynamodb_resource is None:
-        _dynamodb_resource = boto3.resource("dynamodb")
+        _dynamodb_resource = boto3.resource("dynamodb", config=get_boto_config())
     table_name = os.environ.get("DATABASE_NAME")
     if not table_name:
         raise RuntimeError("DATABASE_NAME environment variable is not defined")

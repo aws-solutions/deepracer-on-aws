@@ -207,6 +207,19 @@ describe('ModelManagementStack', () => {
         }),
       ).not.toThrow();
     });
+
+    it('sets CUSTOM_USER_AGENT from the solution manifest', () => {
+      expect(() =>
+        template.hasResourceProperties('AWS::Lambda::Function', {
+          PackageType: 'Image',
+          Environment: {
+            Variables: Match.objectLike({
+              CUSTOM_USER_AGENT: Match.stringLikeRegexp('^AwsSolution/SO0310/v'),
+            }),
+          },
+        }),
+      ).not.toThrow();
+    });
   });
 
   describe('GuardDuty Malware Protection', () => {

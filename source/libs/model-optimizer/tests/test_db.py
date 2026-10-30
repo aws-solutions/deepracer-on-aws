@@ -4,6 +4,7 @@
 import os
 import unittest
 from decimal import Decimal
+from unittest.mock import patch
 
 import boto3
 from botocore.exceptions import ClientError
@@ -45,6 +46,17 @@ class TestModelKey(unittest.TestCase):
     def test_key_uses_lowercase_prefixes(self):
         key = db._model_key(TEST_MODEL_ID, TEST_PROFILE_ID)
         self.assertEqual(key, {"pk": "profile_p1", "sk": "model_m1"})
+
+
+class TestTable(unittest.TestCase):
+    def tearDown(self):
+        db._dynamodb_resource = None
+
+    @patch.dict(os.environ, {"CUSTOM_USER_AGENT": "AwsSolution/SO0310/v9.9.9"})
+    def test_sets_custom_user_agent_on_dynamodb_resource(self):
+        db._dynamodb_resource = None
+        db._table()
+        self.assertEqual(db._dynamodb_resource.meta.client.meta.config.user_agent_extra, "AwsSolution/SO0310/v9.9.9")
 
 
 class TestGetModelItem(unittest.TestCase):

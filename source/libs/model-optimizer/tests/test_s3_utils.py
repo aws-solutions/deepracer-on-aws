@@ -28,6 +28,16 @@ class TestParseS3Uri(unittest.TestCase):
             s3_utils.parse_s3_uri("not-an-s3-uri")
 
 
+class TestClient(unittest.TestCase):
+    def tearDown(self):
+        s3_utils._s3_client = None
+
+    @patch.dict(os.environ, {"CUSTOM_USER_AGENT": "AwsSolution/SO0310/v9.9.9"})
+    def test_sets_custom_user_agent_on_s3_client(self):
+        s3_utils._s3_client = None
+        self.assertEqual(s3_utils._client().meta.config.user_agent_extra, "AwsSolution/SO0310/v9.9.9")
+
+
 class TestPollGuardDutyScanStatus(unittest.TestCase):
     def setUp(self):
         s3_utils._s3_client = None
