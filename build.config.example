@@ -1,0 +1,40 @@
+# Copy this file to `build.config` (gitignored) and fill in your values.
+#   cp build.config.example build.config
+#
+# `build.config` is read by the root Makefile. Uncomment/edit values as needed.
+
+# --- Required for `make deploy` ---
+admin_email=you@example.com
+
+# --- Required for `make bootstrap` ---
+account_id=123456789012
+region=us-east-1
+
+# --- Optional ---
+# Namespace for this deployment, lets you run multiple instances in one account.
+# Lowercase alphanumeric, 3-12 characters.
+# namespace=deepracer1
+
+# Custom domain mapped to CloudFront (used for CORS allowlisting).
+# custom_domain=https://deepracer.example.com
+
+# Authentication email delivery method: COGNITO (default) or SES.
+# email_delivery_method=COGNITO
+# ses_verified_email=noreply@example.com
+
+# Allow wildcard CORS on the API for local development against a deployed
+# backend (e.g. `pnpm nx serve website`). Do not enable in production.
+# enable_local_dev_cors=true
+
+# Redirect ALL container images to a different public ECR registry (same repo
+# names, different registry). Takes effect unless overridden per-image below.
+# public_ecr_registry=public.ecr.aws/deepracer-community
+
+# Redirect a single container image to a custom registry/repo (see README
+# "Configuration" section). Only images with their own override are
+# redirected; all others keep using public_ecr_registry (or the default).
+# override_public_ecr_registry=123456789012.dkr.ecr.us-east-1.amazonaws.com
+# override_simapp_repo_name=deepracer-on-aws-simapp
+# override_reward_validation_repo_name=
+# override_model_validation_repo_name=
+# override_model_optimizer_repo_name=
