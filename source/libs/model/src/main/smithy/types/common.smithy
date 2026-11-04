@@ -2,8 +2,13 @@ $version: "2"
 
 namespace com.aws.solutions.deepracer
 
-@pattern("^[A-Za-z0-9]{15}$")
-string ResourceIdentifier // Nano ID : https://github.com/ai/nanoid
+// Either a native generateResourceId() nano ID (https://github.com/ai/nanoid), or the
+// Cognito-assigned username a federated (SAML/OIDC) sign-in gets instead —
+// "<ProviderName>_<subject>" — mirrors RESOURCE_ID_REGEX_STR in
+// libs/database/src/constants/regex.ts, which every resource ID is validated against at the
+// database layer; this is the API-layer counterpart and must stay in sync with it.
+@pattern("^(?:[A-Za-z0-9-]{15}|[A-Za-z0-9]+_[\\w-]{1,200})$")
+string ResourceIdentifier
 
 @range(min: 0, max: 1)
 double NormalizedValue
