@@ -12,7 +12,9 @@ import SpaceBetween from '@cloudscape-design/components/space-between';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { useGetProfileQuery } from '#services/deepRacer/profileApi.js';
 import { getUserEmail } from '#utils/authUtils.js';
+import { environmentConfig } from '#utils/envUtils.js';
 
 import ChangePasswordModal from './components/ChangePasswordModal/ChangePasswordModal';
 import DeleteAccountModal from './components/DeleteAccountModal/DeleteAccountModal';
@@ -22,6 +24,18 @@ const Account = () => {
   const [isDeleteAccountModalOpen, setIsDeleteAccountModalOpen] = useState(false);
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string | undefined>('');
+  const { data: profile } = useGetProfileQuery();
+
+  // Federated (SSO) users have no Cognito-managed password to change — Cognito's federated
+  // usernames are deterministically "${idpName}_<subject>" (see UserIdentity.EXTERNAL_IDP_NAME),
+  // and idpName is already plumbed through to the frontend for the "Sign in with SSO" button, so
+  // this reuses it rather than needing a new Profile field just to detect this. The user pool has
+  // signInCaseSensitive: false, so Cognito lowercases every username (including the federated
+  // ones) regardless of the provider name's actual casing — compare case-insensitively.
+  const isFederatedUser = Boolean(
+    environmentConfig.idpName &&
+      profile?.profileId.toLowerCase().startsWith(`${environmentConfig.idpName.toLowerCase()}_`),
+  );
 
   const fetchUserEmail = async () => {
     const email = await getUserEmail();
@@ -63,17 +77,21 @@ const Account = () => {
               </Box>
               <Box variant="p">{userEmail}</Box>
             </SpaceBetween>
-            <Box>
-              <Box variant="p" padding="n" fontWeight="bold">
-                {t('yourPassword')}
-              </Box>
-              <ColumnLayout columns={4}>
-                <Box fontSize="body-m" margin={{ bottom: 'm' }}>
-                  {'xxxxxxxxxxxxxxxxxxxxxxxxxxxxx'}
+            {!isFederatedUser && (
+              <Box>
+                <Box variant="p" padding="n" fontWeight="bold">
+                  {t('yourPassword')}
                 </Box>
-                <Link onFollow={handleChangePasswordClick}>{t('changePassword')}</Link>
-              </ColumnLayout>
-            </Box>
+                <ColumnLayout columns={4}>
+                  <Box fontSize="body-m" margin={{ bottom: 'm' }}>
+                    {'xxxxxxxxxxxxxxxxxxxxxxxxxxxxx'}
+                  </Box>
+                  <Link data-testid="changePasswordLink" onFollow={handleChangePasswordClick}>
+                    {t('changePassword')}
+                  </Link>
+                </ColumnLayout>
+              </Box>
+            )}
           </SpaceBetween>
           <Box>
             <Button variant="normal" onClick={handleDeleteAccountClick}>

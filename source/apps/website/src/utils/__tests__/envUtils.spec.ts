@@ -31,6 +31,12 @@ describe('envUtils', () => {
       userPoolClientId: 'placeholder-user-pool-client-id',
       region: 'us-east-1',
       uploadBucketName: 'upload-bucket',
+      iotEndpoint: undefined,
+      namespace: undefined,
+      solutionVersion: undefined,
+      cloudFrontDomainName: undefined,
+      idpEnabled: false,
+      idpName: '',
     });
   });
 
@@ -42,12 +48,20 @@ describe('envUtils', () => {
       userPoolClientId: 'test-user-pool-client-id',
       region: 'eu-west-1',
       uploadBucketName: 'test-upload-bucket',
+      idpEnabled: true,
+      idpName: 'TestIdp',
     };
 
     window.EnvironmentConfig = testConfig;
 
     const { environmentConfig } = await vi.importActual<typeof import('../envUtils')>('../envUtils');
-    expect(environmentConfig).toEqual(testConfig);
+    expect(environmentConfig).toEqual({
+      ...testConfig,
+      iotEndpoint: undefined,
+      namespace: undefined,
+      solutionVersion: undefined,
+      cloudFrontDomainName: undefined,
+    });
   });
 
   it('should use fallback values for undefined properties', async () => {
@@ -76,6 +90,12 @@ describe('envUtils', () => {
       userPoolClientId: 'test-user-pool-client-id',
       region: 'us-east-1', // fallback
       uploadBucketName: 'test-upload-bucket',
+      iotEndpoint: undefined,
+      namespace: undefined,
+      solutionVersion: undefined,
+      cloudFrontDomainName: undefined,
+      idpEnabled: false,
+      idpName: '',
     });
   });
 
@@ -106,6 +126,12 @@ describe('envUtils', () => {
       userPoolClientId: 'test-user-pool-client-id',
       region: 'us-east-1', // fallback
       uploadBucketName: 'upload-bucket', // fallback
+      iotEndpoint: undefined,
+      namespace: undefined,
+      solutionVersion: undefined,
+      cloudFrontDomainName: undefined,
+      idpEnabled: false,
+      idpName: '',
     });
   });
 });

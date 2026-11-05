@@ -12,6 +12,8 @@ export interface EnvironmentConfig {
   namespace?: string;
   solutionVersion?: string;
   cloudFrontDomainName?: string;
+  idpEnabled?: boolean;
+  idpName?: string;
 }
 
 declare global {
@@ -31,4 +33,6 @@ export const environmentConfig: EnvironmentConfig = {
   namespace: globalThis.window?.EnvironmentConfig?.namespace,
   solutionVersion: globalThis.window?.EnvironmentConfig?.solutionVersion,
   cloudFrontDomainName: globalThis.window?.EnvironmentConfig?.cloudFrontDomainName,
+  idpEnabled: globalThis.window?.EnvironmentConfig?.idpEnabled ?? false,
+  idpName: globalThis.window?.EnvironmentConfig?.idpName ?? '',
 };
