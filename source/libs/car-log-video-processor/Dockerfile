@@ -2,7 +2,7 @@
 FROM public.ecr.aws/docker/library/ros:jazzy-ros-base
 
 # The forks below are pinned to the commits the video processor was built and tested against.
-ARG DEEPRACER_VIZ_REF=496523a738953842b50032723908056262a79847
+ARG DEEPRACER_VIZ_REF=9f65f07b9086ecfe4f7c258d442dc8db125bc25a
 ARG DEEPRACER_INTERFACES_REF=78873a03379be478159c7c9e8c644288979db881
 
 RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
@@ -25,7 +25,7 @@ RUN pip3 install -U --break-system-packages --ignore-installed --no-cache-dir -r
 
 RUN mkdir -p /var/task/src /var/task/.tmp/matplotlib && \
     cd /var/task/src && \
-    git clone https://github.com/larsll/deepracer-viz && git -C deepracer-viz checkout "${DEEPRACER_VIZ_REF}" && \
+    git clone https://github.com/aws-deepracer-community/deepracer-viz && git -C deepracer-viz checkout "${DEEPRACER_VIZ_REF}" && \
     git clone https://github.com/larsll/aws-deepracer-interfaces-pkg && \
     git -C aws-deepracer-interfaces-pkg checkout "${DEEPRACER_INTERFACES_REF}" && \
     bash -c 'cd /var/task && source /opt/ros/jazzy/setup.bash && colcon build --merge-install && rm -rf build log src'
