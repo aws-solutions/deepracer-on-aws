@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "clean": "rm -rf dist",
+    "clean": "rm -rf dist node_modules",
     "postinstall": "patch-package",
     "config:local": "./scripts/generate-local-env.sh",
     "deploy:s3": "./scripts/deploy-website.sh"
