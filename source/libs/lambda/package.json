@@ -31,6 +31,7 @@
     "@types/aws-lambda": "^8.10.147",
     "archiver": "7.0.1",
     "base64url": "3.0.1",
+    "tar-stream": "3.2.0",
     "yaml": "^2.7.0",
     "@aws-crypto/sha256-js": "^5.2.0",
     "@aws-sdk/credential-provider-node": "^3.654.0",
@@ -39,7 +40,8 @@
   },
   "devDependencies": {
     "@smithy/util-stream": "^4.2.0",
-    "@types/archiver": "^6.0.3"
+    "@types/archiver": "^6.0.3",
+    "@types/tar-stream": "^3.1.5"
   },
   "imports": {
     "#*": "./src/*"

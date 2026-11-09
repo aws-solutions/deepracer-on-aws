@@ -6,6 +6,7 @@ import { CollectionPreferencesProps } from '@cloudscape-design/components/collec
 export enum DevicesTableColumn {
   NAME = 'Name',
   TYPE = 'Type',
+  LOGGING_CAPABLE = 'LoggingCapable',
   STATUS = 'Status',
   FLEET = 'Fleet',
   LAST_SEEN = 'LastSeen',
@@ -18,6 +19,7 @@ export const DEFAULT_PAGE_SIZE = 10;
 export const DEFAULT_COLUMN_DISPLAY: CollectionPreferencesProps.ContentDisplayItem[] = [
   { id: DevicesTableColumn.NAME, visible: true },
   { id: DevicesTableColumn.TYPE, visible: true },
+  { id: DevicesTableColumn.LOGGING_CAPABLE, visible: true },
   { id: DevicesTableColumn.STATUS, visible: true },
   { id: DevicesTableColumn.FLEET, visible: true },
   { id: DevicesTableColumn.LAST_SEEN, visible: true },

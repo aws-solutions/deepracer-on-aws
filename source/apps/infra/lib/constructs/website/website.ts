@@ -34,6 +34,7 @@ interface StaticWebsiteProps {
   userPoolClientId: string;
   modelStorageBucket: Bucket;
   uploadBucket: Bucket;
+  deviceLogsBucket: Bucket;
   namespace: string;
   solutionVersion: string;
   iotEndpoint?: string;
@@ -53,6 +54,7 @@ export class StaticWebsite extends Construct {
       userPoolClientId,
       modelStorageBucket,
       uploadBucket,
+      deviceLogsBucket,
       namespace,
       solutionVersion,
       iotEndpoint,
@@ -96,12 +98,12 @@ export class StaticWebsite extends Construct {
           "frame-ancestors 'none'",
           "font-src 'self' data:",
           "img-src 'self' data:",
-          `media-src 'self' blob: https://${modelStorageBucket.bucketRegionalDomainName}`,
+          `media-src 'self' blob: https://${modelStorageBucket.bucketRegionalDomainName} https://${deviceLogsBucket.bucketRegionalDomainName}`,
           "object-src 'none'",
           "style-src 'self'",
           "script-src 'self' 'wasm-unsafe-eval'",
           "worker-src 'self' blob:",
-          `connect-src 'self' blob: ${apiEndpointUrl} https://cognito-idp.${region}.amazonaws.com https://cognito-identity.${region}.amazonaws.com https://*.kinesisvideo.${region}.amazonaws.com https://${uploadBucket.bucketRegionalDomainName} https://${modelStorageBucket.bucketRegionalDomainName} https://www.gstatic.com/draco/versioned/decoders/ https://api.github.com${iotEndpoint ? ` wss://${iotEndpoint}` : ''}`,
+          `connect-src 'self' blob: ${apiEndpointUrl} https://cognito-idp.${region}.amazonaws.com https://cognito-identity.${region}.amazonaws.com https://*.kinesisvideo.${region}.amazonaws.com https://${uploadBucket.bucketRegionalDomainName} https://${modelStorageBucket.bucketRegionalDomainName} https://${deviceLogsBucket.bucketRegionalDomainName} https://www.gstatic.com/draco/versioned/decoders/ https://api.github.com${iotEndpoint ? ` wss://${iotEndpoint}` : ''}`,
           'upgrade-insecure-requests',
         ].join('; '),
         override: true,

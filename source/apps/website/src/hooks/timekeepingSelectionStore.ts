@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 export interface TimekeepingSelection {
+  fetchCarLogsOnRunFinish: boolean;
   selectedEventId: string | undefined;
   selectedLeaderboardId: string | undefined;
   selectedEventName: string | undefined;
@@ -10,6 +11,7 @@ export interface TimekeepingSelection {
 
 const STORAGE_KEY = 'deepracer-timekeeping-selected-event-and-track';
 const EMPTY_SELECTION: TimekeepingSelection = {
+  fetchCarLogsOnRunFinish: false,
   selectedEventId: undefined,
   selectedLeaderboardId: undefined,
   selectedEventName: undefined,
@@ -25,6 +27,7 @@ const deserialize = (serialized: string | null): TimekeepingSelection => {
   try {
     const parsed = JSON.parse(serialized) as Partial<TimekeepingSelection>;
     return {
+      fetchCarLogsOnRunFinish: parsed.fetchCarLogsOnRunFinish ?? false,
       selectedEventId: parsed.selectedEventId,
       selectedLeaderboardId: parsed.selectedLeaderboardId,
       selectedEventName: parsed.selectedEventName,

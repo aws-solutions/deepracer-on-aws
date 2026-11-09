@@ -4,6 +4,7 @@
 import Box from '@cloudscape-design/components/box';
 import ColumnLayout from '@cloudscape-design/components/column-layout';
 import Container from '@cloudscape-design/components/container';
+import Toggle from '@cloudscape-design/components/toggle';
 import { EventStatus } from '@deepracer-indy/typescript-client';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -14,7 +15,8 @@ import { useListEventsQuery, useListEventTracksQuery } from '#services/deepRacer
 export const EventAndTrackInfo = () => {
   const { t } = useTranslation('timekeeping');
   const { t: tEvents } = useTranslation('events');
-  const { selectedEventId, selectedLeaderboardId } = useTimekeepingContext();
+  const { fetchCarLogsOnRunFinish, selectedEventId, selectedLeaderboardId, setFetchCarLogsOnRunFinish } =
+    useTimekeepingContext();
   const { data: events = [] } = useListEventsQuery({ status: EventStatus.IN_PROGRESS });
   const { data: tracks = [] } = useListEventTracksQuery({ eventId: selectedEventId ?? '' }, { skip: !selectedEventId });
 
@@ -30,7 +32,7 @@ export const EventAndTrackInfo = () => {
 
   return (
     <Container data-id="EventAndTrackInfo" data-testid="event-and-track-info">
-      <ColumnLayout columns={2} minColumnWidth={180} variant="text-grid">
+      <ColumnLayout columns={3} minColumnWidth={180} variant="text-grid">
         <Box data-testid="race-format-info" display="inline-block">
           <Box display="inline" variant="awsui-key-label">
             {t('contextSelection.raceFormatLabel')}
@@ -43,6 +45,13 @@ export const EventAndTrackInfo = () => {
           </Box>{' '}
           {t('contextSelection.timerNotConnected')}
         </Box>
+        <Toggle
+          checked={fetchCarLogsOnRunFinish}
+          description={t('contextSelection.fetchCarLogsDescription')}
+          onChange={({ detail }) => setFetchCarLogsOnRunFinish(detail.checked)}
+        >
+          {t('contextSelection.fetchCarLogsLabel')}
+        </Toggle>
       </ColumnLayout>
     </Container>
   );

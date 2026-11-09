@@ -13,6 +13,7 @@ describe('useTimekeepingContext', () => {
   it('returns undefined selections when nothing has been persisted', () => {
     const { result } = renderHook(() => useTimekeepingContext());
 
+    expect(result.current.fetchCarLogsOnRunFinish).toBe(false);
     expect(result.current.selectedEventId).toBeUndefined();
     expect(result.current.selectedLeaderboardId).toBeUndefined();
     expect(result.current.selectedEventName).toBeUndefined();
@@ -32,6 +33,16 @@ describe('useTimekeepingContext', () => {
     expect(result.current.selectedTrackName).toBe('Track 1');
   });
 
+  it('persists the fetch-car-logs toggle independently from the event and track selection', () => {
+    const { result } = renderHook(() => useTimekeepingContext());
+
+    act(() => {
+      result.current.setFetchCarLogsOnRunFinish(true);
+    });
+
+    expect(result.current.fetchCarLogsOnRunFinish).toBe(true);
+  });
+
   it('reads a previously persisted selection on mount', () => {
     const { result: firstRender } = renderHook(() => useTimekeepingContext());
     act(() => {
@@ -44,6 +55,7 @@ describe('useTimekeepingContext', () => {
     expect(secondRender.current.selectedLeaderboardId).toBe('track-2');
     expect(secondRender.current.selectedEventName).toBe('Event 2');
     expect(secondRender.current.selectedTrackName).toBe('Track 2');
+    expect(secondRender.current.fetchCarLogsOnRunFinish).toBe(false);
   });
 
   it('clears the selection', () => {
@@ -60,6 +72,7 @@ describe('useTimekeepingContext', () => {
     expect(result.current.selectedLeaderboardId).toBeUndefined();
     expect(result.current.selectedEventName).toBeUndefined();
     expect(result.current.selectedTrackName).toBeUndefined();
+    expect(result.current.fetchCarLogsOnRunFinish).toBe(false);
   });
 
   it('clears names when an ID-only selection replaces a named selection', () => {

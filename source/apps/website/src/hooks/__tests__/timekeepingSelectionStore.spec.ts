@@ -25,6 +25,7 @@ describe('timekeepingSelectionStore', () => {
     const secondSnapshot = getTimekeepingSelectionSnapshot();
 
     expect(firstSnapshot).toEqual({
+      fetchCarLogsOnRunFinish: false,
       selectedEventId: undefined,
       selectedLeaderboardId: undefined,
       selectedEventName: undefined,
@@ -35,6 +36,7 @@ describe('timekeepingSelectionStore', () => {
 
   it('does not throw and retains the previous persisted selection when storage writes fail', () => {
     const persistedSelection = {
+      fetchCarLogsOnRunFinish: true,
       selectedEventId: 'event-1',
       selectedLeaderboardId: 'leaderboard-1',
       selectedEventName: 'Event 1',
@@ -52,6 +54,7 @@ describe('timekeepingSelectionStore', () => {
 
     expect(() =>
       setTimekeepingSelection({
+        fetchCarLogsOnRunFinish: false,
         selectedEventId: 'event-2',
         selectedLeaderboardId: 'leaderboard-2',
         selectedEventName: 'Event 2',

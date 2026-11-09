@@ -5,7 +5,7 @@ import { useCollection } from '@cloudscape-design/collection-hooks';
 import { CollectionPreferencesProps } from '@cloudscape-design/components/collection-preferences';
 import StatusIndicator from '@cloudscape-design/components/status-indicator';
 import { TableProps } from '@cloudscape-design/components/table';
-import { Device, DeviceStatus } from '@deepracer-indy/typescript-client';
+import { Device, DeviceStatus, DeviceType } from '@deepracer-indy/typescript-client';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -34,6 +34,15 @@ export const useDevicesTableConfig = (devices: Device[], fleetNamesById: Map<str
       item.fleetId ? (fleetNamesById.get(item.fleetId) ?? item.fleetId) : t('unassignedFleet'),
     [fleetNamesById, t],
   );
+  const resolveLoggingCapableLabel = useCallback(
+    (item: Device): string => {
+      if (item.deviceType !== DeviceType.CAR) return '—';
+      if (item.loggingCapable === true) return t('loggingCapable.true');
+      if (item.loggingCapable === false) return t('loggingCapable.false');
+      return t('loggingCapable.unknown');
+    },
+    [t],
+  );
 
   const columnDefinitions: TableProps.ColumnDefinition<Device>[] = useMemo(
     () => [
@@ -49,6 +58,12 @@ export const useDevicesTableConfig = (devices: Device[], fleetNamesById: Map<str
         header: t('list.columnHeaders.deviceType'),
         cell: (item) => t(`deviceType.${item.deviceType}`),
         sortingField: 'deviceType',
+      },
+      {
+        id: DevicesTableColumn.LOGGING_CAPABLE,
+        header: t('list.columnHeaders.loggingCapable'),
+        cell: (item) => resolveLoggingCapableLabel(item),
+        sortingComparator: (a, b) => resolveLoggingCapableLabel(a).localeCompare(resolveLoggingCapableLabel(b)),
       },
       {
         id: DevicesTableColumn.STATUS,
@@ -79,7 +94,7 @@ export const useDevicesTableConfig = (devices: Device[], fleetNamesById: Map<str
         sortingField: 'ipAddress',
       },
     ],
-    [t, resolveFleetName],
+    [t, resolveFleetName, resolveLoggingCapableLabel],
   );
 
   const columnDisplay = preferences.contentDisplay;
@@ -88,9 +103,13 @@ export const useDevicesTableConfig = (devices: Device[], fleetNamesById: Map<str
     filtering: {
       filteringFunction: (item, filteringText) => {
         const text = filteringText.toLowerCase();
-        return [item.name, t(`deviceType.${item.deviceType}`), t(`status.${item.status}`), resolveFleetName(item)].some(
-          (value) => value?.toLowerCase().includes(text),
-        );
+        return [
+          item.name,
+          t(`deviceType.${item.deviceType}`),
+          resolveLoggingCapableLabel(item),
+          t(`status.${item.status}`),
+          resolveFleetName(item),
+        ].some((value) => value?.toLowerCase().includes(text));
       },
     },
     pagination: { pageSize: preferences.pageSize },

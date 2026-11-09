@@ -128,6 +128,18 @@ export class S3Bucket extends Construct {
       versioned: true,
       autoDeleteObjects: true, // TODO: link to config value
       removalPolicy: RemovalPolicy.DESTROY, // TODO: link to config value
+      // Car-log uploads under `staging/manual/` start the processing workflow through EventBridge
+      eventBridgeEnabled: true,
+      // Presigned browser uploads and downloads of car logs
+      cors: [
+        {
+          allowedMethods: [HttpMethods.GET, HttpMethods.PUT, HttpMethods.HEAD],
+          allowedOrigins: ['*'],
+          allowedHeaders: ['*'],
+          exposedHeaders: ['ETag'],
+          maxAge: 3600,
+        },
+      ],
       lifecycleRules: [
         {
           enabled: true,
@@ -135,6 +147,36 @@ export class S3Bucket extends Construct {
           expiration: Duration.days(90),
           noncurrentVersionExpiration: Duration.days(30),
           abortIncompleteMultipartUploadAfter: Duration.days(1),
+        },
+        // Car-log transient objects: uploaded archives, download archives, job inputs and outputs
+        {
+          enabled: true,
+          id: 'ExpireCarLogStaging',
+          prefix: 'staging/',
+          expiration: Duration.days(1),
+          noncurrentVersionExpiration: Duration.days(1),
+          abortIncompleteMultipartUploadAfter: Duration.days(1),
+        },
+        {
+          enabled: true,
+          id: 'ExpireCarLogDownloads',
+          prefix: 'downloads/',
+          expiration: Duration.days(1),
+          noncurrentVersionExpiration: Duration.days(1),
+        },
+        {
+          enabled: true,
+          id: 'ExpireCarLogJobConfigs',
+          prefix: 'job-configs/',
+          expiration: Duration.days(7),
+          noncurrentVersionExpiration: Duration.days(1),
+        },
+        {
+          enabled: true,
+          id: 'ExpireCarLogResults',
+          prefix: 'results/',
+          expiration: Duration.days(7),
+          noncurrentVersionExpiration: Duration.days(1),
         },
       ],
     });

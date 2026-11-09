@@ -21,6 +21,7 @@ import Account from '#pages/Account';
 import ActivateDevice from '#pages/ActivateDevice';
 import AdminModels from '#pages/AdminModels';
 import Auth from '#pages/Auth';
+import CarLogs from '#pages/CarLogs';
 import CloneRace from '#pages/CloneRace';
 import CommentatorView from '#pages/CommentatorView';
 import CreateEvaluation from '#pages/CreateEvaluation';
@@ -78,6 +79,8 @@ const router = createBrowserRouter([
         </Route>
         <Route path={pages[PageId.CLONE_RACE].path} element={<CloneRace />} />
         <Route path={pages[PageId.CREATE_EVALUATION].path} element={<CreateEvaluation />} />
+        <Route path={pages[PageId.CAR_LOGS].path} element={<CarLogs scope="mine" />} />
+        <Route path={pages[PageId.ADMIN_CAR_LOGS].path} element={<CarLogs scope="all" />} />
         <Route element={<RequiresAdmin />}>
           <Route path={pages[PageId.CREATE_EVENT].path} element={<CreateEvent />} />
           <Route path={pages[PageId.EDIT_EVENT].path} element={<EditEvent />} />

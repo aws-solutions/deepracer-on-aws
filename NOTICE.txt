@@ -880,6 +880,7 @@ array-flatten under the MIT license.
 autoprefixer under the MIT license.
 aws-lambda-powertools under the MIT-0 license.
 AWSSDK under the Apache-2.0 license.
+aws-deepracer-interfaces-pkg under the Apache-2.0 license.
 aws_common under the Apache-2.0 license.
 aws_ros2_common under the Apache-2.0 license.
 body-parser under the MIT license.

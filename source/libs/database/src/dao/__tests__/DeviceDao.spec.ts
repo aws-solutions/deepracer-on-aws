@@ -202,6 +202,19 @@ describe('DeviceDao', () => {
       expect(patched).toMatchObject({ instanceId: params.instanceId, carType: CarType.DEEPRACER_RPI });
     });
 
+    it('stores loggingCapable, keeps false values, and does not wipe it when a later observation omits it', async () => {
+      const params = statusParams();
+
+      const created = await deviceDao.upsertStatus({ ...params, loggingCapable: false });
+      expect(created).toMatchObject({ loggingCapable: false });
+
+      const patched = await deviceDao.upsertStatus({ ...params, loggingCapable: true });
+      expect(patched).toMatchObject({ loggingCapable: true });
+
+      const untouched = await deviceDao.upsertStatus(params);
+      expect(untouched).toMatchObject({ loggingCapable: true });
+    });
+
     it('does not wipe a previously captured carType when a later observation omits it', async () => {
       const params = statusParams();
 
