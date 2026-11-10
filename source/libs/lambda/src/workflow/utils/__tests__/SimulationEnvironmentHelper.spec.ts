@@ -10,7 +10,7 @@ import {
   TEST_TRAINING_ITEM_OA,
   TEST_EVALUATION_ITEM_OA,
 } from '@deepracer-indy/database';
-import { CarColor, CarShell, RaceType } from '@deepracer-indy/typescript-server-client';
+import { CarColor, CarShell, CheckpointSelection, RaceType } from '@deepracer-indy/typescript-server-client';
 
 import { trackHelper } from '../../../utils/TrackHelper.js';
 import { simulationEnvironmentHelper } from '../SimulationEnvironmentHelper.js';
@@ -109,6 +109,16 @@ describe('SimulationEnvironmentHelper', () => {
       expect(result.MIN_EVAL_TRIALS).toBe(3);
     });
 
+    it('should not set EVAL_CHECKPOINT for training jobs', async () => {
+      const result = await simulationEnvironmentHelper.getSimulationEnvironmentVariables(
+        TEST_TRAINING_ITEM,
+        TEST_MODEL_ITEM,
+        TEST_PROFILE_ITEM,
+      );
+
+      expect(result).not.toHaveProperty('EVAL_CHECKPOINT');
+    });
+
     it('should not include MP4_S3_BUCKET or MP4_S3_OBJECT_PREFIX for training jobs', async () => {
       const result = await simulationEnvironmentHelper.getSimulationEnvironmentVariables(
         TEST_TRAINING_ITEM,
@@ -142,6 +152,20 @@ describe('SimulationEnvironmentHelper', () => {
         MODEL_S3_PREFIX: expect.any(String),
         NUMBER_OF_TRIALS: TEST_EVALUATION_ITEM.terminationConditions.maxLaps,
       });
+    });
+
+    it.each([
+      [undefined, 'best'],
+      [CheckpointSelection.BEST, 'best'],
+      [CheckpointSelection.LAST, 'last'],
+    ] as const)('should pass the checkpoint %s to the SimApp as %s', async (checkpoint, expected) => {
+      const result = await simulationEnvironmentHelper.getSimulationEnvironmentVariables(
+        { ...TEST_EVALUATION_ITEM, checkpoint },
+        TEST_MODEL_ITEM,
+        TEST_PROFILE_ITEM,
+      );
+
+      expect(result.EVAL_CHECKPOINT).toBe(expected);
     });
 
     it('should include resetting behavior config', async () => {
@@ -184,6 +208,16 @@ describe('SimulationEnvironmentHelper', () => {
       );
 
       expect(result.VIDEO_JOB_TYPE).toBe('RACING');
+    });
+
+    it("should pass the submission's checkpoint to the SimApp", async () => {
+      const result = await simulationEnvironmentHelper.getSimulationEnvironmentVariables(
+        { ...TEST_SUBMISSION_ITEM, checkpoint: CheckpointSelection.LAST },
+        TEST_MODEL_ITEM,
+        TEST_PROFILE_ITEM,
+      );
+
+      expect(result.EVAL_CHECKPOINT).toBe('last');
     });
 
     it('should include MP4_S3_BUCKET and MP4_S3_OBJECT_PREFIX for submissions', async () => {

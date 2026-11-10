@@ -4,7 +4,7 @@
 import path from 'node:path';
 
 import { TrainingJobStatus } from '@aws-sdk/client-sagemaker';
-import { Duration, Stack } from 'aws-cdk-lib';
+import { Aws, Duration } from 'aws-cdk-lib';
 import { Alarm, ComparisonOperator, TreatMissingData } from 'aws-cdk-lib/aws-cloudwatch';
 import { TableV2 } from 'aws-cdk-lib/aws-dynamodb';
 import { Rule } from 'aws-cdk-lib/aws-events';
@@ -278,7 +278,7 @@ export class LiveRaceWorkflow extends Construct {
       stateMachineName: `${namespace}-LiveRaceWorkflow`,
       logs: {
         destination: new LogGroup(this, 'LiveRaceExecutionLogs', {
-          logGroupName: `/aws/vendedlogs/states/${Stack.of(this).stackName}-LiveRaceWorkflow`,
+          logGroupName: `/aws/vendedlogs/states/${Aws.STACK_NAME}-LiveRaceWorkflow`,
           removalPolicy: DefaultLogRemovalPolicy,
           retention: DefaultLogRetentionDays,
           encryptionKey,

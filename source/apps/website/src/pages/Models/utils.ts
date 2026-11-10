@@ -1,7 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { Model } from '@deepracer-indy/typescript-client';
+import { CheckpointSelection, Model } from '@deepracer-indy/typescript-client';
 
 import { initialFormValues, MIN_MAX_TIME_IN_MINUTES } from '#pages/CreateModel/constants';
 import { CreateModelFormValues } from '#pages/CreateModel/types';
@@ -23,6 +23,7 @@ export const createCloneModelFormValues = (model: Model) => {
     trainingConfig: { ...model.trainingConfig, maxTimeInMinutes },
     metadata: model.metadata,
     preTrainedModelId: model.modelId,
+    preTrainedCheckpoint: CheckpointSelection.BEST,
     actionSpaceForm: {
       ...initialFormValues.actionSpaceForm,
       isAdvancedConfigOn: true,

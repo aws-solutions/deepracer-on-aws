@@ -99,7 +99,9 @@ describe('Workflow', () => {
       });
 
       template.hasResourceProperties('AWS::Logs::LogGroup', {
-        LogGroupName: Match.anyValue(),
+        LogGroupName: {
+          'Fn::Join': ['', ['/aws/vendedlogs/states/', { Ref: 'AWS::StackName' }, '-DeepRacerIndyWorkflow']],
+        },
       });
     });
   });
@@ -234,10 +236,10 @@ describe('Workflow', () => {
             }),
           ]),
         },
+        // Shared by the training and evaluation execution roles.
         Roles: [
-          {
-            Ref: Match.stringLikeRegexp('.*WorkflowSageMakerRole.*'),
-          },
+          { Ref: Match.stringLikeRegexp('.*WorkflowSageMakerRole.*') },
+          { Ref: Match.stringLikeRegexp('.*WorkflowSageMakerEvaluationRole.*') },
         ],
       });
     });
@@ -611,9 +613,8 @@ describe('Workflow', () => {
             ]),
           },
           Roles: [
-            {
-              Ref: Match.stringLikeRegexp('.*SageMakerRole.*'),
-            },
+            { Ref: Match.stringLikeRegexp('.*SageMakerRole.*') },
+            { Ref: Match.stringLikeRegexp('.*SageMakerEvaluationRole.*') },
           ],
         });
       }).not.toThrow();
@@ -818,7 +819,7 @@ describe('Workflow', () => {
       });
     });
 
-    it('grants CreateTrainingJob and PassRole to the job-creation role only', () => {
+    it('grants CreateTrainingJob and PassRole of the ABAC execution role to the job-creation role', () => {
       expect(template).toBeDefined();
       template.hasResourceProperties('AWS::IAM::Policy', {
         PolicyDocument: {
@@ -875,6 +876,122 @@ describe('Workflow', () => {
         Environment: {
           Variables: Match.objectLike({
             SAGEMAKER_JOB_CREATION_ROLE_ARN: Match.anyValue(),
+          }),
+        },
+      });
+    });
+
+    it('lets the jobInitializer create only evaluation and submission jobs, passing only the evaluation role', () => {
+      expect(template).toBeDefined();
+      template.hasResourceProperties('AWS::IAM::Policy', {
+        PolicyDocument: {
+          Statement: Match.arrayWith([
+            Match.objectLike({
+              Action: 'sagemaker:CreateTrainingJob',
+              Effect: 'Allow',
+              Resource: [
+                Match.objectLike({
+                  'Fn::Join': ['', Match.arrayWith([':training-job/deepracerindy-evaluation-*'])],
+                }),
+                Match.objectLike({
+                  'Fn::Join': ['', Match.arrayWith([':training-job/deepracerindy-submission-*'])],
+                }),
+              ],
+            }),
+            Match.objectLike({
+              Action: 'iam:PassRole',
+              Effect: 'Allow',
+              Resource: { 'Fn::GetAtt': [Match.stringLikeRegexp('.*SageMakerEvaluationRole.*'), 'Arn'] },
+              Condition: { StringEquals: { 'iam:PassedToService': 'sagemaker.amazonaws.com' } },
+            }),
+          ]),
+        },
+        Roles: [{ Ref: Match.stringLikeRegexp('.*JobInitializerFunction.*') }],
+      });
+    });
+
+    describe('evaluation role S3 access', () => {
+      type Statement = { Action: string | string[]; Resource: unknown; Condition?: unknown };
+
+      /** Renders a resource as a string, with the bucket ARN token shown as `{bucket}`. */
+      const renderResource = (resource: unknown): string => {
+        const join = (resource as { 'Fn::Join'?: [string, unknown[]] })['Fn::Join'];
+        if (!join) return String(resource);
+        return join[1].map((part) => (typeof part === 'string' ? part : '{bucket}')).join('');
+      };
+
+      const evaluationRoleStatements = (): Statement[] => {
+        const policies = template.findResources('AWS::IAM::Policy', {
+          Properties: { Roles: [{ Ref: Match.stringLikeRegexp('.*SageMakerEvaluationRole.*') }] },
+        });
+        return Object.values(policies).flatMap(
+          (policy) =>
+            (policy as { Properties: { PolicyDocument: { Statement: Statement[] } } }).Properties.PolicyDocument
+              .Statement,
+        );
+      };
+
+      const actionsOf = (statement: Statement) =>
+        Array.isArray(statement.Action) ? statement.Action : [statement.Action];
+      const resourcesOf = (statement: Statement) =>
+        (Array.isArray(statement.Resource) ? statement.Resource : [statement.Resource]).map(renderResource);
+
+      it('reads and lists only the model folder and the job YAML', () => {
+        const statements = evaluationRoleStatements();
+
+        const readResources = statements.filter((s) => actionsOf(s).includes('s3:GetObject')).flatMap(resourcesOf);
+        expect(readResources).toEqual([
+          '{bucket}/*/models/*/sagemaker-artifacts/model/*',
+          '{bucket}/*/models/*/sagemaker-artifacts/training_params.yaml',
+        ]);
+
+        const list = statements.find((s) => actionsOf(s).includes('s3:ListBucket'));
+        expect(list?.Condition).toEqual({
+          StringLike: { 's3:prefix': ['*/models/*/sagemaker-artifacts/model*'] },
+        });
+      });
+
+      it('writes only job outputs and the checkpoint pointer', () => {
+        const write = evaluationRoleStatements().find((s) => actionsOf(s).includes('s3:PutObject'));
+
+        expect(write && actionsOf(write)).toEqual(['s3:PutObject', 's3:AbortMultipartUpload']);
+        expect(write && resourcesOf(write)).toEqual([
+          '{bucket}/*/models/*/sagemaker-artifacts/model/.coach_checkpoint',
+          '{bucket}/*/models/*/sagemaker-artifacts/model/.ready',
+          '{bucket}/*/models/*/sagemaker-artifacts/evaluation_job_status.json',
+          '{bucket}/*/models/*/sagemaker-artifacts/deepracerindy-evaluation-*',
+          '{bucket}/*/models/*/metrics/evaluation/*',
+          '{bucket}/*/models/*/sim-trace/evaluation/*',
+          '{bucket}/*/models/*/videos/evaluation/*',
+          '{bucket}/*/models/*/sagemaker-artifacts/submission_job_status.json',
+          '{bucket}/*/models/*/sagemaker-artifacts/deepracerindy-submission-*',
+          '{bucket}/*/models/*/metrics/submission/*',
+          '{bucket}/*/models/*/sim-trace/submission/*',
+          '{bucket}/*/models/*/videos/submission/*',
+        ]);
+      });
+
+      it('cannot delete objects or write model files', () => {
+        const statements = evaluationRoleStatements();
+
+        expect(statements.flatMap(actionsOf)).not.toContain('s3:DeleteObject');
+        const writtenResources = statements.filter((s) => actionsOf(s).includes('s3:PutObject')).flatMap(resourcesOf);
+        expect(writtenResources).not.toContain('{bucket}/*/models/*');
+        expect(
+          writtenResources.some((r) => /model_metadata\.json|reward_function\.py|\.ckpt|training_params/.test(r)),
+        ).toBe(false);
+      });
+    });
+
+    it('sets SAGEMAKER_EVALUATION_ROLE_ARN on the jobInitializer environment', () => {
+      expect(template).toBeDefined();
+      template.hasResourceProperties('AWS::Lambda::Function', {
+        FunctionName: `${TEST_NAMESPACE}-DeepRacerIndyWorkflow-JobInitializerFn`,
+        Environment: {
+          Variables: Match.objectLike({
+            SAGEMAKER_EVALUATION_ROLE_ARN: {
+              'Fn::GetAtt': [Match.stringLikeRegexp('.*SageMakerEvaluationRole.*'), 'Arn'],
+            },
           }),
         },
       });

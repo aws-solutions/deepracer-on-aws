@@ -210,6 +210,27 @@ enum RunStatus {
     DISCARDED
 }
 
+/// How a lap's time was captured
+enum LapTimingSource {
+    /// Facilitator clicked Record lap
+    MANUAL
+
+    /// Hardware timer (RPi sensor) detected the crossing
+    AUTO
+}
+
+/// Whether a lap's time needs a facilitator's review before it counts
+enum LapReviewStatus {
+    /// Lap time is trusted as recorded
+    NOT_REQUIRED
+
+    /// AUTO lap time is suspect (out of range or crossings were missed); saved invalid until reviewed
+    PENDING_REVIEW
+
+    /// Facilitator has set the validity of a lap that was pending review
+    REVIEWED
+}
+
 /// Actions that trigger run state machine transitions
 enum RunTransitionAction {
     /// READY → IN_PROGRESS: begin timing
@@ -292,6 +313,12 @@ structure Lap {
     isValid: Boolean
 
     resets: NonNegativeInteger
+
+    /// How the lap time was captured. Absent on laps created before this field existed (MANUAL).
+    timingSource: LapTimingSource
+
+    /// Review state of the lap time. Absent on laps created before this field existed (NOT_REQUIRED).
+    reviewStatus: LapReviewStatus
 
     /// Original time before manual edit (immutable after first edit)
     originalLapTimeMs: PositiveInteger

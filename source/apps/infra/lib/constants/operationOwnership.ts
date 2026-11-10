@@ -37,6 +37,7 @@ export const OPERATION_OWNER = {
   ListProfiles: 'core',
   UpdateProfile: 'core',
   UpdateGroupMembership: 'core',
+  BatchUpdateProfileQuotas: 'core',
 
   // ── Bulk user creation (Epic 6) ──────────────────────────────────────────────
   BulkInviteUser: 'core',

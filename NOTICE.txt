@@ -916,8 +916,8 @@ fresh under the MIT license.
 generic-names under the MIT license.
 geometry_msgs under the Apache-2.0 license.
 gymnasium under the MIT license.
-gz-plugin2 under the Apache-2.0 license.
-gz-sim8 license under the Apache-2.0 license.
+gz-plugin under the Apache-2.0 license.
+gz-sim under the Apache-2.0 license.
 h264_encoder_core under the Apache-2.0 license.
 h264_video_encoder under the Apache-2.0 license.
 http-errors under the MIT license.
@@ -953,7 +953,7 @@ node-fetch under the MIT license.
 numpy under the BSD-3-Clause license. 
 on-finished under the MIT license.
 openvino under the Apache-2.0 license.
-pandas under the Apache-2.0 license.
+pandas under the BSD-3-Clause license.
 parseurl under the MIT license.
 pillow under the MIT-CMU License.
 PkgConfig under the MIT license.
@@ -968,7 +968,8 @@ producer under the Apache-2.0 license.
 protobuf under the BSD-3-Clause license.
 proxy-addr under the MIT license.
 psutil under the BSD-3-Clause license.
-pygame under the LGPL license(s).
+pygame-ce under the LGPL-2.1-only license.
+  Source code (2.5.8): https://pypi.org/project/pygame-ce/2.5.8/#files
 PyOpenGL under the 0BSD license.
 pytest under the MIT license.
 pytest-cov under the MIT license.
@@ -1017,4 +1018,5 @@ MIT - https://opensource.org/license/mit/
 MIT-0 - https://github.com/aws/mit-0
 curl - https://curl.se/docs/copyright.html
 LGPL - https://spdx.org/licenses/LGPL-2.1-or-later.html
+LGPL-2.1-only - https://spdx.org/licenses/LGPL-2.1-only.html
 CC0-1.0 - https://creativecommons.org/publicdomain/zero/1.0/

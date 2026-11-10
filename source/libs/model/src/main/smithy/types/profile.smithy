@@ -54,3 +54,29 @@ structure AvatarConfig {
 @length(min: 0, max: 40)
 @pattern("^[a-zA-Z0-9\\-\\ ]*$")
 string AvatarItem
+
+/// A usage quota: -1 means unlimited, otherwise a non-negative limit.
+@range(min: -1)
+integer QuotaLimit
+
+/// Bounded input list for BatchUpdateProfileQuotas. Duplicate IDs are rejected. The output list stays unbounded (it may be empty).
+@length(min: 1, max: 200)
+@uniqueItems
+list BatchUpdateProfileQuotasProfileIds {
+    member: ResourceIdentifier
+}
+
+list BatchUpdateProfileQuotasErrors {
+    member: BatchUpdateProfileQuotasError
+}
+
+structure BatchUpdateProfileQuotasError {
+    @required
+    profileId: ResourceIdentifier
+
+    @required
+    code: String
+
+    @required
+    message: String
+}

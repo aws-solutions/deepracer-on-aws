@@ -1,7 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { JobStatus, Model, ModelStatus } from '@deepracer-indy/typescript-client';
+import { CheckpointSelection, JobStatus, Model, ModelStatus } from '@deepracer-indy/typescript-client';
 import { describe, it, expect } from 'vitest';
 
 import { initialFormValues, MIN_MAX_TIME_IN_MINUTES } from '#pages/CreateModel/constants';
@@ -28,6 +28,10 @@ describe('createCloneModelFormValues', () => {
     expect(result.modelName).toBe('My Model-clone');
     expect(result.preTrainedModelId).toBe('model-1');
     expect(result.trainingConfig.trackConfig).toEqual(initialFormValues.trainingConfig.trackConfig);
+  });
+
+  it("starts the clone from the source model's best checkpoint by default", () => {
+    expect(createCloneModelFormValues(buildModel(60)).preTrainedCheckpoint).toBe(CheckpointSelection.BEST);
   });
 
   it('preserves a valid maxTimeInMinutes from the source model', () => {

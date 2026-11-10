@@ -62,6 +62,10 @@ vi.mock('#services/deepRacer/fleetsApi.js', () => ({
   useListFleetsQuery: () => ({ data: [] }),
 }));
 
+vi.mock('#services/deepRacer/lapsApi.js', () => ({
+  useSetLapValidityMutation: vi.fn(() => [vi.fn(), { isLoading: false }]),
+}));
+
 vi.mock('#services/deepRacer/runsApi.js', () => ({
   useListRunsQuery: vi.fn(() => ({ data: [], isFetching: false, isError: false })),
   useGetRunQuery: vi.fn(() => ({ data: undefined, isFetching: false, isError: false })),

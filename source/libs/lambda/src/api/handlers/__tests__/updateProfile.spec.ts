@@ -3,6 +3,7 @@
 
 import { profileDao, TEST_PROFILE_ITEM } from '@deepracer-indy/database';
 import { BadRequestError, InternalFailureError, UpdateProfileInput } from '@deepracer-indy/typescript-server-client';
+import { logger } from '@deepracer-indy/utils';
 import { Mock } from 'vitest';
 
 import { cognitoClient } from '../../../utils/clients/cognitoClient.js';
@@ -14,6 +15,19 @@ vi.mock('../../../utils/clients/cognitoClient.js', () => ({
     send: vi.fn(),
   },
 }));
+
+vi.mock('@deepracer-indy/utils', async () => {
+  const actual = await vi.importActual<typeof import('@deepracer-indy/utils')>('@deepracer-indy/utils');
+  return {
+    ...actual,
+    logger: {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      debug: vi.fn(),
+    },
+  };
+});
 
 const mockCognitoSend = vi.mocked(cognitoClient.send) as Mock;
 
@@ -105,6 +119,7 @@ describe('UpdateProfile operation', () => {
 
   it('should allow admin to update admin fields for another user', async () => {
     mockCognitoSend.mockResolvedValue(mockAdminGroups);
+    vi.spyOn(profileDao, 'load').mockResolvedValue(TEST_PROFILE_ITEM);
     vi.spyOn(profileDao, 'update').mockResolvedValue(TEST_PROFILE_ITEM);
 
     const targetProfileId = 'target-user-profile-id';
@@ -132,6 +147,7 @@ describe('UpdateProfile operation', () => {
 
   it('should allow admin to update admin fields with special values', async () => {
     mockCognitoSend.mockResolvedValue(mockAdminGroups);
+    vi.spyOn(profileDao, 'load').mockResolvedValue(TEST_PROFILE_ITEM);
     vi.spyOn(profileDao, 'update').mockResolvedValue(TEST_PROFILE_ITEM);
 
     const input = { maxTotalComputeMinutes: -1, maxModelCount: 0 };
@@ -213,10 +229,113 @@ describe('UpdateProfile operation', () => {
 
   it('should throw error if profile update fails', async () => {
     mockCognitoSend.mockResolvedValue(mockAdminGroups);
+    vi.spyOn(profileDao, 'load').mockResolvedValue(TEST_PROFILE_ITEM);
     vi.spyOn(profileDao, 'update').mockRejectedValue(new InternalFailureError({ message: 'Internal failure.' }));
 
     await expect(UpdateProfileOperation(TEST_INPUT, TEST_OPERATION_CONTEXT)).rejects.toStrictEqual(
       new InternalFailureError({ message: 'Internal failure.' }),
     );
+  });
+
+  it('should log QUOTA_UPDATE_AUDIT with before/after values when admin updates maxTotalComputeMinutes', async () => {
+    mockCognitoSend.mockResolvedValue(mockAdminGroups);
+    vi.spyOn(profileDao, 'load').mockResolvedValue(TEST_PROFILE_ITEM);
+    vi.spyOn(profileDao, 'update').mockResolvedValue({ ...TEST_PROFILE_ITEM, maxTotalComputeMinutes: 3600 });
+
+    const input = { maxTotalComputeMinutes: 3600 };
+    await UpdateProfileOperation(input, TEST_OPERATION_CONTEXT);
+
+    expect(profileDao.load).toHaveBeenCalledWith({ profileId: TEST_OPERATION_CONTEXT.profileId });
+    expect(logger.info).toHaveBeenCalledWith('QUOTA_UPDATE_AUDIT', {
+      targetProfileId: TEST_OPERATION_CONTEXT.profileId,
+      performedBy: TEST_OPERATION_CONTEXT.profileId,
+      before: {
+        maxTotalComputeMinutes: TEST_PROFILE_ITEM.maxTotalComputeMinutes,
+        maxModelCount: TEST_PROFILE_ITEM.maxModelCount,
+      },
+      after: {
+        maxTotalComputeMinutes: 3600,
+        maxModelCount: TEST_PROFILE_ITEM.maxModelCount,
+      },
+    });
+  });
+
+  it('should log QUOTA_UPDATE_AUDIT when admin updates maxModelCount only', async () => {
+    mockCognitoSend.mockResolvedValue(mockAdminGroups);
+    vi.spyOn(profileDao, 'load').mockResolvedValue(TEST_PROFILE_ITEM);
+    vi.spyOn(profileDao, 'update').mockResolvedValue({ ...TEST_PROFILE_ITEM, maxModelCount: 25 });
+
+    const input = { maxModelCount: 25 };
+    await UpdateProfileOperation(input, TEST_OPERATION_CONTEXT);
+
+    expect(logger.info).toHaveBeenCalledWith('QUOTA_UPDATE_AUDIT', {
+      targetProfileId: TEST_OPERATION_CONTEXT.profileId,
+      performedBy: TEST_OPERATION_CONTEXT.profileId,
+      before: {
+        maxTotalComputeMinutes: TEST_PROFILE_ITEM.maxTotalComputeMinutes,
+        maxModelCount: TEST_PROFILE_ITEM.maxModelCount,
+      },
+      after: {
+        maxTotalComputeMinutes: TEST_PROFILE_ITEM.maxTotalComputeMinutes,
+        maxModelCount: 25,
+      },
+    });
+  });
+
+  it('should log a single QUOTA_UPDATE_AUDIT entry when both quota fields are updated together', async () => {
+    mockCognitoSend.mockResolvedValue(mockAdminGroups);
+    vi.spyOn(profileDao, 'load').mockResolvedValue(TEST_PROFILE_ITEM);
+    vi.spyOn(profileDao, 'update').mockResolvedValue({
+      ...TEST_PROFILE_ITEM,
+      maxTotalComputeMinutes: 1200,
+      maxModelCount: 5,
+    });
+
+    const input = { maxTotalComputeMinutes: 1200, maxModelCount: 5 };
+    await UpdateProfileOperation(input, TEST_OPERATION_CONTEXT);
+
+    expect(logger.info).toHaveBeenCalledTimes(1);
+    expect(logger.info).toHaveBeenCalledWith('QUOTA_UPDATE_AUDIT', {
+      targetProfileId: TEST_OPERATION_CONTEXT.profileId,
+      performedBy: TEST_OPERATION_CONTEXT.profileId,
+      before: {
+        maxTotalComputeMinutes: TEST_PROFILE_ITEM.maxTotalComputeMinutes,
+        maxModelCount: TEST_PROFILE_ITEM.maxModelCount,
+      },
+      after: {
+        maxTotalComputeMinutes: 1200,
+        maxModelCount: 5,
+      },
+    });
+  });
+
+  it('should not log QUOTA_UPDATE_AUDIT for alias/avatar-only updates', async () => {
+    mockCognitoSend.mockResolvedValue(mockNonAdminGroups);
+    vi.spyOn(profileDao, 'update').mockResolvedValue(TEST_PROFILE_ITEM);
+    const loadSpy = vi.spyOn(profileDao, 'load');
+
+    const input = { alias: 'New Alias', avatar: { skinColor: 'light' } };
+    await UpdateProfileOperation(input, TEST_OPERATION_CONTEXT);
+
+    expect(loadSpy).not.toHaveBeenCalled();
+    expect(logger.info).not.toHaveBeenCalledWith('QUOTA_UPDATE_AUDIT', expect.anything());
+  });
+
+  it('should not log QUOTA_UPDATE_AUDIT when a non-admin quota update is rejected', async () => {
+    mockCognitoSend.mockResolvedValue(mockNonAdminGroups);
+    const updateSpy = vi.spyOn(profileDao, 'update');
+    const loadSpy = vi.spyOn(profileDao, 'load');
+
+    const input = { maxTotalComputeMinutes: 7200 };
+
+    await expect(UpdateProfileOperation(input, TEST_OPERATION_CONTEXT)).rejects.toStrictEqual(
+      new BadRequestError({
+        message: 'Non-admin user requesting to change one or more admin-only properties.',
+      }),
+    );
+
+    expect(updateSpy).not.toHaveBeenCalled();
+    expect(loadSpy).not.toHaveBeenCalled();
+    expect(logger.info).not.toHaveBeenCalledWith('QUOTA_UPDATE_AUDIT', expect.anything());
   });
 });

@@ -11,11 +11,16 @@ import Select, { SelectProps } from '@cloudscape-design/components/select';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import Spinner from '@cloudscape-design/components/spinner';
 import StatusIndicator from '@cloudscape-design/components/status-indicator';
-import { ModelStatus, UserGroups } from '@deepracer-indy/typescript-client';
+import {
+  CheckpointSelection as CheckpointSelectionValue,
+  ModelStatus,
+  UserGroups,
+} from '@deepracer-indy/typescript-client';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 
+import CheckpointSelection from '#components/CheckpointSelection';
 import { PageId } from '#constants/pages';
 import { useListLeaderboardsQuery } from '#services/deepRacer/leaderboardsApi';
 import { useGetModelQuery } from '#services/deepRacer/modelsApi';
@@ -30,6 +35,7 @@ const SubmitModelToRace = () => {
   const { t: tCommon } = useTranslation('common', { keyPrefix: 'modelStatus' });
   const [selectedRace, setSelectedRace] = useState<null | SelectProps.Option>(null);
   const [canManageRaces, setCanManageRaces] = useState(false);
+  const [checkpoint, setCheckpoint] = useState<CheckpointSelectionValue>(CheckpointSelectionValue.BEST);
 
   const {
     data: model,
@@ -122,6 +128,11 @@ const SubmitModelToRace = () => {
           </FormField>
         </Container>
 
+        {/* Checkpoint Selection */}
+        <Container>
+          <CheckpointSelection checkpoints={model.checkpoints} value={checkpoint} onChange={setCheckpoint} />
+        </Container>
+
         {/* Action Buttons */}
         <Box float="right">
           <SpaceBetween direction="horizontal" size="xs">
@@ -135,6 +146,7 @@ const SubmitModelToRace = () => {
                 await createSubmission({
                   leaderboardId: selectedRace?.value || '',
                   modelId,
+                  checkpoint,
                 })
                   .unwrap()
                   .then(() => {

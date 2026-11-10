@@ -19,6 +19,7 @@ import RewardFunction from './components/RewardFunction';
 import VehicleInfo from './components/VehicleInfo';
 import { initialFormValues } from './constants';
 import { CreateModelFormValues } from './types';
+import { toCreateModelInput } from './utils';
 import { createModelValidationSchema } from './validation';
 
 const CreateModel = () => {
@@ -56,16 +57,7 @@ const CreateModel = () => {
       }}
       onSubmit={async () => {
         await handleSubmit(async (formValues) => {
-          await createModel({
-            modelDefinition: {
-              name: formValues.modelName,
-              description: formValues.description,
-              carCustomization: formValues.carCustomization,
-              trainingConfig: formValues.trainingConfig,
-              metadata: formValues.metadata,
-            },
-            preTrainedModelId: formValues.preTrainedModelId,
-          })
+          await createModel(toCreateModelInput(formValues))
             .unwrap()
             .then((modelId) => {
               navigate(getPath(PageId.MODEL_DETAILS, { modelId }));

@@ -133,6 +133,7 @@ resource ProfileResource {
         CreateProfile
         UpdateGroupMembership
         DeleteProfileModels
+        BatchUpdateProfileQuotas
     ]
 }
 

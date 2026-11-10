@@ -54,6 +54,8 @@ const EventDetail = () => {
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [isAdminOrFacilitator, setIsAdminOrFacilitator] = useState(false);
+  // SetLapValidity allows admins and race facilitators (UpdateLap stays admin-only).
+  const [canReviewLaps, setCanReviewLaps] = useState(false);
   const [isPermissionLoading, setIsPermissionLoading] = useState(true);
   const [activeTabId, setActiveTabId] = useState('tracks');
 
@@ -67,12 +69,14 @@ const EventDetail = () => {
 
   useEffect(() => {
     const loadPermissions = async () => {
-      const [admin, adminOrFacilitator] = await Promise.all([
+      const [admin, adminOrFacilitator, lapReviewer] = await Promise.all([
         checkUserGroupMembership([UserGroups.ADMIN]),
         checkUserGroupMembership([UserGroups.ADMIN, UserGroups.RACE_FACILITATORS, UserGroups.RACERS]),
+        checkUserGroupMembership([UserGroups.ADMIN, UserGroups.RACE_FACILITATORS]),
       ]);
       setIsAdmin(admin);
       setIsAdminOrFacilitator(adminOrFacilitator);
+      setCanReviewLaps(lapReviewer);
     };
 
     loadPermissions()
@@ -225,7 +229,14 @@ const EventDetail = () => {
               {
                 id: 'runs',
                 label: t('detail.tabs.runs'),
-                content: <RunLapsPanel eventId={eventId ?? ''} tracks={tracks} isAdmin={isAdmin} />,
+                content: (
+                  <RunLapsPanel
+                    eventId={eventId ?? ''}
+                    tracks={tracks}
+                    isAdmin={isAdmin}
+                    canReviewLaps={canReviewLaps}
+                  />
+                ),
               },
               {
                 id: 'statistics',

@@ -14,6 +14,7 @@ const validForm: ActivateDeviceFormValues = {
   wifiPassword: '',
   consolePassword: '',
   communityConsole: false,
+  activeLowSensors: false,
 };
 
 describe('activateDeviceValidationSchema', () => {

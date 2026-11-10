@@ -4,6 +4,7 @@
 import type { JobName } from '@deepracer-indy/database';
 import type { TrackId } from '@deepracer-indy/typescript-server-client';
 
+import type { SimAppCheckpoint } from '../../utils/CheckpointHelper.js';
 import type { SimulationLaunchFile } from '../constants/simulation.js';
 
 export interface SageMakerHyperparameters {
@@ -13,7 +14,10 @@ export interface SageMakerHyperparameters {
   model_metadata_s3_key: string;
   pretrained_s3_bucket?: string;
   pretrained_s3_prefix?: string;
-  reward_function_s3_source: string;
+  /** The pre-trained model's checkpoint a clone starts from: `best` (the SimApp's default) or `last`. */
+  pretrained_checkpoint?: SimAppCheckpoint;
+  /** Training only. */
+  reward_function_s3_source?: string;
   s3_bucket: string;
   s3_kms_cmk_arn?: string;
   s3_prefix: string;

@@ -6,6 +6,7 @@ import { EpisodeStatus } from '@deepracer-indy/typescript-server-client';
 import { CustomAttributeType, Entity, EntityItem } from 'electrodb';
 
 import {
+  CHECKPOINT_ATTRIBUTE,
   METADATA_ATTRIBUTES,
   DynamoDBItemAttribute,
   RESETTING_BEHAVIOR_CONFIG_ATTRIBUTE,
@@ -86,6 +87,7 @@ export const EvaluationsEntity = new Entity(
           jobNameHelper.getJobName(JobType.EVALUATION, evaluationId),
       },
       [DynamoDBItemAttribute.RESETTING_BEHAVIOR_CONFIG]: RESETTING_BEHAVIOR_CONFIG_ATTRIBUTE,
+      [DynamoDBItemAttribute.CHECKPOINT]: CHECKPOINT_ATTRIBUTE,
     },
     indexes: {
       byModelId: {

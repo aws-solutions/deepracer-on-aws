@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import {
+  BatchUpdateProfileQuotasCommand,
+  BatchUpdateProfileQuotasCommandInput,
+  BatchUpdateProfileQuotasCommandOutput,
   BulkInviteUserCommand,
   BulkInviteUserCommandInput,
   BulkInviteUserCommandOutput,
@@ -50,6 +53,13 @@ export const updateProfile = {
     command: new UpdateProfileCommand(input),
   }),
   updateProfileTransformResponse: (response: UpdateProfileCommandOutput) => response.profile,
+};
+
+export const batchUpdateProfileQuotas = {
+  batchUpdateProfileQuotasCommand: (input: BatchUpdateProfileQuotasCommandInput) => ({
+    command: new BatchUpdateProfileQuotasCommand(input),
+    displayNotificationOnError: false,
+  }),
 };
 
 export const deleteProfile = {
@@ -130,6 +140,13 @@ export const profileApi = deepRacerApi.injectEndpoints({
       transformResponse: updateProfile.updateProfileTransformResponse,
       invalidatesTags: [{ type: DeepRacerApiQueryTagType.PROFILE }],
     }),
+    batchUpdateProfileQuotas: build.mutation<
+      BatchUpdateProfileQuotasCommandOutput,
+      BatchUpdateProfileQuotasCommandInput
+    >({
+      query: batchUpdateProfileQuotas.batchUpdateProfileQuotasCommand,
+      invalidatesTags: [{ type: DeepRacerApiQueryTagType.PROFILE }],
+    }),
     listProfiles: build.query<Profile[], void>({
       queryFn: (_input, { dispatch }) => paginatedQuery({}, paginateListProfiles, dispatch, 'profiles'),
       providesTags: [{ type: DeepRacerApiQueryTagType.PROFILE }],
@@ -175,6 +192,7 @@ export const {
   useCreateProfileMutation,
   useGetProfileQuery,
   useUpdateProfileMutation,
+  useBatchUpdateProfileQuotasMutation,
   useListProfilesQuery,
   useDeleteProfileMutation,
   useDeleteProfileModelsMutation,

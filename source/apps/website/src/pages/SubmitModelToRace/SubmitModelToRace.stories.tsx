@@ -9,7 +9,7 @@ import {
 } from '@deepracer-indy/typescript-client';
 import type { Meta, StoryObj } from '@storybook/react';
 
-import { mockLeaderboards, mockModel, mockModel3 } from '#constants/testConstants';
+import { mockLeaderboards, mockModel, mockModel3, mockModelCheckpoints } from '#constants/testConstants';
 import SubmitModelToRace from '#pages/SubmitModelToRace';
 
 const meta = {
@@ -25,6 +25,29 @@ export const Default: Story = {
   parameters: {
     deepRacerApiMocks: (client) => {
       client.on(GetModelCommand).resolves({ model: mockModel });
+      client.on(ListLeaderboardsCommand).resolves({ leaderboards: mockLeaderboards });
+    },
+  },
+};
+
+/** The model's best and last checkpoints differ, so the racer can choose either. */
+export const WithCheckpoints: Story = {
+  parameters: {
+    deepRacerApiMocks: (client) => {
+      client.on(GetModelCommand).resolves({ model: mockModel, checkpoints: mockModelCheckpoints });
+      client.on(ListLeaderboardsCommand).resolves({ leaderboards: mockLeaderboards });
+    },
+  },
+};
+
+/** Training ended on its best checkpoint, so Best and Last are the same. */
+export const SameBestAndLastCheckpoint: Story = {
+  parameters: {
+    deepRacerApiMocks: (client) => {
+      client.on(GetModelCommand).resolves({
+        model: mockModel,
+        checkpoints: { best: mockModelCheckpoints.best, last: mockModelCheckpoints.best },
+      });
       client.on(ListLeaderboardsCommand).resolves({ leaderboards: mockLeaderboards });
     },
   },

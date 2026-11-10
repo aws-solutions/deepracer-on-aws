@@ -3,6 +3,7 @@
 
 import { PutCommand } from '@aws-sdk/lib-dynamodb';
 import {
+  CheckpointSelection,
   JobStatus,
   LiveQueueItemStatus,
   NotFoundError,
@@ -19,6 +20,7 @@ import * as resourceUtils from '#utils/resourceUtils.js';
 import { generateString } from '#utils/testUtils.js';
 
 import { LiveQueueItemDao, liveQueueItemDao } from '../LiveQueueItemDao.js';
+import { submissionDao } from '../SubmissionDao.js';
 
 // txGoMock allows tests to override the return value of transaction.go().
 const txGoMock = vi.hoisted(() => vi.fn());
@@ -104,6 +106,19 @@ describe('LiveQueueItemDao', () => {
         expect(r.submissionId).toBe(items[i].submissionId);
       });
     });
+  });
+
+  it('should keep the chosen checkpoint on the submission, which each live race run reads', async () => {
+    const { leaderboardId, submission } = buildSubmission(null, { checkpoint: CheckpointSelection.LAST });
+
+    const item = await liveQueueItemDao.addToQueue({ ...submission });
+    const submissionItem = await submissionDao.load({
+      profileId: submission.profileId,
+      leaderboardId,
+      submissionId: item.submissionId,
+    });
+
+    expect(submissionItem.checkpoint).toBe(CheckpointSelection.LAST);
   });
 
   it('should throw when tx is canceled', async () => {

@@ -73,6 +73,22 @@ describe('S3PathHelper', () => {
     });
   });
 
+  describe('getSageMakerModelFileS3Location()', () => {
+    it('should return the correct s3 path', () => {
+      expect(
+        s3PathHelper.getSageMakerModelFileS3Location(TEST_MODEL_ID, TEST_PROFILE_ID, '12_Step-3456.ckpt.index'),
+      ).toBe(`${TEST_MODEL_ROOT}sagemaker-artifacts/model/12_Step-3456.ckpt.index`);
+    });
+  });
+
+  describe('getDeepRacerCheckpointsS3Location()', () => {
+    it('should return the correct s3 path', () => {
+      expect(s3PathHelper.getDeepRacerCheckpointsS3Location(TEST_MODEL_ID, TEST_PROFILE_ID)).toBe(
+        `${TEST_MODEL_ROOT}sagemaker-artifacts/model/deepracer_checkpoints.json`,
+      );
+    });
+  });
+
   describe('getSimulationHeartbeatS3Location()', () => {
     it('should return the correct s3 path', () => {
       expect(s3PathHelper.getSimulationHeartbeatS3Location(TEST_MODEL_ID, TEST_PROFILE_ID, TEST_JOB_NAME)).toBe(

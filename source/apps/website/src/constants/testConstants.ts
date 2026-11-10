@@ -15,6 +15,7 @@ import {
   LidarSensor,
   LossType,
   Model,
+  ModelCheckpoints,
   ModelSource,
   ModelStatus,
   OptimizationStatus,
@@ -259,6 +260,12 @@ export const mockPersonalRanking: PersonalRanking = {
   submissionNumber: mockSubmissions[0].submissionNumber,
   submittedAt: mockSubmissions[0].submittedAt,
   videoUrl: mockSubmissions[0].videoUrl,
+};
+
+/** Best and last checkpoints that differ, as for a model whose later training was faster but less consistent. */
+export const mockModelCheckpoints: ModelCheckpoints = {
+  best: { iteration: 12, completionPercentage: 100 },
+  last: { iteration: 15, completionPercentage: 87.5 },
 };
 
 export const mockModel: Model = {

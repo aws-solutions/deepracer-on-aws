@@ -7,9 +7,11 @@ import {
   getGetModelHandler,
   GetModelServerInput,
   GetModelServerOutput,
+  ModelStatus,
 } from '@deepracer-indy/typescript-server-client';
 import { s3Helper, waitForAll } from '@deepracer-indy/utils';
 
+import { checkpointHelper } from '../../utils/CheckpointHelper.js';
 import type { HandlerContext } from '../types/apiGatewayHandlerContext.js';
 import { getApiGatewayHandler } from '../utils/apiGateway.js';
 import { instrumentOperation } from '../utils/instrumentation/instrumentOperation.js';
@@ -26,6 +28,18 @@ export const GetModelOperation: Operation<GetModelServerInput, GetModelServerOut
     modelDao.load({ profileId, modelId }),
     trainingDao.load({ modelId }),
   ]);
+
+  // Checkpoints are only chosen for a READY model, so a model still training or importing, which the
+  // console polls, is not read for them.
+  const checkpoints =
+    modelItem.status === ModelStatus.READY
+      ? await checkpointHelper.getModelCheckpoints(
+          { profileId, modelId },
+          // Only a training job this solution ran has a SageMaker job; an imported model's training
+          // item is created as already completed.
+          { includeCompletion: Boolean(trainingItem.sageMakerJobArn) },
+        )
+      : undefined;
 
   return {
     model: {
@@ -52,6 +66,7 @@ export const GetModelOperation: Operation<GetModelServerInput, GetModelServerOut
       trainingMetricsUrl: await s3Helper.getPresignedUrl(trainingItem.assetS3Locations.metricsS3Location),
       trainingVideoStreamUrl: trainingItem.videoStreamUrl,
     },
+    checkpoints,
   } satisfies GetModelServerOutput;
 };
 

@@ -18,6 +18,7 @@ vi.mock('#services/deepRacer/runsApi.js', () => ({
   useGetRunQuery: () => ({ data: undefined, isFetching: false }),
   useCreateRunMutation: () => [mockCreateRun, { isLoading: false }],
   useTransitionRunStatusMutation: () => [mockTransitionRunStatus, { isLoading: false }],
+  useLazyGetRunQuery: () => [vi.fn()],
 }));
 
 vi.mock('#services/deepRacer/adminApi.js', () => ({

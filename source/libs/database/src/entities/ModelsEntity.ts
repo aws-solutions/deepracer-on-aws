@@ -3,6 +3,7 @@
 
 import { deepRacerIndyAppConfig } from '@deepracer-indy/config';
 import {
+  CheckpointSelection,
   ModelMetadata,
   ModelStatus,
   CarCustomization,
@@ -96,6 +97,11 @@ export const ModelsEntity = new Entity(
       },
       [DynamoDBItemAttribute.CLONED_FROM_MODEL_ID]: {
         type: CustomAttributeType<ResourceId>('string'),
+        readOnly: true,
+      },
+      /** The source model's checkpoint a clone starts from. Clones created before it was recorded used BEST. */
+      [DynamoDBItemAttribute.CLONED_FROM_CHECKPOINT]: {
+        type: Object.values(CheckpointSelection),
         readOnly: true,
       },
       [DynamoDBItemAttribute.CAR_CUSTOMIZATION]: {

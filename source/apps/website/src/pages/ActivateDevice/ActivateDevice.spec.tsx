@@ -39,6 +39,14 @@ vi.mock('#services/deepRacer/fleetsApi.js', () => ({
 
 const mockNavigate = vi.fn();
 
+const TEST_ENVIRONMENT_CONFIG = {
+  iotEndpoint: 'abc123-ats.iot.us-west-2.amazonaws.com',
+  namespace: 'testns',
+  region: 'us-west-2',
+};
+const mockEnvironmentConfig = vi.hoisted((): { iotEndpoint?: string; namespace?: string; region?: string } => ({}));
+vi.mock('#utils/envUtils.js', () => ({ environmentConfig: mockEnvironmentConfig }));
+
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
   return {
@@ -49,6 +57,10 @@ vi.mock('react-router-dom', async () => {
 });
 
 const mockCheckUserGroupMembership = vi.mocked(checkUserGroupMembership);
+
+beforeEach(() => {
+  Object.assign(mockEnvironmentConfig, TEST_ENVIRONMENT_CONFIG);
+});
 
 describe('<ActivateDevice />', () => {
   beforeEach(() => {
@@ -213,6 +225,57 @@ describe('<ActivateDevice />', () => {
       // The isCar block is skipped, so no Wi-Fi/console/community flags are emitted.
       expect(screen.queryByText(/ -s /)).not.toBeInTheDocument();
       expect(screen.queryByText(/ -u$/)).not.toBeInTheDocument();
+    });
+
+    it('passes the site URL, IoT endpoint and timer topic prefix to the timer script', async () => {
+      const user = userEvent.setup();
+      render(<ActivateDevice />);
+
+      await advanceToConfigureAndName(user, i18n.t('devices:deviceType.TIMER'));
+      expect(screen.queryByLabelText(i18n.t('devices:wizard.ssidLabel'))).not.toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: i18n.t('devices:wizard.next') }));
+
+      await waitFor(() => {
+        expect(screen.getAllByText(/timer_activation\.sh/).length).toBeGreaterThan(0);
+      });
+      const expectedFlags = `-d '${globalThis.location.origin}' -e 'abc123-ats.iot.us-west-2.amazonaws.com' -t 'deepracer/testns/timer'`;
+      expect(screen.getAllByText((content) => content.includes(expectedFlags)).length).toBeGreaterThan(0);
+      expect(screen.queryByText(/ -a$/)).not.toBeInTheDocument();
+    });
+
+    it.each(['iotEndpoint', 'namespace'] as const)(
+      'disables the Timer type and explains why when %s is not configured',
+      async (missingKey) => {
+        delete mockEnvironmentConfig[missingKey];
+        const user = userEvent.setup();
+        render(<ActivateDevice />);
+
+        expect(screen.getByTestId('timer-unavailable')).toHaveTextContent(i18n.t('devices:wizard.timerUnavailable'));
+        await user.click(screen.getByLabelText(i18n.t('devices:wizard.typeLabel')));
+        expect(screen.getByRole('option', { name: new RegExp(i18n.t('devices:deviceType.TIMER')) })).toHaveAttribute(
+          'aria-disabled',
+          'true',
+        );
+      },
+    );
+
+    it('offers the Timer type without a warning when IoT is configured', () => {
+      render(<ActivateDevice />);
+
+      expect(screen.queryByTestId('timer-unavailable')).not.toBeInTheDocument();
+    });
+
+    it('appends the active-low flag when the timer uses IR break-beam sensors', async () => {
+      const user = userEvent.setup();
+      render(<ActivateDevice />);
+
+      await advanceToConfigureAndName(user, i18n.t('devices:deviceType.TIMER'));
+      await user.click(screen.getByRole('checkbox', { name: i18n.t('devices:wizard.activeLowSensorsLabel') }));
+      await user.click(screen.getByRole('button', { name: i18n.t('devices:wizard.next') }));
+
+      await waitFor(() => {
+        expect(screen.getAllByText(/ -a$/).length).toBeGreaterThan(0);
+      });
     });
 
     // Drive the wizard all the way to the final "wait for online" step (index 4): activate on

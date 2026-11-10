@@ -54,13 +54,19 @@ import { uploadModelFiles } from './uploadUtils.js';
 import type { TrainingMetric } from '../../types/trainingMetrics.js';
 import { environmentConfig } from '../../utils/envUtils.js';
 
+/** A model as GetModel returns it, with the checkpoints that only GetModel reads. */
+export type ModelDetails = Model & Pick<GetModelCommandOutput, 'checkpoints'>;
+
 export const modelsApi = deepRacerApi.injectEndpoints({
   endpoints: (build) => ({
-    getModel: build.query<Model, GetModelCommandInput>({
+    getModel: build.query<ModelDetails, GetModelCommandInput>({
       query: (input) => ({
         command: new GetModelCommand(input),
       }),
-      transformResponse: (response: GetModelCommandOutput) => response.model,
+      transformResponse: (response: GetModelCommandOutput): ModelDetails => ({
+        ...response.model,
+        checkpoints: response.checkpoints,
+      }),
       providesTags: (_result, _meta, { modelId }) => [{ type: DeepRacerApiQueryTagType.MODELS, id: modelId }],
     }),
     listModels: build.query<Model[], void>({

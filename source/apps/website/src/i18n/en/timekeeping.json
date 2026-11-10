@@ -49,6 +49,8 @@
   },
   "runs": {
     "header": "Runs",
+    "pendingReviewWarning_one": "1 lap still needs review. If you submit now it counts as invalid; approve or reject it in Recorded laps first.",
+    "pendingReviewWarning_other": "{{count}} laps still need review. If you submit now they count as invalid; approve or reject them in Recorded laps first.",
     "noRunInProgress": "No run in progress",
     "emptyTitle": "No runs on this track yet",
     "emptySubtitle": "Select an event, track, and racer above, then start a new run to begin timing.",
@@ -103,6 +105,26 @@
     "lapPending": "Lap request pending. Retry to reconcile.",
     "lapError": "Unable to record lap. Retry the request."
   },
+  "autoTiming": {
+    "modeLabel": "Timing mode",
+    "mode": {
+      "MANUAL": "Manual",
+      "AUTO": "Automatic"
+    },
+    "timerLabel": "Timer",
+    "timerPlaceholder": "Select a timer",
+    "timerLoadingText": "Loading timers",
+    "noTimers": "No online timers",
+    "crossingTransitionFailed": "A timer crossing couldn't start or resume the run. Use the Start or Resume button.",
+    "crossingNotRecorded": "A timer crossing arrived after the run stopped, so no lap was recorded.",
+    "status": {
+      "noTimer": "No timer selected",
+      "connecting": "Connecting to timer",
+      "connectionError": "Unable to connect to timer",
+      "notResponding": "Timer not responding",
+      "online": "Timer online"
+    }
+  },
   "countdown": {
     "header": "Countdown",
     "placeholder": "--:--"
@@ -140,6 +162,11 @@
     "emptySubtitle": "Laps will appear here as they are recorded.",
     "valid": "Yes",
     "invalid": "No",
+    "needsReview": "Needs review",
+    "approve": "Approve",
+    "reject": "Reject",
+    "approveLap": "Approve lap {{lapNumber}}",
+    "rejectLap": "Reject lap {{lapNumber}}",
     "markValid": "Mark lap {{lapNumber}} valid",
     "markInvalid": "Mark lap {{lapNumber}} invalid",
     "toggleValidityError": "Unable to update lap validity. Please try again.",

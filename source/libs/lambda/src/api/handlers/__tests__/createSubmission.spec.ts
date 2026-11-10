@@ -17,6 +17,7 @@ import {
 } from '@deepracer-indy/database';
 import {
   BadRequestError,
+  CheckpointSelection,
   InternalFailureError,
   JobStatus,
   LiveEventStatus,
@@ -26,6 +27,7 @@ import {
 } from '@deepracer-indy/typescript-server-client';
 import { mockClient } from 'aws-sdk-client-mock';
 
+import { checkpointHelper } from '../../../utils/CheckpointHelper.js';
 import { TEST_OPERATION_CONTEXT } from '../../constants/testConstants.js';
 import { CreateSubmissionOperation } from '../createSubmission.js';
 
@@ -253,6 +255,51 @@ describe('CreateSubmission operation', () => {
 
   // --- Live race submission tests ---
 
+  it('should validate and record the chosen checkpoint for a community race', async () => {
+    vi.spyOn(modelDao, 'load').mockResolvedValueOnce(READY_MODEL);
+    vi.spyOn(leaderboardDao, 'load').mockResolvedValueOnce(OPEN_LEADERBOARD_ITEM);
+    vi.spyOn(submissionDao, 'listByCreatedAt').mockResolvedValueOnce({ cursor: null, data: [] });
+    vi.spyOn(modelDao, 'update').mockResolvedValueOnce(TEST_MODEL_ITEM);
+    vi.spyOn(submissionDao, 'create').mockResolvedValueOnce(TEST_SUBMISSION_ITEM);
+    const validateSpy = vi.spyOn(checkpointHelper, 'validateCheckpointSelection').mockResolvedValue();
+
+    await CreateSubmissionOperation(
+      {
+        leaderboardId: OPEN_LEADERBOARD_ITEM.leaderboardId,
+        modelId: TEST_MODEL_ITEM.modelId,
+        checkpoint: CheckpointSelection.LAST,
+      },
+      TEST_OPERATION_CONTEXT,
+    );
+
+    expect(validateSpy).toHaveBeenCalledWith(READY_MODEL, CheckpointSelection.LAST);
+    expect(submissionDao.create).toHaveBeenCalledWith(
+      expect.objectContaining({ checkpoint: CheckpointSelection.LAST }),
+    );
+  });
+
+  it('should create nothing when the chosen checkpoint is not available', async () => {
+    vi.spyOn(modelDao, 'load').mockResolvedValueOnce(READY_MODEL);
+    vi.spyOn(leaderboardDao, 'load').mockResolvedValueOnce(OPEN_LEADERBOARD_ITEM);
+    vi.spyOn(submissionDao, 'create');
+    vi.spyOn(checkpointHelper, 'validateCheckpointSelection').mockRejectedValue(
+      new BadRequestError({ message: 'The model has no last checkpoint to use.' }),
+    );
+
+    await expect(
+      CreateSubmissionOperation(
+        {
+          leaderboardId: OPEN_LEADERBOARD_ITEM.leaderboardId,
+          modelId: TEST_MODEL_ITEM.modelId,
+          checkpoint: CheckpointSelection.LAST,
+        },
+        TEST_OPERATION_CONTEXT,
+      ),
+    ).rejects.toThrow(BadRequestError);
+    expect(submissionDao.create).not.toHaveBeenCalled();
+    expect(mockSqsClient.calls()).toHaveLength(0);
+  });
+
   describe('Live race submissions', () => {
     const LIVE_LEADERBOARD: LeaderboardItem = {
       ...TEST_LEADERBOARD_ITEM,
@@ -289,6 +336,30 @@ describe('CreateSubmission operation', () => {
       );
       // Should NOT send SQS message for live race
       expect(mockSqsClient.calls()).toHaveLength(0);
+    });
+
+    it('should record the chosen checkpoint for a live race', async () => {
+      vi.spyOn(modelDao, 'load').mockResolvedValueOnce(READY_MODEL);
+      vi.spyOn(leaderboardDao, 'load').mockResolvedValueOnce(LIVE_LEADERBOARD);
+      vi.spyOn(liveQueueItemDao, 'getQueue').mockResolvedValueOnce([]);
+      vi.spyOn(submissionDao, 'listByCreatedAt').mockResolvedValueOnce({ cursor: null, data: [] });
+      vi.spyOn(profileDao, 'load').mockResolvedValueOnce(TEST_PROFILE_ITEM);
+      vi.spyOn(liveQueueItemDao, 'addToQueue').mockResolvedValueOnce(TEST_LIVE_QUEUE_ITEM);
+      vi.spyOn(modelDao, 'update').mockResolvedValueOnce(TEST_MODEL_ITEM);
+      vi.spyOn(checkpointHelper, 'validateCheckpointSelection').mockResolvedValue();
+
+      await CreateSubmissionOperation(
+        {
+          leaderboardId: LIVE_LEADERBOARD.leaderboardId,
+          modelId: TEST_MODEL_ITEM.modelId,
+          checkpoint: CheckpointSelection.LAST,
+        },
+        TEST_OPERATION_CONTEXT,
+      );
+
+      expect(liveQueueItemDao.addToQueue).toHaveBeenCalledWith(
+        expect.objectContaining({ checkpoint: CheckpointSelection.LAST }),
+      );
     });
 
     it('should accept submissions just before liveEventTime', async () => {

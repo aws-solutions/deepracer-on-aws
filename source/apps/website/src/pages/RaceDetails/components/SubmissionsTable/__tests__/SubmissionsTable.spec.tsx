@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import createWrapper from '@cloudscape-design/components/test-utils/dom';
-import { JobStatus, Leaderboard, Submission } from '@deepracer-indy/typescript-client';
+import { CheckpointSelection, JobStatus, Leaderboard, Submission } from '@deepracer-indy/typescript-client';
 import { describe, it, expect, afterEach } from 'vitest';
 
+import i18n from '#i18n';
 import { render, screen, fireEvent, waitFor } from '#utils/testUtils';
 
 import SubmissionsTable from '../SubmissionsTable';
@@ -49,6 +50,19 @@ describe('<SubmissionsTable />', () => {
 
     const table = createWrapper(container).findTable();
     expect(table?.findRows()).toHaveLength(2);
+  });
+
+  it('shows the checkpoint each submission raced, and Best for one made before it was recorded', () => {
+    const { container } = render(
+      <SubmissionsTable
+        submissions={[{ ...completedSubmission, checkpoint: CheckpointSelection.LAST }, pendingSubmission]}
+        leaderboard={mockLeaderboard}
+      />,
+    );
+
+    const rows = createWrapper(container).findTable()?.findRows() ?? [];
+    expect(rows[0].getElement()).toHaveTextContent(i18n.t('common:checkpoint.values.LAST'));
+    expect(rows[1].getElement()).toHaveTextContent(i18n.t('common:checkpoint.values.BEST'));
   });
 
   it('enables the video actions only for a completed submission with a video', () => {

@@ -1,6 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import { CheckpointSelection } from '@deepracer-indy/typescript-client';
 import { composeStories } from '@storybook/react';
 import { userEvent } from '@storybook/test';
 
@@ -20,6 +21,7 @@ const {
   LiveRaceSubmissionsOpen,
   LiveRaceSubmissionsClosed,
   LiveRaceCompleted,
+  WithCheckpoints,
 } = composeStories(SubmitModelToRaceStories);
 
 const mockDispatch = vi.fn();
@@ -142,15 +144,32 @@ describe('<SubmitModelToRace />', () => {
     const submitButton = await screen.findByRole('button', { name: i18n.t('submitModelToRace:submitToRace') });
     await userEvent.click(submitButton);
 
+    // Best is the default, as before the choice existed.
     expect(mockCreateSubmission).toHaveBeenCalledWith({
       leaderboardId: 'mockOALeaderboard',
       modelId: 'test-model-id',
+      checkpoint: CheckpointSelection.BEST,
     });
 
     await vi.waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('/models/test-model-id', {
         state: { successMessage: expect.any(String) },
       });
+    });
+  });
+
+  it('should submit the last checkpoint when the racer chooses it', async () => {
+    await WithCheckpoints.run();
+
+    await userEvent.click(await screen.findByText(i18n.t('submitModelToRace:chooseARace')));
+    await userEvent.click(await screen.findByText('Test-OA-Leaderboard'));
+    await userEvent.click(await screen.findByText(i18n.t('common:checkpoint.last.label')));
+    await userEvent.click(await screen.findByRole('button', { name: i18n.t('submitModelToRace:submitToRace') }));
+
+    expect(mockCreateSubmission).toHaveBeenCalledWith({
+      leaderboardId: 'mockOALeaderboard',
+      modelId: 'test-model-id',
+      checkpoint: CheckpointSelection.LAST,
     });
   });
 

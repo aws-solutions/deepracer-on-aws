@@ -9,6 +9,7 @@ import {
   ActionSpace,
   CarColor,
   CarShell,
+  CheckpointSelection,
   TrackId,
   TrackDirection,
   CameraSensor,
@@ -452,4 +453,5 @@ export const createModelValidationSchema: Yup.ObjectSchema<CreateModelFormValues
     carShell: Yup.mixed<CarShell>().oneOf(Object.values(CarShell)).required(i18n.t('createModel:requiredError')),
   }),
   preTrainedModelId: Yup.string().optional(),
+  preTrainedCheckpoint: Yup.mixed<CheckpointSelection>().oneOf(Object.values(CheckpointSelection)).optional(),
 });

@@ -5,7 +5,7 @@ import ColumnLayout from '@cloudscape-design/components/column-layout';
 import Container from '@cloudscape-design/components/container';
 import Header from '@cloudscape-design/components/header';
 import KeyValuePairs from '@cloudscape-design/components/key-value-pairs';
-import { Evaluation } from '@deepracer-indy/typescript-client';
+import { CheckpointSelection, Evaluation } from '@deepracer-indy/typescript-client';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -43,6 +43,11 @@ const EvaluationConfiguration = ({ evaluation }: EvaluationConfigurationProps) =
             {
               label: t('keyValueLabels.numberOfTrials'),
               value: maxLaps,
+            },
+            {
+              label: t('keyValueLabels.checkpoint'),
+              // Evaluations created before the choice was recorded used the best checkpoint.
+              value: commonT(`checkpoint.values.${evaluation.config.checkpoint ?? CheckpointSelection.BEST}`),
             },
           ]}
         />

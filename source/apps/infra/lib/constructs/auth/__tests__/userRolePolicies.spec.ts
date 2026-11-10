@@ -343,6 +343,38 @@ describe('UserRolePolicies', () => {
       });
     });
 
+    it('should not grant BatchUpdateProfileQuotas to non-admin roles', () => {
+      const { stack, userRoles } = buildStack();
+      const template = Template.fromStack(stack);
+
+      [
+        userRoles.raceFacilitatorRole,
+        userRoles.racerRole,
+        userRoles.commentatorRole,
+        userRoles.registrationManagerRole,
+      ].forEach((role) => {
+        const statements = findRolePolicyStatements(template, stack.getLogicalId(role.node.defaultChild as never));
+        expect(JSON.stringify(statements)).toContain('/PATCH/profile');
+        expect(JSON.stringify(statements)).not.toContain('profiles/batch-update-quotas');
+      });
+    });
+
+    it('should grant the Admin role execute-api:Invoke on every route, which includes BatchUpdateProfileQuotas', () => {
+      const { stack, userRoles } = buildStack();
+      const template = Template.fromStack(stack);
+
+      const statements = findRolePolicyStatements(
+        template,
+        stack.getLogicalId(userRoles.adminRole.node.defaultChild as never),
+      );
+
+      const allRoutesInvoke = statements.filter(
+        (statement) =>
+          statement.Action === 'execute-api:Invoke' && /\/\*\/\*\/\*"/.test(JSON.stringify(statement.Resource)),
+      );
+      expect(allRoutesInvoke).toHaveLength(1);
+    });
+
     it('should grant the Registration Manager role PATCH on the profile route', () => {
       // Same rationale as the Commentator case above.
       const { stack, userRoles } = buildStack();

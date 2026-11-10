@@ -10,7 +10,7 @@ import {
   TEST_ITEM_NOT_FOUND_ERROR,
   TEST_MODEL_ITEM,
 } from '@deepracer-indy/database';
-import { JobStatus, NotFoundError } from '@deepracer-indy/typescript-server-client';
+import { CheckpointSelection, JobStatus, NotFoundError } from '@deepracer-indy/typescript-server-client';
 import { s3Helper } from '@deepracer-indy/utils';
 
 import { modelPerformanceMetricsHelper } from '../../../workflow/utils/ModelPerformanceMetricsHelper.js';
@@ -56,6 +56,21 @@ describe('GetEvaluation operation', () => {
       undefined,
       'video/mp4',
     );
+  });
+
+  it('should return the checkpoint the evaluation used', async () => {
+    vi.spyOn(evaluationDao, 'load').mockResolvedValue({
+      ...TEST_EVALUATION_ITEM,
+      checkpoint: CheckpointSelection.LAST,
+    });
+    vi.spyOn(s3Helper, 'getPresignedUrl').mockResolvedValue('url');
+
+    const output = await GetEvaluationOperation(
+      { modelId: TEST_MODEL_ITEM.modelId, evaluationId: TEST_EVALUATION_ITEM.evaluationId },
+      TEST_OPERATION_CONTEXT,
+    );
+
+    expect(output.evaluation.config.checkpoint).toBe(CheckpointSelection.LAST);
   });
 
   it('should exclude videoUrl when evaluation status is not COMPLETED', async () => {

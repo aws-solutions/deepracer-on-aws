@@ -1,7 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { Lap } from '@deepracer-indy/typescript-client';
+import { Lap, LapReviewStatus } from '@deepracer-indy/typescript-client';
 import { describe, expect, it, vi } from 'vitest';
 
 import i18n from '#i18n/index.js';
@@ -83,5 +83,57 @@ describe('<LapTable />', () => {
     expect(toggleButton).toBeDisabled();
     expect(toggleButton).toHaveTextContent(i18n.t('timekeeping:lapTable.valid'));
     expect(screen.getByTestId('lap-validity-status-1')).toHaveAttribute('data-status-type', 'loading');
+  });
+
+  it.each([
+    ['approveLap', true],
+    ['rejectLap', false],
+  ] as const)('lets the facilitator %s for a lap pending review', (labelKey, isValid) => {
+    const onToggleValidity = vi.fn();
+    render(
+      <LapTable
+        {...baseProps}
+        laps={[makeLap({ isValid: false, reviewStatus: LapReviewStatus.PENDING_REVIEW, lapTimeMs: 1200 })]}
+        onToggleValidity={onToggleValidity}
+      />,
+    );
+
+    expect(screen.getByTestId('lap-validity-status-1')).toHaveAttribute('data-status-type', 'warning');
+    expect(screen.getByText(i18n.t('timekeeping:lapTable.needsReview'))).toBeInTheDocument();
+    expect(screen.getByTestId('lap-time-invalid-1')).toBeInTheDocument();
+    // No one-click toggle on the status itself.
+    expect(
+      screen.queryByRole('button', { name: i18n.t('timekeeping:lapTable.markValid', { lapNumber: 1 }) }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: i18n.t(`timekeeping:lapTable.${labelKey}`, { lapNumber: 1 }) }));
+
+    expect(onToggleValidity).toHaveBeenCalledWith(expect.objectContaining({ lapNumber: 1 }), isValid);
+  });
+
+  it('disables Approve and Reject while the lap is being updated', () => {
+    render(
+      <LapTable
+        {...baseProps}
+        laps={[makeLap({ isValid: false, reviewStatus: LapReviewStatus.PENDING_REVIEW })]}
+        onToggleValidity={vi.fn()}
+        togglingLapNumber={1}
+      />,
+    );
+
+    expect(
+      screen.getByRole('button', { name: i18n.t('timekeeping:lapTable.approveLap', { lapNumber: 1 }) }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: i18n.t('timekeeping:lapTable.rejectLap', { lapNumber: 1 }) }),
+    ).toBeDisabled();
+  });
+
+  it('shows a flagged lap as needing review in a read-only table', () => {
+    render(
+      <LapTable {...baseProps} laps={[makeLap({ isValid: false, reviewStatus: LapReviewStatus.PENDING_REVIEW })]} />,
+    );
+
+    expect(screen.getByText(i18n.t('timekeeping:lapTable.needsReview'))).toBeInTheDocument();
   });
 });

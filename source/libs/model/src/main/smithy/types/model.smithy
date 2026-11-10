@@ -105,6 +105,34 @@ structure EvaluationConfig with [SageMakerJobConfig] {
 
     @required
     resettingBehaviorConfig: ResettingBehaviorConfig
+
+    @documentation("The training checkpoint to evaluate. Defaults to BEST.")
+    checkpoint: CheckpointSelection
+}
+
+@documentation(
+    """
+    Which of a model's training checkpoints a job uses. BEST is the checkpoint with the highest average
+    evaluation completion during training; LAST is the most recently evaluated checkpoint."""
+)
+enum CheckpointSelection {
+    BEST
+    LAST
+}
+
+@documentation("A training checkpoint, as recorded during training.")
+structure CheckpointInfo {
+    @required
+    @documentation("The training iteration the checkpoint was saved after.")
+    iteration: NonNegativeInteger
+
+    @documentation("Average completion percentage of the checkpoint's evaluation episodes during training.")
+    completionPercentage: NonNegativeDouble
+}
+
+structure ModelCheckpoints {
+    best: CheckpointInfo
+    last: CheckpointInfo
 }
 
 structure ModelMetadata {

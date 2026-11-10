@@ -1,15 +1,17 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import { CheckpointSelection, CreateSubmissionCommand } from '@deepracer-indy/typescript-client';
 import { composeStories } from '@storybook/react';
-import { expect, waitFor } from '@storybook/test';
+import { expect, userEvent, waitFor } from '@storybook/test';
 
+import { mockModel, mockModel2 } from '#constants/testConstants';
 import i18n from '#i18n/index.js';
-import { screen } from '#utils/testUtils';
+import { mockDeepRacerClient, screen } from '#utils/testUtils';
 
 import * as stories from './EnterRace.stories';
 
-const { Default, LiveRaceFiltered, WithPhysicalModel } = composeStories(stories);
+const { Default, LiveRaceFiltered, WithCheckpoints, WithPhysicalModel } = composeStories(stories);
 
 describe('<EnterRace />', () => {
   it('TT leaderboard renders without crashing', async () => {
@@ -56,5 +58,42 @@ describe('<EnterRace />', () => {
     await screen.findByText(i18n.t('enterRace:chooseModel'));
     // Physical model should be filtered out even though it's in the API response
     await expect(screen.queryByText('my-physical-model')).not.toBeInTheDocument();
+  });
+
+  it("offers the chosen model's checkpoints, starts again from Best for each model, and sends the choice", async () => {
+    await WithCheckpoints.run();
+    mockDeepRacerClient.on(CreateSubmissionCommand).resolves({ submissionId: 'submission-1' });
+
+    await userEvent.click(await screen.findByText(i18n.t('enterRace:chooseAModel')));
+    await userEvent.click(await screen.findByText(mockModel.name));
+    await userEvent.click(await screen.findByText(i18n.t('common:checkpoint.last.label')));
+
+    // Choosing another model resets the choice, since each model has its own checkpoints.
+    await userEvent.click(screen.getByText(mockModel.name));
+    await userEvent.click(await screen.findByText(mockModel2.name));
+    await userEvent.click(await screen.findByText(i18n.t('common:checkpoint.last.label')));
+
+    await userEvent.click(screen.getByRole('button', { name: i18n.t('enterRace:enterRace') }));
+
+    await waitFor(() =>
+      expect(mockDeepRacerClient.commandCalls(CreateSubmissionCommand)[0]?.args[0].input).toMatchObject({
+        modelId: mockModel2.modelId,
+        checkpoint: CheckpointSelection.LAST,
+      }),
+    );
+  });
+
+  it('starts from Best when another model is chosen', async () => {
+    await WithCheckpoints.run();
+
+    await userEvent.click(await screen.findByText(i18n.t('enterRace:chooseAModel')));
+    await userEvent.click(await screen.findByText(mockModel.name));
+    await userEvent.click(await screen.findByText(i18n.t('common:checkpoint.last.label')));
+    await userEvent.click(screen.getByText(mockModel.name));
+    await userEvent.click(await screen.findByText(mockModel2.name));
+
+    await waitFor(() =>
+      expect(screen.getByRole('radio', { name: new RegExp(i18n.t('common:checkpoint.best.label')) })).toBeChecked(),
+    );
   });
 });

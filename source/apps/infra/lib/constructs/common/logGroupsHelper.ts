@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { DEFAULT_NAMESPACE } from '@deepracer-indy/config/src/defaults/commonDefaults';
-import { RemovalPolicy, Stack } from 'aws-cdk-lib';
+import { Aws, RemovalPolicy, Stack } from 'aws-cdk-lib';
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { Construct } from 'constructs';
 
@@ -97,14 +97,14 @@ export class LogGroupsHelper {
 
   /**
    * Gets the log group name for a Lambda function. Category-based names default to the
-   * CDK stack name, but compatibility callers can preserve the namespace-based names
+   * deployed stack name, but compatibility callers can preserve the namespace-based names
    * deployed by earlier solution versions.
    */
   private static getLogGroupName(scope: Construct, props: CustomLogGroupProps) {
     if (!props.logGroupCategory) {
       return props.functionName ? `/aws/lambda/${props.functionName}` : undefined;
     }
-    const prefix = props.useLegacyNamespaceName ? (props.namespace ?? DEFAULT_NAMESPACE) : Stack.of(scope).stackName;
+    const prefix = props.useLegacyNamespaceName ? (props.namespace ?? DEFAULT_NAMESPACE) : Aws.STACK_NAME;
     const category = props.logGroupCategory ?? LogGroupCategory.DEFAULT;
 
     return `/aws/lambda/${prefix}-${category}`;

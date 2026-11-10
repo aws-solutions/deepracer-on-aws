@@ -10,15 +10,20 @@ import Header from '@cloudscape-design/components/header';
 import Select, { SelectProps } from '@cloudscape-design/components/select';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import Spinner from '@cloudscape-design/components/spinner';
-import { ModelSource, ModelStatus } from '@deepracer-indy/typescript-client';
+import {
+  CheckpointSelection as CheckpointSelectionValue,
+  ModelSource,
+  ModelStatus,
+} from '@deepracer-indy/typescript-client';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 
+import CheckpointSelection from '#components/CheckpointSelection';
 import RaceOverview from '#components/RaceOverview';
 import { PageId } from '#constants/pages.js';
 import { useGetLeaderboardQuery, useListLiveQueueItemsQuery } from '#services/deepRacer/leaderboardsApi.js';
-import { useListModelsQuery } from '#services/deepRacer/modelsApi.js';
+import { useGetModelQuery, useListModelsQuery } from '#services/deepRacer/modelsApi.js';
 import { useCreateSubmissionMutation } from '#services/deepRacer/submissionsApi.js';
 import { getPath } from '#utils/pageUtils.js';
 
@@ -27,6 +32,7 @@ const EnterRace = () => {
   const navigate = useNavigate();
   const { t } = useTranslation('enterRace');
   const [selectedModel, setSelectedModel] = useState<null | SelectProps.Option>(null);
+  const [checkpoint, setCheckpoint] = useState<CheckpointSelectionValue>(CheckpointSelectionValue.BEST);
 
   const {
     data: leaderboard,
@@ -36,6 +42,11 @@ const EnterRace = () => {
   const { data: models = [], isLoading: isListModelsLoading } = useListModelsQuery();
   const { data: queueData } = useListLiveQueueItemsQuery({ leaderboardId });
   const [createSubmission, { isLoading: isCreateSubmissionLoading }] = useCreateSubmissionMutation();
+  // The model list does not carry checkpoints, so the selected model is read for them.
+  const { data: selectedModelDetails } = useGetModelQuery(
+    { modelId: selectedModel?.value ?? '' },
+    { skip: !selectedModel?.value },
+  );
 
   const submittedModelIds = new Set(queueData?.items?.map((i) => i.modelId));
   const eligibleModels = models.filter(
@@ -73,6 +84,8 @@ const EnterRace = () => {
               loadingText={t('retrievingModels')}
               onChange={({ detail }) => {
                 setSelectedModel(detail.selectedOption);
+                // Each model has its own checkpoints, so the choice starts again from Best.
+                setCheckpoint(CheckpointSelectionValue.BEST);
               }}
               options={eligibleModels.map((model) => ({
                 label: model.name,
@@ -85,6 +98,15 @@ const EnterRace = () => {
             />
           </FormField>
         </Container>
+        {selectedModel && (
+          <Container>
+            <CheckpointSelection
+              checkpoints={selectedModelDetails?.checkpoints}
+              value={checkpoint}
+              onChange={setCheckpoint}
+            />
+          </Container>
+        )}
         <Box float="right">
           <SpaceBetween direction="horizontal" size="xs">
             <Button variant="link" onClick={() => navigate(getPath(PageId.RACE_DETAILS, { leaderboardId }))}>
@@ -97,6 +119,7 @@ const EnterRace = () => {
                 const result = await createSubmission({
                   leaderboardId,
                   modelId: selectedModel?.value || '',
+                  checkpoint,
                 });
                 if (!('error' in result)) {
                   navigate(getPath(PageId.RACE_DETAILS, { leaderboardId }));

@@ -25,11 +25,18 @@
     "newPassword": "Your new password",
     "yourPassword": "Your password",
     "newPassPlaceholder": "New password",
-    "passwordFormat": "Your password can have up to 8 characters. Valid characters: A-Z, a-z, 0-9, and . : + = @ _ %",
+    "confirmPassword": "Confirm new password",
+    "confirmPassPlaceholder": "Confirm new password",
+    "passwordFormat": "Your password must contain at least 8 characters, including an uppercase letter, a lowercase letter, a number, and a symbol.",
+    "passwordMismatch": "Passwords do not match.",
     "delete": "Delete",
     "cancel": "Cancel",
     "changePassword": "Change password",
     "closeModal": "Close modal",
-    "successMessage": "The password has been changed successfully."
+    "successMessage": "The password has been changed successfully.",
+    "errorNotAuthorized": "Your current password is incorrect. Please try again.",
+    "errorInvalidPassword": "Your new password does not meet the password requirements.",
+    "errorLimitExceeded": "Too many attempts. Please wait a moment and try again.",
+    "errorGeneric": "We couldn't change your password. Please try again."
   }
 }

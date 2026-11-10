@@ -99,6 +99,10 @@ export class DeviceManagement extends Construct {
 
     // ── ActivateDevice: SSM hybrid activation wiring ─────────────────────────
     functions.ActivateDevice.addEnvironment('HYBRID_ACTIVATION_IAM_ROLE_NAME', infra.ssmHybridActivationRole.roleName);
+    functions.ActivateDevice.addEnvironment(
+      'TIMER_HYBRID_ACTIVATION_IAM_ROLE_NAME',
+      infra.timerHybridActivationRole.roleName,
+    );
     functions.ActivateDevice.addToRolePolicy(
       new PolicyStatement({
         actions: ['ssm:CreateActivation', 'ssm:DeleteActivation', 'ssm:AddTagsToResource'],
@@ -106,6 +110,7 @@ export class DeviceManagement extends Construct {
       }),
     );
     infra.ssmHybridActivationRole.grantPassRole(functions.ActivateDevice.grantPrincipal);
+    infra.timerHybridActivationRole.grantPassRole(functions.ActivateDevice.grantPrincipal);
 
     // ── Command handlers: tag-scoped ssm:SendCommand (Finding 6) ─────────────
     const runShellScriptDoc = `arn:${Aws.PARTITION}:ssm:${Aws.REGION}::document/AWS-RunShellScript`;

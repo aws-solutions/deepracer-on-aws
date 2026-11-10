@@ -9,7 +9,6 @@ import {
   Run,
   RunStatus,
   RunTransitionAction,
-  SetLapValidityCommand,
   TransitionRunStatusCommand,
   UpdateLapCommand,
 } from '@deepracer-indy/typescript-client';
@@ -199,26 +198,6 @@ describe('runsApi', () => {
     });
   });
 
-  describe('setLapValidity mutation', () => {
-    it('sends a SetLapValidityCommand with the given input', async () => {
-      mockDeepRacerClient.on(SetLapValidityCommand).resolvesOnce({ lap: { ...mockLap, isValid: false } });
-
-      const result = await store
-        .dispatch(
-          runsApi.endpoints.setLapValidity.initiate({
-            eventId: 'evt-001',
-            leaderboardId: 'lb-001',
-            runId: 'run-001',
-            lapNumber: 1,
-            isValid: false,
-          }),
-        )
-        .unwrap();
-
-      expect(result).toEqual({ lap: { ...mockLap, isValid: false } });
-    });
-  });
-
   describe('exported hooks', () => {
     it('exports all mutation and query hooks', () => {
       expect(runsApi.useListRunsQuery).toBeDefined();
@@ -226,7 +205,6 @@ describe('runsApi', () => {
       expect(runsApi.useCreateRunMutation).toBeDefined();
       expect(runsApi.useTransitionRunStatusMutation).toBeDefined();
       expect(runsApi.useUpdateLapMutation).toBeDefined();
-      expect(runsApi.useSetLapValidityMutation).toBeDefined();
     });
   });
 
@@ -262,8 +240,8 @@ describe('runsApi', () => {
   describe('error notification opt-out', () => {
     // getRun and updateLap have component-level error handling (RunLapsPanel's inline "not
     // found" alert and its own error toast on a failed edit) — the base query's automatic
-    // toast must be suppressed to avoid a duplicate notification. setLapValidity follows the
-    // same lap-mutation pattern for consistency with updateLap.
+    // toast must be suppressed to avoid a duplicate notification. (setLapValidity lives in
+    // lapsApi only.)
     const storeWithNotifications = configureStore({
       reducer: {
         [runsApi.reducerPath]: runsApi.reducer,
@@ -298,22 +276,6 @@ describe('runsApi', () => {
           lapNumber: 1,
           lapTimeMs: 11050,
           editReason: 'glitch',
-        }),
-      );
-
-      expect(storeWithNotifications.getState().notifications.items).toHaveLength(0);
-    });
-
-    it('does not dispatch an error notification when setLapValidity fails', async () => {
-      mockDeepRacerClient.on(SetLapValidityCommand).rejectsOnce(new Error('Not authorized'));
-
-      await storeWithNotifications.dispatch(
-        runsApi.endpoints.setLapValidity.initiate({
-          eventId: 'evt-001',
-          leaderboardId: 'lb-001',
-          runId: 'run-001',
-          lapNumber: 1,
-          isValid: false,
         }),
       );
 

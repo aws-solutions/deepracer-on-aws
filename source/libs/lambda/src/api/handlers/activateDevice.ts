@@ -7,6 +7,7 @@ import type { Operation } from '@aws-smithy/server-common';
 import {
   ActivateDeviceServerInput,
   ActivateDeviceServerOutput,
+  DeviceType,
   getActivateDeviceHandler,
   InternalFailureError,
   NotAuthorizedError,
@@ -73,10 +74,15 @@ export const ActivateDeviceOperation: Operation<
     throw new NotAuthorizedError({ message: 'Only administrators or race facilitators can activate devices.' });
   }
 
-  // Role name handed to SSM as the instance role the agent assumes after registration.
-  const hybridActivationRoleName = process.env.HYBRID_ACTIVATION_IAM_ROLE_NAME;
+  const { name, deviceType, fleetId } = input;
+
+  // Role name handed to SSM as the instance role the agent assumes after registration. Timers
+  // get their own role (publish-only on the timer IoT topics); cars stay on the SSM-only role.
+  const roleEnvVar =
+    deviceType === DeviceType.TIMER ? 'TIMER_HYBRID_ACTIVATION_IAM_ROLE_NAME' : 'HYBRID_ACTIVATION_IAM_ROLE_NAME';
+  const hybridActivationRoleName = process.env[roleEnvVar];
   if (!hybridActivationRoleName) {
-    logger.error('Missing required environment variable', { variable: 'HYBRID_ACTIVATION_IAM_ROLE_NAME' });
+    logger.error('Missing required environment variable', { variable: roleEnvVar });
     throw new InternalFailureError({ message: 'Service configuration error.' });
   }
   const region = process.env.AWS_REGION;
@@ -85,7 +91,6 @@ export const ActivateDeviceOperation: Operation<
     throw new InternalFailureError({ message: 'Service configuration error.' });
   }
 
-  const { name, deviceType, fleetId } = input;
   const expiresAt = new Date(Date.now() + ACTIVATION_VALIDITY_MS);
 
   // Tags propagate to the managed instance at registration. `deepracer:managed=true` is the

@@ -8,7 +8,7 @@ import {
   TEST_ITEM_NOT_FOUND_ERROR,
   TEST_MODEL_ITEM,
 } from '@deepracer-indy/database';
-import { JobStatus } from '@deepracer-indy/typescript-server-client';
+import { CheckpointSelection, JobStatus } from '@deepracer-indy/typescript-server-client';
 import { s3Helper } from '@deepracer-indy/utils';
 
 import { modelPerformanceMetricsHelper } from '../../../workflow/utils/ModelPerformanceMetricsHelper.js';
@@ -56,6 +56,18 @@ describe('ListEvaluations operation', () => {
     vi.mocked(s3Helper.getPresignedUrl).mock.calls.forEach((call) => {
       expect(call[3]).toBe('video/mp4');
     });
+  });
+
+  it('should return the checkpoint each evaluation used', async () => {
+    vi.spyOn(modelDao, 'load').mockResolvedValue(TEST_MODEL_ITEM);
+    vi.spyOn(evaluationDao, 'list').mockResolvedValue({
+      data: [{ ...TEST_EVALUATION_ITEMS[0], checkpoint: CheckpointSelection.LAST }],
+      cursor: null,
+    });
+
+    const output = await ListEvaluationsOperation({ modelId: TEST_MODEL_ITEM.modelId }, TEST_OPERATION_CONTEXT);
+
+    expect(output.evaluations[0].config.checkpoint).toBe(CheckpointSelection.LAST);
   });
 
   it('should return a list of evaluations on success with token', async () => {

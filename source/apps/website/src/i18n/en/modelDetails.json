@@ -125,6 +125,7 @@
       "track": "Track",
       "trackDirection": "Track direction",
       "numberOfTrials": "Number of trials",
+      "checkpoint": "Checkpoint",
       "objectAvoidanceRules": "Object avoidance rules"
     }
   },

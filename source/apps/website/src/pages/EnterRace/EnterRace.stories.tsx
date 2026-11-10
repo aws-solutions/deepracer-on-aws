@@ -3,6 +3,7 @@
 
 import {
   GetLeaderboardCommand,
+  GetModelCommand,
   GetProfileCommand,
   ListLiveQueueItemsCommand,
   ListModelsCommand,
@@ -11,7 +12,7 @@ import {
 } from '@deepracer-indy/typescript-client';
 import type { Meta, StoryObj } from '@storybook/react';
 
-import { mockLeaderboardTTFuture, mockModelList } from '#constants/testConstants.js';
+import { mockLeaderboardTTFuture, mockModelCheckpoints, mockModelList } from '#constants/testConstants.js';
 import EnterRace from '#pages/EnterRace';
 
 const meta = {
@@ -27,6 +28,17 @@ export const Default: Story = {
     deepRacerApiMocks: (client) => {
       client.on(GetLeaderboardCommand).resolves({ leaderboard: mockLeaderboardTTFuture });
       client.on(ListModelsCommand).resolves({ models: mockModelList });
+    },
+  },
+};
+
+/** After a model is chosen, its best and last checkpoints are offered. */
+export const WithCheckpoints: Story = {
+  parameters: {
+    deepRacerApiMocks: (client) => {
+      client.on(GetLeaderboardCommand).resolves({ leaderboard: mockLeaderboardTTFuture });
+      client.on(ListModelsCommand).resolves({ models: mockModelList });
+      client.on(GetModelCommand).resolves({ model: mockModelList[0], checkpoints: mockModelCheckpoints });
     },
   },
 };

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { TEST_LAP_ITEM, TEST_PROFILE_ID_1 } from '@deepracer-indy/database';
+import { LapReviewStatus, LapTimingSource } from '@deepracer-indy/typescript-server-client';
 
 import { toLapResponse } from '../toLapResponse.js';
 
@@ -40,5 +41,16 @@ describe('toLapResponse', () => {
     expect(response.editedBy).toEqual(TEST_PROFILE_ID_1);
     expect(response.editedAt).toEqual(new Date('2026-09-15T10:40:00.000Z'));
     expect(response.editReason).toEqual('Timer misfire');
+  });
+
+  it('should map auto-timing fields when present', () => {
+    const response = toLapResponse({
+      ...TEST_LAP_ITEM,
+      timingSource: LapTimingSource.AUTO,
+      reviewStatus: LapReviewStatus.PENDING_REVIEW,
+    });
+
+    expect(response.timingSource).toEqual(LapTimingSource.AUTO);
+    expect(response.reviewStatus).toBe(LapReviewStatus.PENDING_REVIEW);
   });
 });

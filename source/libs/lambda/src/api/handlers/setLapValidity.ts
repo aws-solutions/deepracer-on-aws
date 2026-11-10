@@ -5,6 +5,7 @@ import type { Operation } from '@aws-smithy/server-common';
 import { lapDao, runDao, type ResourceId } from '@deepracer-indy/database';
 import {
   getSetLapValidityHandler,
+  LapReviewStatus,
   NotAuthorizedError,
   SetLapValidityServerInput,
   SetLapValidityServerOutput,
@@ -34,9 +35,16 @@ export const SetLapValidityOperation: Operation<
   const run = await runDao.load({ leaderboardId, runId });
 
   // Throws NotFoundError if the lap does not exist.
-  await lapDao.load({ leaderboardId, runId, lapNumber });
+  const existingLap = await lapDao.load({ leaderboardId, runId, lapNumber });
 
-  const lapItem = await lapDao.partialUpdate({ leaderboardId, runId, lapNumber }, { isValid });
+  // Setting validity is the facilitator's review decision for a lap that was pending review.
+  const lapItem = await lapDao.partialUpdate(
+    { leaderboardId, runId, lapNumber },
+    {
+      isValid,
+      ...(existingLap.reviewStatus === LapReviewStatus.PENDING_REVIEW && { reviewStatus: LapReviewStatus.REVIEWED }),
+    },
+  );
 
   // Cascades a score recalculation if the parent run has already been SUBMITTED.
   // undefined if not SUBMITTED, or if the cascade failed after the lap edit above already

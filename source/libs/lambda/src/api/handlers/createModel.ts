@@ -22,6 +22,7 @@ import {
 } from '@deepracer-indy/typescript-server-client';
 import { metricsLogger, waitForAll } from '@deepracer-indy/utils';
 
+import { checkpointHelper } from '../../utils/CheckpointHelper.js';
 import { usageQuotaHelper } from '../../utils/UsageQuotaHelper.js';
 import type { HandlerContext } from '../types/apiGatewayHandlerContext.js';
 import { getApiGatewayHandler } from '../utils/apiGateway.js';
@@ -46,6 +47,7 @@ export const CreateModelOperation: Operation<CreateModelServerInput, CreateModel
   const { profileId } = context;
   const { modelDefinition } = input;
   const preTrainedModelId = input.preTrainedModelId as ResourceId | undefined;
+  const { preTrainedCheckpoint } = input;
   const { trainingConfig, metadata: modelMetadata, name: modelName } = modelDefinition;
 
   validateTrackConfig(trainingConfig.trackConfig);
@@ -72,8 +74,13 @@ export const CreateModelOperation: Operation<CreateModelServerInput, CreateModel
     validateContinuousActionSpace(modelMetadata.actionSpace.continous);
   }
 
+  if (preTrainedCheckpoint && !preTrainedModelId) {
+    throw new BadRequestError({ message: 'A pre-trained checkpoint requires a pre-trained model.' });
+  }
+
   if (preTrainedModelId) {
     await validator.validateCloneModel(profileId, preTrainedModelId, modelDefinition);
+    await checkpointHelper.validateCheckpointSelection({ modelId: preTrainedModelId, profileId }, preTrainedCheckpoint);
   }
 
   await rewardFunctionValidator.validateRewardFunction({
@@ -95,6 +102,7 @@ export const CreateModelOperation: Operation<CreateModelServerInput, CreateModel
       modelId,
       profileId,
       clonedFromModelId: preTrainedModelId,
+      clonedFromCheckpoint: preTrainedModelId ? preTrainedCheckpoint : undefined,
       carCustomization: modelDefinition.carCustomization,
       description: modelDefinition.description,
       metadata: modelMetadata,

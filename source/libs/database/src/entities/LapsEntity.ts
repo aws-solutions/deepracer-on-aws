@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { deepRacerIndyAppConfig } from '@deepracer-indy/config';
+import { LapReviewStatus, LapTimingSource } from '@deepracer-indy/typescript-server-client';
 import { CustomAttributeType, Entity, EntityItem } from 'electrodb';
 
 import { METADATA_ATTRIBUTES, DynamoDBItemAttribute } from '../constants/itemAttributes.js';
@@ -67,6 +68,16 @@ export const LapsEntity = new Entity(
         type: 'number',
         required: false,
         default: 0,
+      },
+      // Absent on laps written before auto timing existed; treated as MANUAL.
+      [DynamoDBItemAttribute.TIMING_SOURCE]: {
+        type: Object.values(LapTimingSource),
+        required: false,
+      },
+      // Absent on laps written before auto timing existed; treated as NOT_REQUIRED.
+      [DynamoDBItemAttribute.REVIEW_STATUS]: {
+        type: Object.values(LapReviewStatus),
+        required: false,
       },
       // Audit fields — populated only if a lap has been manually edited
       [DynamoDBItemAttribute.ORIGINAL_LAP_TIME_MS]: {

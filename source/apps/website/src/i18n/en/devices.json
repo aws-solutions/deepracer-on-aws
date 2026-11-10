@@ -79,6 +79,8 @@
     "wifiPasswordLabel": "Wi-Fi password (optional)",
     "consolePasswordLabel": "Device console password (optional)",
     "communityConsoleLabel": "Install community console",
+    "activeLowSensorsLabel": "Sensors are active-low (IR break-beam)",
+    "activeLowSensorsDescription": "Select for sensors that pull the signal low when the car crosses, such as most IR break-beam receivers. Leave clear for pressure strips.",
     "localFlagsNote": "These values are passed to the local activation script only — they are never sent to or stored by the service.",
     "runCommandLabel": "Run on the device (as root)",
     "ssmOnlyLabel": "SSM registration only",
@@ -97,6 +99,7 @@
     "finish": "Done",
     "activateSuccess": "Activation created. Run the command on the device.",
     "activateError": "Failed to create the activation.",
+    "timerUnavailable": "Timers can't be activated because this deployment has no IoT Core endpoint configured. Timers publish lap crossings to IoT Core.",
     "validation": {
       "nameRequired": "Device name is required.",
       "nameMaxLength": "Device name must be 64 characters or fewer.",
