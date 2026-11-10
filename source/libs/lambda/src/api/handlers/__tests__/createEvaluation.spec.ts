@@ -19,6 +19,7 @@ import {
 } from '@deepracer-indy/database';
 import {
   BadRequestError,
+  CheckpointSelection,
   EvaluationConfig,
   JobStatus,
   ModelSource,
@@ -30,6 +31,7 @@ import {
 } from '@deepracer-indy/typescript-server-client';
 import { mockClient } from 'aws-sdk-client-mock';
 
+import { checkpointHelper } from '../../../utils/CheckpointHelper.js';
 import { TEST_OPERATION_CONTEXT } from '../../constants/testConstants.js';
 import { CreateEvaluationOperation } from '../createEvaluation.js';
 
@@ -341,5 +343,53 @@ describe('CreateEvaluation operation', () => {
       ),
     ).rejects.toEqual(TEST_ITEM_NOT_FOUND_ERROR);
     expect(profileDaoUpdate).not.toHaveBeenCalled();
+  });
+  describe('checkpoint', () => {
+    beforeEach(() => {
+      vi.spyOn(profileDao, 'update').mockResolvedValue(TEST_PROFILE_ITEM);
+      vi.spyOn(modelDao, 'load').mockResolvedValue({ ...TEST_MODEL_ITEM, status: ModelStatus.READY });
+      vi.spyOn(modelDao, 'update').mockResolvedValue(TEST_MODEL_ITEM);
+      vi.spyOn(evaluationDao, 'create').mockResolvedValue(TEST_EVALUATION_ITEM);
+      vi.spyOn(accountResourceUsageDao, 'getOrCreate').mockResolvedValue(TEST_ACCOUNT_RESOURCE_USAGE_EMPTY);
+      vi.spyOn(accountResourceUsageDao, 'update').mockResolvedValue(TEST_ACCOUNT_RESOURCE_USAGE_EMPTY);
+      vi.spyOn(profileDao, 'load').mockResolvedValueOnce(TEST_PROFILE_ITEM);
+    });
+
+    it('validates and records the chosen checkpoint', async () => {
+      const validateSpy = vi.spyOn(checkpointHelper, 'validateCheckpointSelection').mockResolvedValue();
+
+      await CreateEvaluationOperation(
+        {
+          evaluationConfig: { ...TEST_EVALUATION_CONFIG, checkpoint: CheckpointSelection.LAST },
+          modelId: TEST_EVALUATION_ITEM.modelId,
+        },
+        TEST_OPERATION_CONTEXT,
+      );
+
+      expect(validateSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ modelId: TEST_MODEL_ITEM.modelId }),
+        CheckpointSelection.LAST,
+      );
+      expect(evaluationDao.create).toHaveBeenCalledWith(
+        expect.objectContaining({ checkpoint: CheckpointSelection.LAST }),
+      );
+    });
+
+    it('creates nothing when the chosen checkpoint is not available', async () => {
+      vi.spyOn(checkpointHelper, 'validateCheckpointSelection').mockRejectedValue(
+        new BadRequestError({ message: 'The model has no last checkpoint to use.' }),
+      );
+
+      await expect(
+        CreateEvaluationOperation(
+          {
+            evaluationConfig: { ...TEST_EVALUATION_CONFIG, checkpoint: CheckpointSelection.LAST },
+            modelId: TEST_EVALUATION_ITEM.modelId,
+          },
+          TEST_OPERATION_CONTEXT,
+        ),
+      ).rejects.toThrow(BadRequestError);
+      expect(evaluationDao.create).not.toHaveBeenCalled();
+    });
   });
 });

@@ -12,7 +12,13 @@ import Grid from '@cloudscape-design/components/grid';
 import Header from '@cloudscape-design/components/header';
 import RadioGroup from '@cloudscape-design/components/radio-group';
 import SpaceBetween from '@cloudscape-design/components/space-between';
-import { EvaluationConfig, RaceType, TrackDirection, TrackId } from '@deepracer-indy/typescript-client';
+import {
+  CheckpointSelection,
+  EvaluationConfig,
+  RaceType,
+  TrackDirection,
+  TrackId,
+} from '@deepracer-indy/typescript-client';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useEffect, useState } from 'react';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
@@ -22,6 +28,7 @@ import * as Yup from 'yup';
 
 import fixedObjectPositionsImage from '#assets/images/fixedObjectPositions.png';
 import randomizedObjectPositionImage from '#assets/images/randomizedObjectPositions.png';
+import { getCheckpointTileItems } from '#components/CheckpointSelection';
 import InputField from '#components/FormFields/InputField';
 import SelectField from '#components/FormFields/SelectField';
 import TilesField from '#components/FormFields/TilesField';
@@ -67,6 +74,7 @@ const schema = Yup.object().shape({
       .matches(RESOURCE_NAME_REGEX, i18n.t('createModel:modelInfo.trainingDetailsSection.modelNameError'))
       .max(RESOURCE_NAME_MAX_LENGTH, i18n.t('createModel:modelInfo.trainingDetailsSection.modelNameLengthError')),
     maxLaps: Yup.number().required(),
+    checkpoint: Yup.mixed<CheckpointSelection>().oneOf(Object.values(CheckpointSelection)),
     resettingBehaviorConfig: Yup.object().shape({
       continuousLap: Yup.boolean().required(),
       collisionPenaltySeconds: Yup.number(),
@@ -112,6 +120,7 @@ const schema = Yup.object().shape({
 
 const CreateEvaluation = () => {
   const { t } = useTranslation('createEvaluation');
+  const { t: tCommon } = useTranslation('common');
   const { modelId = '' } = useParams();
   const [createEvaluation, { isLoading: isCreateEvaluationLoading }] = useCreateEvaluationMutation();
   const [isRandomizedLocation, setIsRandomizedLocation] = useState(false);
@@ -119,11 +128,12 @@ const CreateEvaluation = () => {
   const navigate = useNavigate();
 
   // Monitor model state to detect when cache invalidation completes, to allow navigation to the details page
-  const { isFetching: isModelFetching } = useGetModelQuery({ modelId });
+  const { data: model, isFetching: isModelFetching } = useGetModelQuery({ modelId });
   const initialValues: CreateEvaluationFormValues = {
     modelId: modelId,
     evaluationConfig: {
       evaluationName: '',
+      checkpoint: CheckpointSelection.BEST,
       maxLaps: 3,
       resettingBehaviorConfig: {
         continuousLap: false,
@@ -216,6 +226,14 @@ const CreateEvaluation = () => {
                   description={t('raceType.nameInput.description')}
                   label={t('raceType.nameInput.label')}
                   name="evaluationConfig.evaluationName"
+                />
+                <TilesField
+                  control={control}
+                  columns={2}
+                  description={tCommon('checkpoint.description')}
+                  label={tCommon('checkpoint.label')}
+                  name="evaluationConfig.checkpoint"
+                  items={getCheckpointTileItems(tCommon, model?.checkpoints)}
                 />
                 <TilesField
                   control={control}

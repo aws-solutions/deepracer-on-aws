@@ -31,6 +31,7 @@ export const ListSubmissionsOperation: Operation<
 
   const submissions = await waitForAll(
     submissionItems.map(async (submissionItem): Promise<Submission> => ({
+      checkpoint: submissionItem.checkpoint,
       modelId: submissionItem.modelId,
       modelName: submissionItem.modelName,
       rankingScore: submissionItem.rankingScore,

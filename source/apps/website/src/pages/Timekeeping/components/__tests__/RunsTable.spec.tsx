@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import createWrapper from '@cloudscape-design/components/test-utils/dom';
-import { AdminProfile, Run, RunStatus, RunTransitionAction } from '@deepracer-indy/typescript-client';
+import { AdminProfile, LapReviewStatus, Run, RunStatus, RunTransitionAction } from '@deepracer-indy/typescript-client';
 import { userEvent } from '@storybook/test';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -62,6 +62,7 @@ vi.mock('#services/deepRacer/eventsApi.js', async (importOriginal) => {
 
 vi.mock('#hooks/useTimekeepingSession.js', () => ({
   useTimekeepingSessionActions: mockUseTimekeepingSession,
+  useTimekeepingLaps: mockUseTimekeepingSession,
 }));
 
 const mockProfiles: AdminProfile[] = [
@@ -314,6 +315,42 @@ describe('<RunsTable />', () => {
         expect.objectContaining({ action: RunTransitionAction.DISCARD }),
       );
     });
+  });
+
+  it.each([
+    [1, 'pendingReviewWarning_one'],
+    [2, 'pendingReviewWarning_other'],
+  ])('warns before Submit when %i laps still need review', (count, _key) => {
+    const finishedRun = { ...mockRuns[1], runStatus: RunStatus.FINISHED };
+    mockUseListRunsQuery.mockReturnValue({ data: [finishedRun], isLoading: false });
+    const pendingLaps = Array.from({ length: count }, (_lap, index) => ({
+      lapNumber: index + 2,
+      isValid: false,
+      reviewStatus: LapReviewStatus.PENDING_REVIEW,
+    }));
+    mockUseTimekeepingSession.mockReturnValue({
+      registerActiveRun: mockRegisterActiveRun,
+      registerCreatedRun: mockRegisterCreatedRun,
+      laps: [{ lapNumber: 1, isValid: true, reviewStatus: LapReviewStatus.NOT_REQUIRED }, ...pendingLaps],
+    });
+    render(<RunsTable />);
+
+    expect(screen.getByTestId('pending-review-warning')).toHaveTextContent(
+      i18n.t('timekeeping:runs.pendingReviewWarning', { count }),
+    );
+  });
+
+  it('shows no review warning while the run is still in progress', () => {
+    const inProgressRun = { ...mockRuns[1], runStatus: RunStatus.IN_PROGRESS };
+    mockUseListRunsQuery.mockReturnValue({ data: [inProgressRun], isLoading: false });
+    mockUseTimekeepingSession.mockReturnValue({
+      registerActiveRun: mockRegisterActiveRun,
+      registerCreatedRun: mockRegisterCreatedRun,
+      laps: [{ lapNumber: 1, isValid: false, reviewStatus: LapReviewStatus.PENDING_REVIEW }],
+    });
+    render(<RunsTable />);
+
+    expect(screen.queryByTestId('pending-review-warning')).not.toBeInTheDocument();
   });
 
   it('orders the Resume, Discard, and Submit buttons for a finished run', () => {

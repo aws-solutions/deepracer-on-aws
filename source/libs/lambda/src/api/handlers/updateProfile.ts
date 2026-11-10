@@ -10,6 +10,7 @@ import {
   UpdateProfileServerInput,
   UpdateProfileServerOutput,
 } from '@deepracer-indy/typescript-server-client';
+import { logger } from '@deepracer-indy/utils';
 
 import type { HandlerContext } from '../types/apiGatewayHandlerContext.js';
 import { getApiGatewayHandler, isUserAdmin } from '../utils/apiGateway.js';
@@ -96,8 +97,28 @@ export const UpdateProfileOperation: Operation<
     });
   }
 
+  const isQuotaUpdate = attributes.maxTotalComputeMinutes !== undefined || attributes.maxModelCount !== undefined;
+
+  // Load pre-update state for the audit log, only when a quota field is being changed.
+  const previousProfile = isQuotaUpdate ? await profileDao.load({ profileId: targetProfileId }) : undefined;
+
   // Update the profile
   const profileItem = await profileDao.update({ profileId: targetProfileId }, attributes);
+
+  if (isQuotaUpdate) {
+    logger.info('QUOTA_UPDATE_AUDIT', {
+      targetProfileId,
+      performedBy: contextProfileId,
+      before: {
+        maxTotalComputeMinutes: previousProfile?.maxTotalComputeMinutes,
+        maxModelCount: previousProfile?.maxModelCount,
+      },
+      after: {
+        maxTotalComputeMinutes: profileItem.maxTotalComputeMinutes,
+        maxModelCount: profileItem.maxModelCount,
+      },
+    });
+  }
 
   return {
     profile: {

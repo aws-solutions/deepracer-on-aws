@@ -23,6 +23,7 @@ import {
   formatStorageUsage,
   sortProfilesByRoleAndName,
 } from './helpers';
+import { BATCH_UPDATE_QUOTAS_MAX_USERS } from '../QuotasModal/helpers';
 import { convertMinutesToHours, formatValue } from '../UsageSummary/lib';
 
 interface ProfilesTableProps {
@@ -32,7 +33,7 @@ interface ProfilesTableProps {
   onInviteMultipleUsers: () => void;
   onDeleteUser: (user: Profile, clearSelection: () => void) => void;
   onDeleteUserModels: (user: Profile) => void;
-  onUpdateUserQuotas: (user: Profile, clearSelection: () => void) => void;
+  onUpdateUserQuotas: (users: Profile[], clearSelection: () => void) => void;
   onChangeUserRole: (user: Profile, clearSelection: () => void) => void;
   onResendInvite: (users: Profile[], clearSelection: () => void) => void;
 }
@@ -57,6 +58,8 @@ const ProfilesTable = ({
   const clearSelection = () => {
     setSelectedItems([]);
   };
+
+  const exceedsQuotaUpdateLimit = selectedItems.length > BATCH_UPDATE_QUOTAS_MAX_USERS;
 
   const isChangeRoleDisabled = () => {
     if (selectedItems.length !== 1) return true;
@@ -198,7 +201,10 @@ const ProfilesTable = ({
                   },
                   {
                     text: t('profilesTable.actions.updateUsageQuotas'),
-                    disabled: selectedItems.length !== 1,
+                    disabled: selectedItems.length === 0 || exceedsQuotaUpdateLimit,
+                    disabledReason: exceedsQuotaUpdateLimit
+                      ? t('profilesTable.actions.updateUsageQuotasLimit', { max: BATCH_UPDATE_QUOTAS_MAX_USERS })
+                      : undefined,
                     id: 'update-quotas',
                   },
                   {
@@ -228,8 +234,8 @@ const ProfilesTable = ({
                     onDeleteUser(selectedItems[0], clearSelection);
                   } else if (detail.id === 'delete-models' && selectedItems.length === 1) {
                     onDeleteUserModels(selectedItems[0]);
-                  } else if (detail.id === 'update-quotas' && selectedItems.length === 1) {
-                    onUpdateUserQuotas(selectedItems[0], clearSelection);
+                  } else if (detail.id === 'update-quotas' && selectedItems.length > 0) {
+                    onUpdateUserQuotas(selectedItems, clearSelection);
                   } else if (detail.id === 'resend-invite' && selectedItems.length > 0) {
                     onResendInvite(selectedItems, clearSelection);
                   }

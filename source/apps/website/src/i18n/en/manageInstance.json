@@ -84,6 +84,7 @@
       "inviteMultipleUsers": "Invite multiple users",
       "changeRole": "Change role",
       "updateUsageQuotas": "Update usage quotas",
+      "updateUsageQuotasLimit": "Select up to {{max}} users to update usage quotas.",
       "deleteModels": "Delete models",
       "deleteUser": "Delete user",
       "resendInvitation": "Resend invitation"
@@ -275,11 +276,23 @@
     },
     "user": {
       "header": "Update usage quotas",
+      "headerMultiple_one": "Update usage quotas for {{count}} user",
+      "headerMultiple_other": "Update usage quotas for {{count}} users",
       "computeLabel": "Usage limit (hours)",
       "computeDescription": "The maximum number of training hours for this user.",
       "modelCountLabel": "Model count limit",
       "modelCountDescription": "The maximum number of models this user can store.",
-      "error": "Failed to update user quotas. Please try again."
+      "confirmHeader": "Confirm quota update",
+      "confirmBody_one": "This will update usage quotas for {{count}} user:",
+      "confirmBody_other": "This will update usage quotas for {{count}} users:",
+      "usageLimitSummary": "Usage limit: {{value}}",
+      "modelCountSummary": "Model count limit: {{value}}",
+      "success_one": "Updated quotas for {{alias}}.",
+      "success_other": "Updated quotas for {{count}} users.",
+      "successPartial": "Updated quotas for {{succeeded}} of {{total}} users.",
+      "errorFailed": "Failed to update quotas for: {{aliases}}. Please try again.",
+      "errorFailedMany": "Failed to update quotas for {{total}} users: {{aliases}} and {{remaining}} more. Please try again.",
+      "errorInvalidValues": "Enter a valid number for each quota, or select Unlimited, before confirming."
     },
     "validation": {
       "required": "{{label}} is required",
@@ -288,9 +301,14 @@
     "computePlaceholder": "Enter training hours limit",
     "modelCountPlaceholder": "Enter model count limit",
     "unlimited": "Unlimited",
+    "units": {
+      "hours": "hours",
+      "models": "models"
+    },
     "buttons": {
       "cancel": "Cancel",
-      "confirm": "Confirm"
+      "confirm": "Confirm",
+      "back": "Back"
     }
   }
 }

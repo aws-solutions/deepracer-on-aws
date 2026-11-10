@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-11-10
+
+### Added
+
+- Bulk usage quota updates for administrators to apply the same training-hours and model-count limits to up to 200 users in one action from Manage Instance > Users. Quota changes are audit-logged.
+- Choice of the Best or Last training checkpoint when evaluating a model, entering a community or live race, or cloning a model ([#17](https://github.com/aws-solutions/deepracer-on-aws/issues/17)).
+- Automatic lap timing for live events with a Raspberry Pi timer and start/finish sensors. Race facilitators activate the timer from the console and choose Manual or Automatic timing on the Timekeeping page. Laps shorter than 3 seconds, longer than 5 minutes, or with missed sensor readings are saved as invalid and marked for review.
+
+### Changed
+
+- Upgraded the simulation application image to Ubuntu 26.04, ROS 2 Lyrical, Gazebo Jetty, and Python 3.14, which reduces dropped camera frames during training and evaluation. In side-by-side tests with identical settings, models trained on the new image had 15% faster average lap times and 20% fewer off-track events.
+- SageMaker keeps instances warm for up to one hour after evaluations and race submissions, so the next evaluation or race job in the deployment, from any user, starts faster.
+
+### Fixed
+
+- The Change password dialog now confirms a successful change, stays open with an error message when the change fails, and shows the correct password requirements.
+- A second deployment in the same AWS Region using the CloudFormation template or Launch Wizard no longer fails because of conflicting log group names. On upgrade, nine log groups are renamed to start with the stack name, and the previous log groups are retained.
+
+### Security
+
+- Reduced known vulnerabilities in the simulation application image by moving to current long-term-support base packages, and pinned ROS packages to a fixed, signature-checked snapshot.
+
 ## [1.3.7] - 2026-11-06
 
 ### Security

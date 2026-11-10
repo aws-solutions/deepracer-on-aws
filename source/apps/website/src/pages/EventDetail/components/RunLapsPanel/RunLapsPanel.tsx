@@ -11,13 +11,14 @@ import SpaceBetween from '@cloudscape-design/components/space-between';
 import Spinner from '@cloudscape-design/components/spinner';
 import StatusIndicator from '@cloudscape-design/components/status-indicator';
 import Table, { TableProps } from '@cloudscape-design/components/table';
-import { Lap, Leaderboard } from '@deepracer-indy/typescript-client';
+import { Lap, LapReviewStatus, Leaderboard } from '@deepracer-indy/typescript-client';
 import { skipToken } from '@reduxjs/toolkit/query/react';
 import { TFunction } from 'i18next';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useAppDispatch } from '#hooks/useAppDispatch';
+import { useSetLapValidityMutation } from '#services/deepRacer/lapsApi.js';
 import { useListProfilesQuery } from '#services/deepRacer/profileApi.js';
 import { useGetRunQuery, useListRunsQuery, useUpdateLapMutation } from '#services/deepRacer/runsApi.js';
 import { displayErrorNotification, displaySuccessNotification } from '#store/notifications/notificationsSlice.js';
@@ -28,8 +29,29 @@ import LapEditModal, { LapEditFormValues } from './LapEditModal';
 interface RunLapsPanelProps {
   eventId: string;
   tracks: Leaderboard[];
+  /** Can edit lap times (UpdateLap is admin-only). */
   isAdmin: boolean;
+  /** Can approve, reject or toggle lap validity (SetLapValidity allows admins and facilitators). */
+  canReviewLaps?: boolean;
 }
+
+/**
+ * Validity actions for a lap: Approve/Reject for a lap pending review (SetLapValidity marks it
+ * REVIEWED), otherwise a toggle. Editing the time doesn't decide validity.
+ */
+const getValidityActions = (t: TFunction<'events'>, lap: Lap) =>
+  lap.reviewStatus === LapReviewStatus.PENDING_REVIEW
+    ? [
+        { key: 'approve', label: t('detail.runs.lapTable.approveButton'), isValid: true },
+        { key: 'reject', label: t('detail.runs.lapTable.rejectButton'), isValid: false },
+      ]
+    : [
+        {
+          key: 'toggle',
+          label: t(lap.isValid ? 'detail.runs.lapTable.markInvalidButton' : 'detail.runs.lapTable.markValidButton'),
+          isValid: !lap.isValid,
+        },
+      ];
 
 /**
  * Builds the lap table's column definitions. Declared outside the component body (and taking
@@ -40,7 +62,10 @@ interface RunLapsPanelProps {
 const buildLapTableColumnDefinitions = (
   t: TFunction<'events'>,
   isAdmin: boolean,
+  canReviewLaps: boolean,
   onEditLap: (lap: Lap) => void,
+  onSetLapValidity: (lap: Lap, isValid: boolean) => void,
+  updatingLapNumber: number | undefined,
 ): TableProps.ColumnDefinition<Lap>[] => [
   {
     id: 'lapNumber',
@@ -55,11 +80,16 @@ const buildLapTableColumnDefinitions = (
   {
     id: 'isValid',
     header: t('detail.runs.lapTable.columns.isValid'),
-    cell: (lap) => (
-      <StatusIndicator type={lap.isValid ? 'success' : 'error'}>
-        {lap.isValid ? t('detail.runs.lapTable.valid') : t('detail.runs.lapTable.invalid')}
-      </StatusIndicator>
-    ),
+    cell: (lap) => {
+      if (lap.reviewStatus === LapReviewStatus.PENDING_REVIEW) {
+        return <StatusIndicator type="warning">{t('detail.runs.lapTable.needsReview')}</StatusIndicator>;
+      }
+      return (
+        <StatusIndicator type={lap.isValid ? 'success' : 'error'}>
+          {lap.isValid ? t('detail.runs.lapTable.valid') : t('detail.runs.lapTable.invalid')}
+        </StatusIndicator>
+      );
+    },
   },
   {
     id: 'editHistory',
@@ -67,15 +97,31 @@ const buildLapTableColumnDefinitions = (
     cell: (lap) =>
       lap.originalLapTimeMs === undefined ? '—' : t('detail.runs.lapTable.editedBy', { editedBy: lap.editedBy ?? '—' }),
   },
-  ...(isAdmin
+  ...(isAdmin || canReviewLaps
     ? [
         {
           id: 'actions',
           header: '',
           cell: (lap: Lap) => (
-            <Button variant="inline-link" onClick={() => onEditLap(lap)}>
-              {t('detail.runs.lapTable.editButton')}
-            </Button>
+            <SpaceBetween direction="horizontal" size="xs">
+              {isAdmin && (
+                <Button variant="inline-link" onClick={() => onEditLap(lap)}>
+                  {t('detail.runs.lapTable.editButton')}
+                </Button>
+              )}
+              {canReviewLaps &&
+                getValidityActions(t, lap).map(({ key, label, isValid }) => (
+                  <Button
+                    key={key}
+                    variant="inline-link"
+                    disabled={updatingLapNumber === lap.lapNumber}
+                    ariaLabel={`${label} ${t('detail.runs.lapTable.columns.lapNumber')} ${lap.lapNumber}`}
+                    onClick={() => onSetLapValidity(lap, isValid)}
+                  >
+                    {label}
+                  </Button>
+                ))}
+            </SpaceBetween>
           ),
         },
       ]
@@ -83,7 +129,7 @@ const buildLapTableColumnDefinitions = (
 ];
 
 /** Looks up a Run by its track (leaderboardId) and runId, then displays its recorded laps. */
-const RunLapsPanel = ({ eventId, tracks, isAdmin }: RunLapsPanelProps) => {
+const RunLapsPanel = ({ eventId, tracks, isAdmin, canReviewLaps = isAdmin }: RunLapsPanelProps) => {
   const { t } = useTranslation('events');
   const dispatch = useAppDispatch();
 
@@ -162,6 +208,35 @@ const RunLapsPanel = ({ eventId, tracks, isAdmin }: RunLapsPanelProps) => {
   const handleRacerChange = (profileId: string | undefined) => {
     setSelectedProfileId(profileId);
     setSelectedRunId(undefined);
+  };
+
+  const [setLapValidity] = useSetLapValidityMutation();
+  const [updatingLapNumber, setUpdatingLapNumber] = useState<number | undefined>(undefined);
+  const handleSetLapValidity = async (lap: Lap, isValid: boolean) => {
+    if (!selectedLeaderboardId || !selectedRunId) return;
+
+    setUpdatingLapNumber(lap.lapNumber);
+    try {
+      await setLapValidity({
+        eventId,
+        leaderboardId: selectedLeaderboardId,
+        runId: selectedRunId,
+        lapNumber: lap.lapNumber,
+        isValid,
+      }).unwrap();
+      dispatch(
+        displaySuccessNotification({
+          content: t('detail.runs.lapTable.validitySuccess', { lapNumber: lap.lapNumber }),
+        }),
+      );
+    } catch (err: unknown) {
+      console.error('Failed to set lap validity', err);
+      dispatch(
+        displayErrorNotification({ content: t('detail.runs.lapTable.validityError', { lapNumber: lap.lapNumber }) }),
+      );
+    } finally {
+      setUpdatingLapNumber(undefined);
+    }
   };
 
   const handleSaveLapEdit = async (values: LapEditFormValues) => {
@@ -249,7 +324,16 @@ const RunLapsPanel = ({ eventId, tracks, isAdmin }: RunLapsPanelProps) => {
             items={data.laps}
             trackBy="lapNumber"
             empty={<Box textAlign="center">{t('detail.runs.lapTable.empty')}</Box>}
-            columnDefinitions={buildLapTableColumnDefinitions(t, isAdmin, setEditingLap)}
+            columnDefinitions={buildLapTableColumnDefinitions(
+              t,
+              isAdmin,
+              canReviewLaps,
+              setEditingLap,
+              (lap, isValid) => {
+                handleSetLapValidity(lap, isValid).catch(() => undefined);
+              },
+              updatingLapNumber,
+            )}
           />
         </Container>
       )}

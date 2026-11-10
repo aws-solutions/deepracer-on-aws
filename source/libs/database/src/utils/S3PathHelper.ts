@@ -47,6 +47,22 @@ export class S3PathHelper {
     return `${this.getSageMakerArtifactsS3Location(modelId, profileId)}training_params.yaml`;
   }
 
+  /**
+   * `s3://{modelBucket}/{profileId}/models/{modelId}/sagemaker-artifacts/model/{fileName}`, where the SimApp
+   * keeps the model's checkpoint files.
+   */
+  getSageMakerModelFileS3Location(modelId: string, profileId: string, fileName: string) {
+    return `${this.getSageMakerArtifactsS3Location(modelId, profileId)}model/${fileName}`;
+  }
+
+  /**
+   * `s3://{modelBucket}/{profileId}/models/{modelId}/sagemaker-artifacts/model/deepracer_checkpoints.json`,
+   * written by the SimApp during training with the model's best and last checkpoints.
+   */
+  getDeepRacerCheckpointsS3Location(modelId: string, profileId: string) {
+    return this.getSageMakerModelFileS3Location(modelId, profileId, 'deepracer_checkpoints.json');
+  }
+
   /** `s3://{modelBucket}/{profileId}/models/{modelId}/sagemaker-artifacts/{jobType}_job_status.json` */
   getSimulationHeartbeatS3Location(modelId: string, profileId: string, jobName: JobName) {
     return `${this.getSageMakerArtifactsS3Location(modelId, profileId)}${jobNameHelper.getJobType(jobName)}_job_status.json`;

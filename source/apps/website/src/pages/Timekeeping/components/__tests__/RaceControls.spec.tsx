@@ -2,10 +2,19 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import createWrapper from '@cloudscape-design/components/test-utils/dom';
-import { DeviceStatus, DeviceType, RunStatus, RunTransitionAction } from '@deepracer-indy/typescript-client';
+import { RUN_NOT_IN_PROGRESS_MESSAGE } from '@deepracer-indy/config';
+import {
+  DeviceStatus,
+  DeviceType,
+  LapReviewStatus,
+  LapTimingSource,
+  RunStatus,
+  RunTransitionAction,
+} from '@deepracer-indy/typescript-client';
 import { act } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ConnectionStatus, type TimerMqttEvent } from '#hooks/useTimerMqtt.js';
 import i18n from '#i18n/index.js';
 import { fireEvent, render, screen, waitFor } from '#utils/testUtils';
 
@@ -15,6 +24,11 @@ const mockTracks = [{ leaderboardId: 'leaderboard-001', fleetId: 'fleet-001', na
 const mockDevices = [
   { instanceId: 'car-001', name: 'Car 1', deviceType: DeviceType.CAR, status: DeviceStatus.ONLINE },
   { instanceId: 'car-002', name: 'Car 2', deviceType: DeviceType.CAR, status: DeviceStatus.ONLINE },
+];
+const TIMER_ID = 'mi-0123456789abcdef0';
+const LAP_NUMBER_CONFLICT = { name: 'ConflictError', error: 'Lap number conflict. Please retry.' };
+const mockTimers = [
+  { instanceId: TIMER_ID, name: 'Timer 1', deviceType: DeviceType.TIMER, status: DeviceStatus.ONLINE },
 ];
 
 const {
@@ -30,6 +44,8 @@ const {
   mockRegisterActiveRun,
   mockTransitionRunStatus,
   mockUseTimekeepingSession,
+  mockUseTimerMqtt,
+  mockFetchRun,
 } = vi.hoisted(() => ({
   mockGetEventQuery: vi.fn(),
   mockAddOptimisticLap: vi.fn(),
@@ -43,6 +59,8 @@ const {
   mockRegisterActiveRun: vi.fn(),
   mockTransitionRunStatus: vi.fn(),
   mockUseTimekeepingSession: vi.fn(),
+  mockUseTimerMqtt: vi.fn(),
+  mockFetchRun: vi.fn(),
 }));
 
 vi.mock('#hooks/useTimekeepingContext.js', () => ({
@@ -54,6 +72,11 @@ vi.mock('#hooks/useTimekeeperMqtt.js', () => ({
     publishLapCaptured: mockPublishLapCaptured,
     publishOverlayUpdate: mockPublishOverlayUpdate,
   }),
+}));
+
+vi.mock('#hooks/useTimerMqtt.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#hooks/useTimerMqtt.js')>()),
+  useTimerMqtt: mockUseTimerMqtt,
 }));
 
 vi.mock('#services/deepRacer/devicesApi.js', () => ({
@@ -72,6 +95,7 @@ vi.mock('#services/deepRacer/lapsApi.js', () => ({
 
 vi.mock('#services/deepRacer/runsApi.js', () => ({
   useTransitionRunStatusMutation: () => [mockTransitionRunStatus, { isLoading: false }],
+  useLazyGetRunQuery: () => [mockFetchRun],
 }));
 
 vi.mock('#hooks/useTimekeepingSession.js', () => ({
@@ -89,7 +113,11 @@ describe('<RaceControls />', () => {
     vi.clearAllMocks();
     mockGetEventQuery.mockReturnValue({ data: { maxTimeInMinutes: 2 } });
     mockListEventTracksQuery.mockReturnValue({ data: mockTracks, isLoading: false });
-    mockListDevicesQuery.mockReturnValue({ data: mockDevices, isLoading: false });
+    mockListDevicesQuery.mockImplementation(({ deviceType }: { deviceType: DeviceType }) => ({
+      data: deviceType === DeviceType.TIMER ? mockTimers : mockDevices,
+      isLoading: false,
+    }));
+    mockUseTimerMqtt.mockReturnValue({ connectionStatus: ConnectionStatus.DISCONNECTED });
     mockCreateLap.mockReturnValue({ unwrap: () => Promise.resolve({}) });
     mockPublishLapCaptured.mockResolvedValue(true);
     mockPublishOverlayUpdate.mockResolvedValue(true);
@@ -457,6 +485,7 @@ describe('<RaceControls />', () => {
       deviceId: undefined,
       lapTimeMs: 1500,
       resets: 0,
+      timingSource: LapTimingSource.MANUAL,
       clientToken: expect.any(String),
     });
     expect(screen.getByTestId('current-lap')).toHaveTextContent('00:00.000');
@@ -835,5 +864,735 @@ describe('<RaceControls />', () => {
 
     carSelect?.selectOptionByValue('car-001');
     expect(carSelect?.findTrigger().getElement()).toHaveTextContent('Car 1');
+  });
+
+  describe('automatic timing', () => {
+    let emitTimerEvent: (event: TimerMqttEvent) => void;
+    let activeRun: { runId: string; runStatus: RunStatus };
+    let nextSequence: number;
+
+    /** A crossing at `timestamp` on the timer clock; sequence numbers increase by one unless given. */
+    const lap = (timestamp: number, sequence = nextSequence++): TimerMqttEvent => ({
+      eventType: 'TIMER_LAP',
+      instanceId: TIMER_ID,
+      timestamp,
+      gpio: 17,
+      sequence,
+    });
+    const flush = async () => {
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+    };
+    const selectTimer = () => {
+      const timerSelect = createWrapper().findSelect('[data-testid="timer-select"]');
+      timerSelect?.openDropdown();
+      timerSelect?.selectOptionByValue(TIMER_ID);
+    };
+    const selectAutoMode = () => {
+      createWrapper().findSegmentedControl('[data-testid="timing-mode"]')?.findSegmentById('AUTO')?.click();
+    };
+
+    beforeEach(() => {
+      nextSequence = 1;
+      activeRun = { runId: 'run-001', runStatus: RunStatus.READY };
+      mockUseTimekeepingSession.mockImplementation(() => ({
+        activeRun,
+        addOptimisticLap: mockAddOptimisticLap,
+        laps: [],
+        removeOptimisticLap: mockRemoveOptimisticLap,
+        registerActiveRun: mockRegisterActiveRun,
+        runSetup: undefined,
+      }));
+      mockTransitionRunStatus.mockImplementation(() => ({
+        unwrap: () => Promise.resolve({ run: { ...activeRun, runStatus: RunStatus.IN_PROGRESS } }),
+      }));
+      mockUseTimerMqtt.mockImplementation((_instanceId: string, { onEvent }: { onEvent: typeof emitTimerEvent }) => {
+        emitTimerEvent = onEvent;
+        return { connectionStatus: ConnectionStatus.CONNECTED };
+      });
+    });
+
+    it('lists online timers and only allows Automatic once a timer is selected', () => {
+      render(<RaceControls />);
+
+      expect(mockListDevicesQuery).toHaveBeenCalledWith(
+        { deviceType: DeviceType.TIMER, status: DeviceStatus.ONLINE },
+        { skip: false },
+      );
+      const autoSegment = createWrapper()
+        .findSegmentedControl('[data-testid="timing-mode"]')
+        ?.findSegmentById('AUTO')
+        ?.getElement();
+      expect(autoSegment).toBeDisabled();
+
+      selectTimer();
+
+      expect(mockUseTimerMqtt).toHaveBeenLastCalledWith(TIMER_ID, expect.anything());
+      expect(autoSegment).toBeEnabled();
+    });
+
+    it('reports the timer online after a heartbeat and not responding before one', () => {
+      render(<RaceControls />);
+      selectTimer();
+
+      expect(screen.getByTestId('timer-status')).toHaveTextContent(
+        i18n.t('timekeeping:autoTiming.status.notResponding'),
+      );
+
+      act(() => emitTimerEvent({ eventType: 'TIMER_HEARTBEAT', instanceId: TIMER_ID, timestamp: 1 }));
+
+      expect(screen.getByTestId('timer-status')).toHaveTextContent(i18n.t('timekeeping:autoTiming.status.online'));
+    });
+
+    it.each([
+      [ConnectionStatus.CONNECTING, 'autoTiming.status.connecting'],
+      [ConnectionStatus.DISCONNECTED, 'autoTiming.status.connecting'],
+      [ConnectionStatus.ERROR, 'autoTiming.status.connectionError'],
+    ] as const)('reports the timer status when the MQTT connection is %s', (connectionStatus, statusKey) => {
+      mockUseTimerMqtt.mockReturnValue({ connectionStatus });
+      render(<RaceControls />);
+      selectTimer();
+
+      expect(screen.getByTestId('timer-status')).toHaveTextContent(i18n.t(`timekeeping:${statusKey}`));
+    });
+
+    it('ignores events from a timer other than the selected one', async () => {
+      render(<RaceControls />);
+      selectTimer();
+      selectAutoMode();
+
+      act(() => emitTimerEvent({ ...lap(1000), instanceId: 'mi-ffffffffffffffff0' }));
+      await flush();
+
+      expect(mockTransitionRunStatus).not.toHaveBeenCalled();
+      expect(screen.getByTestId('timer-status')).toHaveTextContent(
+        i18n.t('timekeeping:autoTiming.status.notResponding'),
+      );
+    });
+
+    it('switches back to Manual and stops acting on crossings', async () => {
+      render(<RaceControls />);
+      selectTimer();
+      selectAutoMode();
+      createWrapper().findSegmentedControl('[data-testid="timing-mode"]')?.findSegmentById('MANUAL')?.click();
+
+      act(() => emitTimerEvent(lap(1000)));
+      await flush();
+
+      expect(mockTransitionRunStatus).not.toHaveBeenCalled();
+    });
+
+    it('ignores crossings in Manual mode', async () => {
+      render(<RaceControls />);
+      selectTimer();
+
+      act(() => emitTimerEvent(lap(1000)));
+      await flush();
+
+      expect(mockTransitionRunStatus).not.toHaveBeenCalled();
+    });
+
+    it('starts the run on the first crossing and records the next lap from the timer clock', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+      const { rerender } = render(<RaceControls />);
+      selectTimer();
+      selectAutoMode();
+
+      act(() => emitTimerEvent(lap(1_000)));
+      await flush();
+      expect(mockTransitionRunStatus).toHaveBeenCalledWith(
+        expect.objectContaining({ action: RunTransitionAction.START }),
+      );
+      activeRun = { ...activeRun, runStatus: RunStatus.IN_PROGRESS };
+      rerender(<RaceControls />);
+      act(() => {
+        vi.advanceTimersByTime(14_000);
+      });
+
+      act(() => emitTimerEvent(lap(13_500)));
+      await flush();
+
+      expect(mockCreateLap).toHaveBeenCalledWith(
+        expect.objectContaining({
+          lapTimeMs: 12_500,
+          timingSource: LapTimingSource.AUTO,
+          missedCrossings: 0,
+          clientToken: `${TIMER_ID}::2:13500`,
+        }),
+      );
+      expect(mockAddOptimisticLap).toHaveBeenCalledWith(
+        expect.objectContaining({
+          lapTimeMs: 12_500,
+          isValid: true,
+          timingSource: LapTimingSource.AUTO,
+          reviewStatus: LapReviewStatus.NOT_REQUIRED,
+        }),
+      );
+    });
+
+    it('flags an out-of-range auto lap for review and ignores a redelivered crossing', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+      const { rerender } = render(<RaceControls />);
+      selectTimer();
+      selectAutoMode();
+
+      act(() => emitTimerEvent(lap(1_000)));
+      await flush();
+      activeRun = { ...activeRun, runStatus: RunStatus.IN_PROGRESS };
+      rerender(<RaceControls />);
+      act(() => {
+        vi.advanceTimersByTime(3_000);
+      });
+
+      act(() => emitTimerEvent(lap(2_500, 2)));
+      await flush();
+      act(() => emitTimerEvent(lap(2_500, 2)));
+      await flush();
+
+      expect(mockCreateLap).toHaveBeenCalledTimes(1);
+      expect(mockAddOptimisticLap).toHaveBeenCalledWith(
+        expect.objectContaining({ lapTimeMs: 1_500, isValid: false, reviewStatus: LapReviewStatus.PENDING_REVIEW }),
+      );
+      expect(mockPublishLapCaptured).toHaveBeenCalledWith(expect.objectContaining({ isValid: false }));
+    });
+
+    it('records a lap after a manual Record lap as MANUAL, timed on the browser clock', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+      const { rerender } = render(<RaceControls />);
+      selectTimer();
+      selectAutoMode();
+
+      act(() => emitTimerEvent(lap(1_000)));
+      await flush();
+      activeRun = { ...activeRun, runStatus: RunStatus.IN_PROGRESS };
+      rerender(<RaceControls />);
+      act(() => {
+        vi.advanceTimersByTime(10_000);
+      });
+      fireEvent.click(screen.getByRole('button', { name: i18n.t('timekeeping:manualTiming.recordLap') }));
+      await flush();
+      act(() => {
+        vi.advanceTimersByTime(8_000);
+      });
+
+      act(() => emitTimerEvent(lap(30_000)));
+      await flush();
+
+      expect(mockCreateLap).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({ lapTimeMs: 10_000, timingSource: LapTimingSource.MANUAL }),
+      );
+      expect(mockCreateLap).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          lapTimeMs: 8_000,
+          timingSource: LapTimingSource.MANUAL,
+          clientToken: `${TIMER_ID}::2:30000`,
+        }),
+      );
+      expect(mockCreateLap.mock.calls[1][0]).not.toHaveProperty('missedCrossings');
+    });
+
+    it('flags an auto lap for review when the timer lost a crossing', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+      const { rerender } = render(<RaceControls />);
+      selectTimer();
+      selectAutoMode();
+
+      act(() => emitTimerEvent(lap(1_000, 1)));
+      await flush();
+      activeRun = { ...activeRun, runStatus: RunStatus.IN_PROGRESS };
+      rerender(<RaceControls />);
+      act(() => {
+        vi.advanceTimersByTime(50_000);
+      });
+
+      // Crossing 2 never arrived, so this "lap" likely spans two laps despite a plausible time.
+      act(() => emitTimerEvent(lap(49_000, 3)));
+      await flush();
+
+      expect(mockCreateLap).toHaveBeenCalledWith(
+        expect.objectContaining({ lapTimeMs: 48_000, missedCrossings: 1, timingSource: LapTimingSource.AUTO }),
+      );
+      expect(mockAddOptimisticLap).toHaveBeenCalledWith(
+        expect.objectContaining({ isValid: false, reviewStatus: LapReviewStatus.PENDING_REVIEW }),
+      );
+    });
+
+    it('records a crossing once when two Timekeeping pages receive it', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+      // The backend's idempotency guard accepts the first CreateLap for a token and rejects the
+      // replay with ConflictError.
+      const recordedTokens = new Set<string>();
+      mockCreateLap.mockImplementation(({ clientToken }: { clientToken: string }) => ({
+        unwrap: () => {
+          if (recordedTokens.has(clientToken)) return Promise.reject(LAP_NUMBER_CONFLICT);
+          recordedTokens.add(clientToken);
+          return Promise.resolve({});
+        },
+      }));
+      const startCrossing = lap(1_000);
+      const lapCrossing = lap(13_000);
+      // Each facilitator page receives the same two crossings from the timer.
+      const runPage = async () => {
+        activeRun = { runId: 'run-001', runStatus: RunStatus.READY };
+        const view = render(<RaceControls />);
+        selectTimer();
+        selectAutoMode();
+        act(() => emitTimerEvent(startCrossing));
+        await flush();
+        activeRun = { ...activeRun, runStatus: RunStatus.IN_PROGRESS };
+        view.rerender(<RaceControls />);
+        act(() => {
+          vi.advanceTimersByTime(12_000);
+        });
+        act(() => emitTimerEvent(lapCrossing));
+        await flush();
+        return view;
+      };
+
+      (await runPage()).unmount();
+      await runPage();
+
+      // First page: one call. Second page: the replay conflicts, and so does its one retry.
+      expect(mockCreateLap).toHaveBeenCalledTimes(3);
+      const tokens = mockCreateLap.mock.calls.map(([input]) => (input as { clientToken: string }).clientToken);
+      expect(new Set(tokens).size).toBe(1);
+      expect(recordedTokens.size).toBe(1);
+      // The second page's CreateLap was the replay: it drops its optimistic lap without an error.
+      expect(mockRemoveOptimisticLap).toHaveBeenCalledTimes(1);
+      expect(screen.queryByText(i18n.t('timekeeping:manualTiming.lapError'))).not.toBeInTheDocument();
+    });
+
+    /** Drives the page to an in-progress run whose lap is timed between two crossings. */
+    const recordCrossingLap = async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+      const view = render(<RaceControls />);
+      selectTimer();
+      selectAutoMode();
+      act(() => emitTimerEvent(lap(1_000)));
+      await flush();
+      activeRun = { ...activeRun, runStatus: RunStatus.IN_PROGRESS };
+      view.rerender(<RaceControls />);
+      act(() => {
+        vi.advanceTimersByTime(12_000);
+      });
+      act(() => emitTimerEvent(lap(13_000)));
+      await flush();
+      await flush();
+    };
+
+    it('retries a crossing lap that lost a lap-count race and records it', async () => {
+      mockCreateLap
+        .mockReturnValueOnce({ unwrap: () => Promise.reject(LAP_NUMBER_CONFLICT) })
+        .mockReturnValueOnce({ unwrap: () => Promise.resolve({}) });
+
+      await recordCrossingLap();
+
+      expect(mockCreateLap).toHaveBeenCalledTimes(2);
+      expect(mockCreateLap.mock.calls[1][0]).toEqual(mockCreateLap.mock.calls[0][0]);
+      expect(mockCreateLap.mock.calls[1][0]).toEqual(
+        expect.objectContaining({ clientToken: `${TIMER_ID}::2:13000`, lapTimeMs: 12_000 }),
+      );
+      expect(mockRemoveOptimisticLap).not.toHaveBeenCalled();
+      expect(mockPublishLapCaptured).toHaveBeenCalledWith(expect.objectContaining({ lapTimeMilliseconds: 12_000 }));
+      expect(screen.queryByText(i18n.t('timekeeping:manualTiming.lapError'))).not.toBeInTheDocument();
+    });
+
+    it('reports a crossing that arrived after the run stopped instead of dropping it silently', async () => {
+      mockCreateLap.mockReturnValue({
+        unwrap: () => Promise.reject({ name: 'ConflictError', error: RUN_NOT_IN_PROGRESS_MESSAGE }),
+      });
+
+      await recordCrossingLap();
+
+      expect(mockCreateLap).toHaveBeenCalledTimes(1);
+      expect(mockRemoveOptimisticLap).toHaveBeenCalledTimes(1);
+      expect(screen.getByText(i18n.t('timekeeping:autoTiming.crossingNotRecorded'))).toBeInTheDocument();
+    });
+
+    it('does not retry a manual lap on a lap-number conflict', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+      mockCreateLap.mockReturnValue({ unwrap: () => Promise.reject(LAP_NUMBER_CONFLICT) });
+      activeRun = { runId: 'run-001', runStatus: RunStatus.READY };
+      const view = render(<RaceControls />);
+      fireEvent.click(screen.getByRole('button', { name: i18n.t('timekeeping:actions.START') }));
+      await flush();
+      activeRun = { ...activeRun, runStatus: RunStatus.IN_PROGRESS };
+      view.rerender(<RaceControls />);
+      act(() => {
+        vi.advanceTimersByTime(5_000);
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: i18n.t('timekeeping:manualTiming.recordLap') }));
+      await flush();
+
+      expect(mockCreateLap).toHaveBeenCalledTimes(1);
+      expect(screen.getByText(i18n.t('timekeeping:manualTiming.lapError'))).toBeInTheDocument();
+    });
+
+    it('restarts the lap clock when a crossing resumes a run paused mid-lap', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+      const view = render(<RaceControls />);
+      selectTimer();
+      selectAutoMode();
+      fireEvent.click(screen.getByRole('button', { name: i18n.t('timekeeping:actions.START') }));
+      await flush();
+      activeRun = { ...activeRun, runStatus: RunStatus.IN_PROGRESS };
+      view.rerender(<RaceControls />);
+      act(() => {
+        vi.advanceTimersByTime(5_000);
+      });
+      mockTransitionRunStatus.mockImplementationOnce(() => ({
+        unwrap: () => Promise.resolve({ run: { ...activeRun, runStatus: RunStatus.PAUSED } }),
+      }));
+      fireEvent.click(screen.getByRole('button', { name: i18n.t('timekeeping:actions.PAUSE') }));
+      await flush();
+      activeRun = { ...activeRun, runStatus: RunStatus.PAUSED };
+      view.rerender(<RaceControls />);
+      expect(screen.getByTestId('current-lap')).toHaveTextContent('00:05.000');
+
+      act(() => emitTimerEvent(lap(20_000)));
+      await flush();
+
+      expect(mockTransitionRunStatus).toHaveBeenLastCalledWith(
+        expect.objectContaining({ action: RunTransitionAction.RESUME }),
+      );
+      expect(screen.getByTestId('current-lap')).toHaveTextContent('00:00.000');
+    });
+
+    it('restores the part-lap when a crossing could not resume the run', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+      const view = render(<RaceControls />);
+      selectTimer();
+      selectAutoMode();
+      fireEvent.click(screen.getByRole('button', { name: i18n.t('timekeeping:actions.START') }));
+      await flush();
+      activeRun = { ...activeRun, runStatus: RunStatus.IN_PROGRESS };
+      view.rerender(<RaceControls />);
+      act(() => {
+        vi.advanceTimersByTime(5_000);
+      });
+      mockTransitionRunStatus.mockImplementationOnce(() => ({
+        unwrap: () => Promise.resolve({ run: { ...activeRun, runStatus: RunStatus.PAUSED } }),
+      }));
+      fireEvent.click(screen.getByRole('button', { name: i18n.t('timekeeping:actions.PAUSE') }));
+      await flush();
+      activeRun = { ...activeRun, runStatus: RunStatus.PAUSED };
+      view.rerender(<RaceControls />);
+
+      // The crossing's RESUME is rejected and the server run is still paused.
+      mockTransitionRunStatus.mockImplementationOnce(() => ({
+        unwrap: () => Promise.reject({ name: 'ConflictError', error: 'Concurrent transition detected; please retry.' }),
+      }));
+      mockFetchRun.mockReturnValue({ unwrap: () => Promise.resolve({ run: activeRun, laps: [] }) });
+      act(() => emitTimerEvent(lap(20_000)));
+      await flush();
+      await flush();
+      expect(screen.getByTestId('current-lap')).toHaveTextContent('00:05.000');
+
+      // A manual Resume continues the part-lap, so the recorded lap covers both halves.
+      fireEvent.click(screen.getByRole('button', { name: i18n.t('timekeeping:actions.RESUME') }));
+      await flush();
+      activeRun = { ...activeRun, runStatus: RunStatus.IN_PROGRESS };
+      view.rerender(<RaceControls />);
+      act(() => {
+        vi.advanceTimersByTime(3_000);
+      });
+      fireEvent.click(screen.getByRole('button', { name: i18n.t('timekeeping:manualTiming.recordLap') }));
+      await flush();
+
+      expect(mockCreateLap).toHaveBeenCalledWith(
+        expect.objectContaining({ lapTimeMs: 8_000, timingSource: LapTimingSource.MANUAL }),
+      );
+    });
+
+    it('keeps timing when another page already started the run from the same crossing', async () => {
+      mockTransitionRunStatus.mockReturnValue({
+        unwrap: () => Promise.reject({ name: 'BadRequestError', error: 'Cannot apply action START' }),
+      });
+      const serverRun = { runId: 'run-001', runStatus: RunStatus.IN_PROGRESS };
+      mockFetchRun.mockReturnValue({ unwrap: () => Promise.resolve({ run: serverRun, laps: [] }) });
+      render(<RaceControls />);
+      selectTimer();
+      selectAutoMode();
+
+      act(() => emitTimerEvent(lap(1_000)));
+      await flush();
+      await flush();
+
+      expect(mockFetchRun).toHaveBeenCalledWith({
+        eventId: 'event-001',
+        leaderboardId: 'leaderboard-001',
+        runId: 'run-001',
+      });
+      expect(mockRegisterActiveRun).toHaveBeenCalledWith(serverRun);
+      expect(screen.queryByText(i18n.t('timekeeping:autoTiming.crossingTransitionFailed'))).not.toBeInTheDocument();
+    });
+
+    it('rolls back and explains when a crossing could not start the run', async () => {
+      mockTransitionRunStatus.mockReturnValue({
+        unwrap: () => Promise.reject({ name: 'ConflictError', error: 'Concurrent transition detected; please retry.' }),
+      });
+      mockFetchRun.mockReturnValue({
+        unwrap: () => Promise.resolve({ run: { runId: 'run-001', runStatus: RunStatus.READY }, laps: [] }),
+      });
+      render(<RaceControls />);
+      selectTimer();
+      selectAutoMode();
+
+      act(() => emitTimerEvent(lap(1_000)));
+      await flush();
+      await flush();
+
+      expect(mockRegisterActiveRun).not.toHaveBeenCalled();
+      expect(screen.getByText(i18n.t('timekeeping:autoTiming.crossingTransitionFailed'))).toBeInTheDocument();
+    });
+
+    it('does not check the server when a manual Start fails', async () => {
+      mockTransitionRunStatus.mockReturnValue({ unwrap: () => Promise.reject({ name: 'ConflictError' }) });
+      render(<RaceControls />);
+
+      fireEvent.click(screen.getByRole('button', { name: i18n.t('timekeeping:actions.START') }));
+      await flush();
+
+      expect(mockFetchRun).not.toHaveBeenCalled();
+      expect(screen.queryByText(i18n.t('timekeeping:autoTiming.crossingTransitionFailed'))).not.toBeInTheDocument();
+    });
+
+    const bootLap = (bootId: string, sequence: number, timestamp: number, publishedAt?: number): TimerMqttEvent => ({
+      eventType: 'TIMER_LAP',
+      instanceId: TIMER_ID,
+      bootId,
+      timestamp,
+      gpio: 17,
+      sequence,
+      ...(publishedAt !== undefined && { publishedAt }),
+    });
+    const advance = async (ms: number) => {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(ms);
+      });
+    };
+    /** Starts the run with a crossing at timer time 1 000 ms (sequence 1 of boot-a). */
+    const startRunFromCrossing = async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+      const view = render(<RaceControls />);
+      selectTimer();
+      selectAutoMode();
+      act(() => emitTimerEvent(bootLap('boot-a', 1, 1_000)));
+      await flush();
+      activeRun = { ...activeRun, runStatus: RunStatus.IN_PROGRESS };
+      view.rerender(<RaceControls />);
+      return view;
+    };
+
+    it('flags the lap that spans a timer restart and times it on the browser clock', async () => {
+      await startRunFromCrossing();
+      await advance(20_000);
+
+      // The restarted timer has a new bootId, restarts its sequence and its clock reads lower.
+      act(() => emitTimerEvent(bootLap('boot-b', 1, 500)));
+      await flush();
+
+      expect(mockCreateLap).toHaveBeenCalledWith(
+        expect.objectContaining({
+          lapTimeMs: 20_000,
+          timingSource: LapTimingSource.MANUAL,
+          missedCrossings: 1,
+          clientToken: `${TIMER_ID}:boot-b:1:500`,
+        }),
+      );
+      expect(mockAddOptimisticLap).toHaveBeenCalledWith(
+        expect.objectContaining({ isValid: false, reviewStatus: LapReviewStatus.PENDING_REVIEW }),
+      );
+    });
+
+    it('times laps on the new timer clock after a restart', async () => {
+      await startRunFromCrossing();
+      await advance(20_000);
+      act(() => emitTimerEvent(bootLap('boot-b', 1, 500)));
+      await flush();
+      await advance(12_000);
+
+      act(() => emitTimerEvent(bootLap('boot-b', 2, 12_500)));
+      await flush();
+
+      expect(mockCreateLap).toHaveBeenLastCalledWith(
+        expect.objectContaining({ lapTimeMs: 12_000, timingSource: LapTimingSource.AUTO, missedCrossings: 0 }),
+      );
+    });
+
+    it('ignores an older crossing delivered out of order, so the next lap is not flagged', async () => {
+      await startRunFromCrossing();
+      await advance(24_000);
+      act(() => emitTimerEvent(bootLap('boot-a', 3, 25_000))); // crossing 2 hasn't arrived yet
+      await flush();
+      act(() => emitTimerEvent(bootLap('boot-a', 2, 13_000))); // late copy of crossing 2
+      await flush();
+      await advance(12_000);
+
+      act(() => emitTimerEvent(bootLap('boot-a', 4, 37_000)));
+      await flush();
+
+      expect(mockCreateLap).toHaveBeenCalledTimes(2);
+      expect(mockCreateLap).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({ lapTimeMs: 24_000, missedCrossings: 1 }),
+      );
+      expect(mockCreateLap).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({ lapTimeMs: 12_000, timingSource: LapTimingSource.AUTO, missedCrossings: 0 }),
+      );
+    });
+
+    it.each([
+      [5_000, false],
+      [100, true],
+    ])('starts the run from a crossing published %i ms after it happened: %s', async (delayMs, starts) => {
+      render(<RaceControls />);
+      selectTimer();
+      selectAutoMode();
+
+      act(() => emitTimerEvent(bootLap('boot-a', 1, 1_000, 1_000 + delayMs)));
+      await flush();
+
+      expect(mockTransitionRunStatus).toHaveBeenCalledTimes(starts ? 1 : 0);
+    });
+
+    it('retries a crossing lap after a server error with the same token', async () => {
+      await startRunFromCrossing();
+      mockCreateLap
+        .mockReturnValueOnce({ unwrap: () => Promise.reject({ name: 'InternalFailureError', fault: 'server' }) })
+        .mockReturnValueOnce({ unwrap: () => Promise.resolve({}) });
+      await advance(12_000);
+
+      act(() => emitTimerEvent(bootLap('boot-a', 2, 13_000)));
+      await flush();
+      await advance(500);
+
+      expect(mockCreateLap).toHaveBeenCalledTimes(2);
+      expect(mockCreateLap.mock.calls[1][0]).toEqual(mockCreateLap.mock.calls[0][0]);
+      expect(mockRemoveOptimisticLap).not.toHaveBeenCalled();
+    });
+
+    it('measures and flags the next lap across a crossing lap that could not be recorded', async () => {
+      await startRunFromCrossing();
+      mockCreateLap.mockReturnValue({ unwrap: () => Promise.reject({ name: 'TypeError', error: 'Failed to fetch' }) });
+      await advance(12_000);
+      act(() => emitTimerEvent(bootLap('boot-a', 2, 13_000)));
+      await flush();
+      await advance(500);
+      await advance(1_500);
+      expect(mockCreateLap).toHaveBeenCalledTimes(3);
+      expect(screen.getByText(i18n.t('timekeeping:manualTiming.lapError'))).toBeInTheDocument();
+
+      mockCreateLap.mockReturnValue({ unwrap: () => Promise.resolve({}) });
+      await advance(10_000);
+      act(() => emitTimerEvent(bootLap('boot-a', 3, 25_000)));
+      await flush();
+
+      expect(mockCreateLap).toHaveBeenLastCalledWith(
+        expect.objectContaining({ lapTimeMs: 24_000, timingSource: LapTimingSource.AUTO, missedCrossings: 1 }),
+      );
+    });
+
+    /** Records crossing lap 2 at timer time 13 000 ms, whose CreateLap keeps failing. */
+    const loseCrossingLap = async () => {
+      mockCreateLap.mockReturnValue({ unwrap: () => Promise.reject({ name: 'TypeError', error: 'Failed to fetch' }) });
+      await advance(12_000);
+      act(() => emitTimerEvent(bootLap('boot-a', 2, 13_000)));
+      await flush();
+      await advance(500);
+      await advance(1_500);
+      mockCreateLap.mockReturnValue({ unwrap: () => Promise.resolve({}) });
+    };
+
+    it('flags the manual lap that covers a lost crossing lap, not the next crossing lap', async () => {
+      await startRunFromCrossing();
+      await loseCrossingLap();
+      await advance(10_000);
+
+      fireEvent.click(screen.getByRole('button', { name: i18n.t('timekeeping:manualTiming.recordLap') }));
+      await flush();
+      expect(mockCreateLap).toHaveBeenLastCalledWith(
+        // 12 s to the lost crossing, 2 s of retries, then 10 s more on the rolled-back lap clock.
+        expect.objectContaining({ lapTimeMs: 24_000, timingSource: LapTimingSource.MANUAL, missedCrossings: 1 }),
+      );
+
+      await advance(8_000);
+      act(() => emitTimerEvent(bootLap('boot-a', 3, 31_000)));
+      await flush();
+
+      expect(mockCreateLap).toHaveBeenLastCalledWith(
+        expect.objectContaining({ lapTimeMs: 8_000, timingSource: LapTimingSource.MANUAL }),
+      );
+      expect(mockCreateLap.mock.lastCall?.[0]).not.toHaveProperty('missedCrossings');
+    });
+
+    it('keeps the flag for the retry when the manual lap covering a lost crossing lap also fails', async () => {
+      await startRunFromCrossing();
+      await loseCrossingLap();
+      await advance(10_000);
+      mockCreateLap.mockReturnValueOnce({
+        unwrap: () => Promise.reject({ name: 'TypeError', error: 'Failed to fetch' }),
+      });
+      fireEvent.click(screen.getByRole('button', { name: i18n.t('timekeeping:manualTiming.recordLap') }));
+      await flush();
+      expect(screen.getByText(i18n.t('timekeeping:manualTiming.lapError'))).toBeInTheDocument();
+
+      await advance(1_000);
+      fireEvent.click(screen.getByRole('button', { name: i18n.t('timekeeping:manualTiming.recordLap') }));
+      await flush();
+
+      expect(mockCreateLap).toHaveBeenLastCalledWith(
+        // The failed manual lap rolled the lap clock back, so the retry still covers the lost lap.
+        expect.objectContaining({ lapTimeMs: 25_000, timingSource: LapTimingSource.MANUAL, missedCrossings: 1 }),
+      );
+    });
+
+    it('still flags the next lap after switching mode, since the lap clock still covers the lost lap', async () => {
+      await startRunFromCrossing();
+      await loseCrossingLap();
+      const modes = createWrapper().findSegmentedControl('[data-testid="timing-mode"]');
+      modes?.findSegmentById('MANUAL')?.click();
+      modes?.findSegmentById('AUTO')?.click();
+      await advance(10_000);
+
+      act(() => emitTimerEvent(bootLap('boot-a', 3, 25_000)));
+      await flush();
+
+      expect(mockCreateLap).toHaveBeenLastCalledWith(
+        // 12 s to the lost crossing, 2 s of retries, then 10 s more on the rolled-back lap clock.
+        expect.objectContaining({ lapTimeMs: 24_000, timingSource: LapTimingSource.MANUAL, missedCrossings: 1 }),
+      );
+    });
+
+    it('resumes a paused run on a crossing without recording a lap', async () => {
+      activeRun = { runId: 'run-001', runStatus: RunStatus.PAUSED };
+      render(<RaceControls />);
+      selectTimer();
+      selectAutoMode();
+
+      act(() => emitTimerEvent(lap(5_000)));
+      await flush();
+
+      expect(mockTransitionRunStatus).toHaveBeenCalledWith(
+        expect.objectContaining({ action: RunTransitionAction.RESUME }),
+      );
+      expect(mockCreateLap).not.toHaveBeenCalled();
+    });
   });
 });

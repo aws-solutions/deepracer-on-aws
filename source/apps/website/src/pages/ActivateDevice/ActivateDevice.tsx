@@ -13,7 +13,7 @@ import Wizard from '@cloudscape-design/components/wizard';
 import { DeviceStatus, DeviceType } from '@deepracer-indy/typescript-client';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useCallback, useState } from 'react';
-import { type Resolver, useForm } from 'react-hook-form';
+import { type Resolver, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
@@ -26,6 +26,7 @@ import { useDeviceMqtt } from '#hooks/useDeviceMqtt.js';
 import { useActivateDeviceMutation, useListDevicesQuery } from '#services/deepRacer/devicesApi';
 import { useListFleetsQuery } from '#services/deepRacer/fleetsApi';
 import { displayErrorNotification, displayInfoNotification } from '#store/notifications/notificationsSlice.js';
+import { environmentConfig } from '#utils/envUtils.js';
 import { getPath } from '#utils/pageUtils.js';
 
 import { ACTIVATE_DEVICE_DEFAULTS, activateDeviceValidationSchema, type ActivateDeviceFormValues } from './validation';
@@ -71,10 +72,20 @@ const ActivateDevice = () => {
     resolver: yupResolver(activateDeviceValidationSchema) as unknown as Resolver<ActivateDeviceFormValues>,
     mode: 'onBlur',
   });
+  const selectedDeviceType = useWatch({ control, name: 'deviceType' });
+  const isTimerSelected = selectedDeviceType === DeviceType.TIMER;
 
+  // Timers publish crossings to IoT Core, so the timer command can't be built without the IoT
+  // endpoint and namespace in this deployment's environment config.
+  const isTimerActivationAvailable = Boolean(environmentConfig.iotEndpoint && environmentConfig.namespace);
   const deviceTypeOptions = [
     { value: DeviceType.CAR, label: t('deviceType.CAR') },
-    { value: DeviceType.TIMER, label: t('deviceType.TIMER') },
+    {
+      value: DeviceType.TIMER,
+      label: t('deviceType.TIMER'),
+      disabled: !isTimerActivationAvailable,
+      ...(!isTimerActivationAvailable && { disabledReason: t('wizard.timerUnavailable') }),
+    },
   ];
 
   const fleetOptions = [
@@ -93,6 +104,16 @@ const ActivateDevice = () => {
     const scriptName = isCar ? 'car_activation.sh' : 'timer_activation.sh';
 
     let cmd = `curl -O ${origin}/${scriptName} && chmod +x ./${scriptName} && sudo ./${scriptName} -h ${shellQuote(values.name)} -c ${shellQuote(result.activationCode)} -i ${shellQuote(result.activationId)} -r ${shellQuote(result.region)}`;
+
+    if (!isCar) {
+      // The timer downloads its files from this site and publishes crossings to IoT Core.
+      const { iotEndpoint = '', namespace = '' } = environmentConfig;
+      const timerTopicPrefix = `deepracer/${namespace}/timer`;
+      cmd += ` -d ${shellQuote(origin)} -e ${shellQuote(iotEndpoint)} -t ${shellQuote(timerTopicPrefix)}`;
+      if (values.activeLowSensors) {
+        cmd += ' -a';
+      }
+    }
 
     if (isCar) {
       if (values.ssid && values.wifiPassword) {
@@ -187,6 +208,13 @@ const ActivateDevice = () => {
                 placeholder={t('wizard.steps.type.description')}
                 options={deviceTypeOptions}
               />
+              {!isTimerActivationAvailable && (
+                <Box margin={{ top: 's' }}>
+                  <Alert type="warning" data-testid="timer-unavailable">
+                    {t('wizard.timerUnavailable')}
+                  </Alert>
+                </Box>
+              )}
             </Container>
           ),
         },
@@ -217,22 +245,34 @@ const ActivateDevice = () => {
                   label={t('wizard.nameLabel')}
                   placeholder={t('wizard.namePlaceholder')}
                 />
-                <InputField control={control} name="ssid" label={t('wizard.ssidLabel')} />
-                <InputField
-                  control={control}
-                  name="wifiPassword"
-                  label={t('wizard.wifiPasswordLabel')}
-                  type="password"
-                />
-                <InputField
-                  control={control}
-                  name="consolePassword"
-                  label={t('wizard.consolePasswordLabel')}
-                  type="password"
-                />
-                <CheckboxField control={control} name="communityConsole">
-                  {t('wizard.communityConsoleLabel')}
-                </CheckboxField>
+                {isTimerSelected ? (
+                  <CheckboxField
+                    control={control}
+                    name="activeLowSensors"
+                    description={t('wizard.activeLowSensorsDescription')}
+                  >
+                    {t('wizard.activeLowSensorsLabel')}
+                  </CheckboxField>
+                ) : (
+                  <>
+                    <InputField control={control} name="ssid" label={t('wizard.ssidLabel')} />
+                    <InputField
+                      control={control}
+                      name="wifiPassword"
+                      label={t('wizard.wifiPasswordLabel')}
+                      type="password"
+                    />
+                    <InputField
+                      control={control}
+                      name="consolePassword"
+                      label={t('wizard.consolePasswordLabel')}
+                      type="password"
+                    />
+                    <CheckboxField control={control} name="communityConsole">
+                      {t('wizard.communityConsoleLabel')}
+                    </CheckboxField>
+                  </>
+                )}
                 <Alert type="info">{t('wizard.localFlagsNote')}</Alert>
               </SpaceBetween>
             </Container>

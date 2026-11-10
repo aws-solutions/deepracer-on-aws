@@ -35,6 +35,7 @@ export const GetEvaluationOperation: Operation<
   return {
     evaluation: {
       config: {
+        checkpoint: evaluationItem.checkpoint,
         evaluationName: evaluationItem.evaluationName,
         maxLaps: evaluationItem.terminationConditions.maxLaps,
         maxTimeInMinutes: evaluationItem.terminationConditions.maxTimeInMinutes,

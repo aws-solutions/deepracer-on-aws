@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { submissionDao, TEST_LEADERBOARD_ITEM, TEST_SUBMISSION_ITEMS } from '@deepracer-indy/database';
-import { InternalFailureError } from '@deepracer-indy/typescript-server-client';
+import { CheckpointSelection, InternalFailureError } from '@deepracer-indy/typescript-server-client';
 import { s3Helper } from '@deepracer-indy/utils';
 
 import { TEST_OPERATION_CONTEXT } from '../../constants/testConstants.js';
@@ -46,6 +46,20 @@ describe('ListSubmissions operation', () => {
       undefined,
       'video/mp4',
     );
+  });
+
+  it('should return the checkpoint each submission raced', async () => {
+    vi.spyOn(submissionDao, 'listByCreatedAt').mockResolvedValue({
+      data: [{ ...TEST_SUBMISSION_ITEMS[0], checkpoint: CheckpointSelection.LAST }],
+      cursor: null,
+    });
+
+    const output = await ListSubmissionsOperation(
+      { leaderboardId: TEST_LEADERBOARD_ITEM.leaderboardId },
+      TEST_OPERATION_CONTEXT,
+    );
+
+    expect(output.submissions[0].checkpoint).toBe(CheckpointSelection.LAST);
   });
 
   it('should return a list of submissions on success with token', async () => {

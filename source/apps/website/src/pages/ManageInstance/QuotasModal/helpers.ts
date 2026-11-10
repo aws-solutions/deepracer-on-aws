@@ -12,3 +12,6 @@ export const calculateComputeMinutes = (computeHours: number) => {
 export const getCheckboxValue = (checked: boolean) => {
   return checked ? -1 : 0;
 };
+
+// Matches the BatchUpdateProfileQuotas limit of 200 profile IDs per request.
+export const BATCH_UPDATE_QUOTAS_MAX_USERS = 200;

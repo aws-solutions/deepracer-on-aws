@@ -1,0 +1,26 @@
+[Unit]
+Description=DeepRacer lap timer
+Wants=network-online.target time-sync.target amazon-ssm-agent.service
+After=network-online.target time-sync.target amazon-ssm-agent.service
+
+[Service]
+WorkingDirectory=/opt/deepracer-timer
+ExecStart=/usr/local/bin/node /opt/deepracer-timer/timer.mjs
+Restart=always
+RestartSec=5
+# Runs as root only to read the SSM agent's root-owned (0600) shared credentials file and the
+# GPIO character devices. The timer opens no listening socket; the sandboxing below limits what
+# a compromised process could touch.
+User=root
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictSUIDSGID=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

@@ -40,7 +40,7 @@ vi.mock('../ProfilesTable/ProfilesTable', () => ({
     onInviteMultipleUsers: () => void;
     onDeleteUser: (user: Profile, clearSelection: () => void) => void;
     onDeleteUserModels: (user: Profile) => void;
-    onUpdateUserQuotas: (user: Profile, clearSelection: () => void) => void;
+    onUpdateUserQuotas: (users: Profile[], clearSelection: () => void) => void;
     onChangeUserRole: (user: Profile, clearSelection: () => void) => void;
     onResendInvite: (users: Profile[], clearSelection: () => void) => void;
     profiles: Profile[];
@@ -60,6 +60,12 @@ vi.mock('../ProfilesTable/ProfilesTable', () => ({
       >
         Resend Invitation
       </button>
+      <button
+        onClick={() => onUpdateUserQuotas(profiles.slice(0, 2), () => console.log('Clear selection called'))}
+        data-testid="update-quotas-selected"
+      >
+        Update Quotas For Selected
+      </button>
       {profiles.map((profile) => (
         <div key={profile.profileId} data-testid={`profile-${profile.alias}`}>
           <span>{profile.alias}</span>
@@ -73,7 +79,7 @@ vi.mock('../ProfilesTable/ProfilesTable', () => ({
             Delete Models
           </button>
           <button
-            onClick={() => onUpdateUserQuotas(profile, () => console.log('Clear selection called'))}
+            onClick={() => onUpdateUserQuotas([profile], () => console.log('Clear selection called'))}
             data-testid={`update-quotas-${profile.alias}`}
           >
             Update Quotas
@@ -201,15 +207,21 @@ vi.mock('../QuotasModal/UserQuotas', () => ({
   default: ({
     isOpen,
     setIsOpen,
-    selectedUser,
+    selectedUsers,
     onClearSelection,
   }: {
     isOpen: boolean;
     setIsOpen: (open: boolean) => void;
-    selectedUser: Profile | null;
+    selectedUsers: Profile[];
     onClearSelection?: (() => void) | null;
   }) => (
-    <div data-testid="user-quotas-modal" data-is-open={isOpen} data-selected-user={selectedUser?.alias || 'none'}>
+    <div
+      data-testid="user-quotas-modal"
+      data-is-open={isOpen}
+      data-selected-user={selectedUsers[0]?.alias || 'none'}
+      data-selected-user-count={selectedUsers.length}
+      data-selected-users={selectedUsers.map((user) => user.alias).join(',')}
+    >
       User Quotas Modal
       <button onClick={() => setIsOpen(false)}>Close</button>
       <button
@@ -910,6 +922,79 @@ describe('ManageInstance', () => {
     const modal = screen.getByTestId('user-quotas-modal');
     expect(modal).toHaveAttribute('data-is-open', 'true');
     expect(modal).toHaveAttribute('data-selected-user', 'testuser');
+  });
+
+  it('should forward a multi-user selection to UserQuotasModal through ManageInstance wiring', async () => {
+    const user = userEvent.setup();
+    const mockProfiles = [
+      { alias: 'user1', avatar: 'avatar1', profileId: '1' } as Profile,
+      { alias: 'user2', avatar: 'avatar2', profileId: '2' } as Profile,
+    ];
+
+    (fetchAuthSession as Mock).mockResolvedValue({
+      tokens: {
+        accessToken: {
+          payload: {
+            'cognito:groups': ['dr-admins'],
+          },
+        },
+      },
+    });
+
+    (useListProfilesQuery as Mock).mockReturnValue({
+      data: mockProfiles,
+      isLoading: false,
+      error: null,
+    });
+
+    render(<ManageInstance />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Instance management')).toBeInTheDocument();
+    });
+
+    const updateQuotasForSelectedButton = screen.getByTestId('update-quotas-selected');
+    await user.click(updateQuotasForSelectedButton);
+
+    const modal = screen.getByTestId('user-quotas-modal');
+    expect(modal).toHaveAttribute('data-is-open', 'true');
+    expect(modal).toHaveAttribute('data-selected-user-count', '2');
+    expect(modal).toHaveAttribute('data-selected-users', 'user1,user2');
+  });
+
+  it('should forward a single selected user to UserQuotasModal through ManageInstance wiring', async () => {
+    const user = userEvent.setup();
+    const mockProfiles = [{ alias: 'testuser', avatar: 'avatar1', profileId: '1' } as Profile];
+
+    (fetchAuthSession as Mock).mockResolvedValue({
+      tokens: {
+        accessToken: {
+          payload: {
+            'cognito:groups': ['dr-admins'],
+          },
+        },
+      },
+    });
+
+    (useListProfilesQuery as Mock).mockReturnValue({
+      data: mockProfiles,
+      isLoading: false,
+      error: null,
+    });
+
+    render(<ManageInstance />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Instance management')).toBeInTheDocument();
+    });
+
+    const updateQuotasButtonRegression = screen.getByTestId('update-quotas-testuser');
+    await user.click(updateQuotasButtonRegression);
+
+    const regressionModal = screen.getByTestId('user-quotas-modal');
+    expect(regressionModal).toHaveAttribute('data-is-open', 'true');
+    expect(regressionModal).toHaveAttribute('data-selected-user-count', '1');
+    expect(regressionModal).toHaveAttribute('data-selected-users', 'testuser');
   });
 
   it('should render User Quotas modal with correct initial state', async () => {

@@ -18,10 +18,37 @@ describe('DeviceManagementInfra', () => {
 
   const template = Template.fromStack(stack);
 
+  const timerRoleLogicalId = Object.keys(template.findResources('AWS::IAM::Role')).find((id) =>
+    id.includes('TimerHybridActivationRole'),
+  );
+  const refsTimerRole = (policy: Record<string, unknown>): boolean =>
+    ((policy.Properties as { Roles?: Array<{ Ref?: string }> }).Roles ?? []).some(
+      (role) => role.Ref === timerRoleLogicalId,
+    );
+  /** Statements on every device-management role except the timer activation role. */
+  const nonTimerStatements = () =>
+    Object.values(template.findResources('AWS::IAM::Policy'))
+      .filter((policy) => !refsTimerRole(policy))
+      .flatMap(
+        (p) => p.Properties.PolicyDocument.Statement as Array<{ Effect: string; Action: unknown; Resource: unknown }>,
+      );
+
   describe('IAM roles', () => {
-    it('creates exactly 6 IAM roles', () => {
+    it('creates exactly 7 IAM roles', () => {
       const roles = template.findResources('AWS::IAM::Role');
-      expect(Object.keys(roles)).toHaveLength(6);
+      expect(Object.keys(roles)).toHaveLength(7);
+    });
+
+    it('creates the TimerHybridActivationRole trusted by ssm.amazonaws.com with publish-only timer topic access', () => {
+      expect(timerRoleLogicalId).toBeDefined();
+      const timerStatements = Object.values(template.findResources('AWS::IAM::Policy'))
+        .filter(refsTimerRole)
+        .flatMap((p) => p.Properties.PolicyDocument.Statement as Array<{ Action: unknown; Resource: unknown }>);
+      const iotStatements = timerStatements.filter((statement) => JSON.stringify(statement.Action).includes('iot:'));
+
+      expect(iotStatements).toHaveLength(1);
+      expect(iotStatements[0].Action).toBe('iot:Publish');
+      expect(JSON.stringify(iotStatements[0].Resource)).toContain(`topic/deepracer/${TEST_NAMESPACE}/timer/*`);
     });
 
     it('creates the SSMHybridActivationRole trusted by ssm.amazonaws.com with the managed instance core policy', () => {
@@ -103,10 +130,7 @@ describe('DeviceManagementInfra', () => {
     });
 
     it('creates the StopCommandLambdaRole with single-path SSM SendCommand + GetCommandInvocation (no IoT publish)', () => {
-      const policies = template.findResources('AWS::IAM::Policy');
-      const allStopStatements = Object.values(policies).flatMap(
-        (p) => p.Properties.PolicyDocument.Statement as Array<{ Effect: string; Action: unknown; Resource: unknown }>,
-      );
+      const allStopStatements = nonTimerStatements();
 
       // SSM SendCommand present (dispatch mechanism)
       const sendCommand = allStopStatements.find(
@@ -118,7 +142,7 @@ describe('DeviceManagementInfra', () => {
       const getInvocation = allStopStatements.find((s) => s.Action === 'ssm:GetCommandInvocation');
       expect(getInvocation).toBeDefined();
 
-      // Regression guard: iot:Publish must NOT appear anywhere in the template's IAM policies
+      // Regression guard: iot:Publish must NOT appear on any role other than the timer activation role
       const iotPublish = allStopStatements.find(
         (s) => s.Action === 'iot:Publish' || (Array.isArray(s.Action) && s.Action.includes('iot:Publish')),
       );
@@ -148,9 +172,9 @@ describe('DeviceManagementInfra', () => {
       ).not.toThrow();
     });
 
-    it('does not create a 7th role or any log-fetch related grants', () => {
+    it('does not create an 8th role or any log-fetch related grants', () => {
       const roles = template.findResources('AWS::IAM::Role');
-      expect(Object.keys(roles)).toHaveLength(6);
+      expect(Object.keys(roles)).toHaveLength(7);
 
       const policies = template.findResources('AWS::IAM::Policy');
       const allStatements = Object.values(policies).flatMap(
@@ -160,14 +184,11 @@ describe('DeviceManagementInfra', () => {
       expect(allActions.some((a) => typeof a === 'string' && a.startsWith('s3:'))).toBe(false);
     });
 
-    it('grants no iot:* permission on any device-management role (SSM-only device architecture)', () => {
-      // Devices never connect to IoT Core. This regression
-      // guard catches any re-introduction of iot:Connect/Subscribe/Receive on the hybrid
-      // activation role or iot:Publish on any command Lambda role.
-      const policies = template.findResources('AWS::IAM::Policy');
-      const allStatements = Object.values(policies).flatMap(
-        (p) => p.Properties.PolicyDocument.Statement as Array<{ Action: unknown }>,
-      );
+    it('grants no iot:* permission on any device-management role except the timer role (SSM-only cars)', () => {
+      // Cars never connect to IoT Core. This regression guard catches any re-introduction of
+      // iot:Connect/Subscribe/Receive on the car hybrid activation role or iot:Publish on any
+      // command Lambda role. Timers get publish-only access on their own role (asserted above).
+      const allStatements = nonTimerStatements();
       const allActions = allStatements.flatMap((s) => (Array.isArray(s.Action) ? s.Action : [s.Action]));
       const iotActions = allActions.filter((a) => typeof a === 'string' && a.startsWith('iot:'));
       expect({ iotActions }).toEqual({ iotActions: [] });

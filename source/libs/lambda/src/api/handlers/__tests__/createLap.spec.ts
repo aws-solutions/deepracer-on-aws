@@ -11,7 +11,14 @@ import {
   TEST_RUN_ITEM,
   type ResourceId,
 } from '@deepracer-indy/database';
-import { ConflictError, NotAuthorizedError, RunStatus, UserGroups } from '@deepracer-indy/typescript-server-client';
+import {
+  ConflictError,
+  LapReviewStatus,
+  LapTimingSource,
+  NotAuthorizedError,
+  RunStatus,
+  UserGroups,
+} from '@deepracer-indy/typescript-server-client';
 import { vi } from 'vitest';
 
 import { cognitoClient } from '../../../utils/clients/cognitoClient.js';
@@ -95,6 +102,8 @@ describe('CreateLap operation', () => {
       expectedLapCount: 0,
       lapTimeMs: 12500,
       resets: 0,
+      timingSource: LapTimingSource.MANUAL,
+      reviewStatus: LapReviewStatus.NOT_REQUIRED,
     });
     expect(output.lap.lapNumber).toBe(1);
     expect(output.lap.lapTimeMs).toBe(TEST_LAP_ITEM.lapTimeMs);
@@ -152,6 +161,66 @@ describe('CreateLap operation', () => {
 
     expect(mockLapDao.createNextLap).toHaveBeenCalledWith(expect.objectContaining({ clientToken: 'token-abc' }));
   });
+  it.each([
+    { lapTimeMs: 2999, missedCrossings: 0, reviewStatus: LapReviewStatus.PENDING_REVIEW },
+    { lapTimeMs: 3000, missedCrossings: 0, reviewStatus: LapReviewStatus.NOT_REQUIRED },
+    { lapTimeMs: 300_000, missedCrossings: undefined, reviewStatus: LapReviewStatus.NOT_REQUIRED },
+    { lapTimeMs: 300_001, missedCrossings: 0, reviewStatus: LapReviewStatus.PENDING_REVIEW },
+    { lapTimeMs: 25_000, missedCrossings: 1, reviewStatus: LapReviewStatus.PENDING_REVIEW },
+  ])(
+    'should mark an AUTO lap of $lapTimeMs ms with $missedCrossings missed crossings $reviewStatus',
+    async ({ lapTimeMs, missedCrossings, reviewStatus }) => {
+      vi.spyOn(cognitoClient, 'send').mockImplementation(() =>
+        Promise.resolve({ Groups: [{ GroupName: UserGroups.RACE_FACILITATORS }] }),
+      );
+      mockRunDao.load.mockResolvedValue({ ...TEST_RUN_ITEM, runStatus: RunStatus.IN_PROGRESS, lapCount: 0 });
+      mockLapDao.createNextLap.mockResolvedValue({ ...TEST_LAP_ITEM, lapNumber: 1 });
+
+      await CreateLapOperation(
+        { ...INPUT, lapTimeMs, missedCrossings, timingSource: LapTimingSource.AUTO },
+        TEST_OPERATION_CONTEXT,
+      );
+
+      expect(mockLapDao.createNextLap).toHaveBeenCalledWith(
+        expect.objectContaining({ lapTimeMs, timingSource: LapTimingSource.AUTO, reviewStatus }),
+      );
+    },
+  );
+
+  it('should not range-check a MANUAL lap', async () => {
+    vi.spyOn(cognitoClient, 'send').mockImplementation(() =>
+      Promise.resolve({ Groups: [{ GroupName: UserGroups.RACE_FACILITATORS }] }),
+    );
+    mockRunDao.load.mockResolvedValue({ ...TEST_RUN_ITEM, runStatus: RunStatus.IN_PROGRESS, lapCount: 0 });
+    mockLapDao.createNextLap.mockResolvedValue({ ...TEST_LAP_ITEM, lapNumber: 1 });
+
+    await CreateLapOperation(
+      { ...INPUT, lapTimeMs: 1000, timingSource: LapTimingSource.MANUAL },
+      TEST_OPERATION_CONTEXT,
+    );
+
+    expect(mockLapDao.createNextLap).toHaveBeenCalledWith(
+      expect.objectContaining({ reviewStatus: LapReviewStatus.NOT_REQUIRED }),
+    );
+  });
+
+  it('should flag a MANUAL lap that may span lost crossings (e.g. across a timer restart)', async () => {
+    vi.spyOn(cognitoClient, 'send').mockImplementation(() =>
+      Promise.resolve({ Groups: [{ GroupName: UserGroups.RACE_FACILITATORS }] }),
+    );
+    mockRunDao.load.mockResolvedValue({ ...TEST_RUN_ITEM, runStatus: RunStatus.IN_PROGRESS, lapCount: 0 });
+    mockLapDao.createNextLap.mockResolvedValue({ ...TEST_LAP_ITEM, lapNumber: 1 });
+
+    await CreateLapOperation(
+      { ...INPUT, lapTimeMs: 25_000, missedCrossings: 1, timingSource: LapTimingSource.MANUAL },
+      TEST_OPERATION_CONTEXT,
+    );
+
+    expect(mockLapDao.createNextLap).toHaveBeenCalledWith(
+      expect.objectContaining({ reviewStatus: LapReviewStatus.PENDING_REVIEW }),
+    );
+  });
+
   it('should propagate ConflictError from lapDao.createNextLap', async () => {
     vi.spyOn(cognitoClient, 'send').mockImplementation(() =>
       Promise.resolve({ Groups: [{ GroupName: UserGroups.ADMIN }] }),

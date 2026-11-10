@@ -291,6 +291,7 @@ describe('Api', () => {
         'GetAdminAssetUrl',
         'ListAdminProfiles',
         'ListModelsForProfile',
+        'BatchUpdateProfileQuotas',
         'EditLeaderboard',
         'DeleteLeaderboard',
         'GetRaceStats',
@@ -430,6 +431,13 @@ describe('Api', () => {
           }),
         ).not.toThrow();
       });
+    });
+
+    it('counts each admin auth failure once', () => {
+      const filters = template.findResources('AWS::Logs::MetricFilter', {
+        Properties: { FilterPattern: Match.stringLikeRegexp('.*ADMIN_AUTH_FAILURE.*') },
+      });
+      expect(Object.keys(filters)).toHaveLength(1);
     });
 
     it('creates CloudWatch alarms for bulk download and auth failures', () => {

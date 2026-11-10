@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import createWrapper from '@cloudscape-design/components/test-utils/dom';
-import { Lap, Leaderboard, Profile, Run, RunStatus } from '@deepracer-indy/typescript-client';
+import { Lap, LapReviewStatus, Leaderboard, Profile, Run, RunStatus } from '@deepracer-indy/typescript-client';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import i18n from '#i18n/index.js';
@@ -55,6 +55,11 @@ const mockListRunsQuery = vi.fn();
 const mockListProfilesQuery = vi.fn();
 const mockGetRunQuery = vi.fn();
 const mockUpdateLap = vi.fn();
+const mockSetLapValidity = vi.fn();
+
+vi.mock('#services/deepRacer/lapsApi.js', () => ({
+  useSetLapValidityMutation: vi.fn(() => [mockSetLapValidity, { isLoading: false }]),
+}));
 
 vi.mock('#services/deepRacer/runsApi.js', () => ({
   useListRunsQuery: (...args: unknown[]) => mockListRunsQuery(...args),
@@ -100,6 +105,7 @@ describe('<RunLapsPanel />', () => {
     mockListProfilesQuery.mockReturnValue({ data: [mockProfile] });
     mockGetRunQuery.mockReturnValue({ data: undefined, isFetching: false, isError: false });
     mockUpdateLap.mockReturnValue({ unwrap: () => Promise.resolve({ lap: mockLap }) });
+    mockSetLapValidity.mockReturnValue({ unwrap: () => Promise.resolve({ lap: mockLap }) });
   });
 
   it('renders the run lookup header and track selector', () => {
@@ -225,6 +231,29 @@ describe('<RunLapsPanel />', () => {
     expect(screen.getByText('1')).toBeInTheDocument(); // lap number
   });
 
+  it('shows valid, invalid and needs-review lap statuses', async () => {
+    mockGetRunQuery.mockReturnValue({
+      data: {
+        run: mockRun,
+        laps: [
+          mockLap,
+          { ...mockLap, lapNumber: 2, isValid: false },
+          { ...mockLap, lapNumber: 3, isValid: false, reviewStatus: LapReviewStatus.PENDING_REVIEW },
+        ],
+      },
+      isFetching: false,
+      isError: false,
+    });
+
+    render(<RunLapsPanel eventId="evt-001" tracks={[mockTrack]} isAdmin />);
+    selectTrackRacerAndRun();
+
+    await waitFor(() => {
+      expect(screen.getByText(i18n.t('events:detail.runs.lapTable.needsReview'))).toBeInTheDocument();
+    });
+    expect(screen.getByText(i18n.t('events:detail.runs.lapTable.invalid'))).toBeInTheDocument();
+  });
+
   it('renders the empty laps message when the run has no laps', async () => {
     mockGetRunQuery.mockReturnValue({ data: { run: mockRun, laps: [] }, isFetching: false, isError: false });
 
@@ -282,6 +311,109 @@ describe('<RunLapsPanel />', () => {
     expect(
       screen.getByText(i18n.t('events:detail.runs.lapEdit.modalHeader', { lapNumber: mockLap.lapNumber })),
     ).toBeInTheDocument();
+  });
+
+  type LapActionKey = 'approveButton' | 'rejectButton' | 'markValidButton' | 'markInvalidButton';
+  const lapButton = (labelKey: LapActionKey, lapNumber: number) =>
+    screen.getByRole('button', {
+      name: `${i18n.t(`events:detail.runs.lapTable.${labelKey}`)} ${i18n.t('events:detail.runs.lapTable.columns.lapNumber')} ${lapNumber}`,
+    });
+
+  it.each([
+    ['approveButton', true],
+    ['rejectButton', false],
+  ] as const)('lets an admin %s a lap pending review', async (labelKey, isValid) => {
+    const pendingLap = { ...mockLap, lapNumber: 2, isValid: false, reviewStatus: LapReviewStatus.PENDING_REVIEW };
+    mockGetRunQuery.mockReturnValue({ data: { run: mockRun, laps: [pendingLap] }, isFetching: false, isError: false });
+
+    render(<RunLapsPanel eventId="evt-001" tracks={[mockTrack]} isAdmin />);
+    selectTrackRacerAndRun();
+    await waitFor(() => {
+      expect(lapButton(labelKey, 2)).toBeInTheDocument();
+    });
+    fireEvent.click(lapButton(labelKey, 2));
+
+    await waitFor(() => {
+      expect(mockSetLapValidity).toHaveBeenCalledWith({
+        eventId: 'evt-001',
+        leaderboardId: 'lb-001',
+        runId: 'run-001',
+        lapNumber: 2,
+        isValid,
+      });
+    });
+  });
+
+  it('lets an admin toggle the validity of a lap that needs no review', async () => {
+    mockGetRunQuery.mockReturnValue({ data: { run: mockRun, laps: [mockLap] }, isFetching: false, isError: false });
+
+    render(<RunLapsPanel eventId="evt-001" tracks={[mockTrack]} isAdmin />);
+    selectTrackRacerAndRun();
+    await waitFor(() => {
+      expect(
+        lapButton(mockLap.isValid ? 'markInvalidButton' : 'markValidButton', mockLap.lapNumber),
+      ).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByRole('button', { name: new RegExp(i18n.t('events:detail.runs.lapTable.approveButton')) }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(lapButton(mockLap.isValid ? 'markInvalidButton' : 'markValidButton', mockLap.lapNumber));
+
+    await waitFor(() => {
+      expect(mockSetLapValidity).toHaveBeenCalledWith(expect.objectContaining({ isValid: !mockLap.isValid }));
+    });
+  });
+
+  it('keeps working after a failed validity update', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    mockSetLapValidity.mockReturnValue({ unwrap: () => Promise.reject(new Error('Conflict')) });
+    mockGetRunQuery.mockReturnValue({ data: { run: mockRun, laps: [mockLap] }, isFetching: false, isError: false });
+
+    render(<RunLapsPanel eventId="evt-001" tracks={[mockTrack]} isAdmin />);
+    selectTrackRacerAndRun();
+    const toggle = await waitFor(() =>
+      lapButton(mockLap.isValid ? 'markInvalidButton' : 'markValidButton', mockLap.lapNumber),
+    );
+    fireEvent.click(toggle);
+
+    await waitFor(() => {
+      expect(toggle).toBeEnabled();
+    });
+    expect(mockSetLapValidity).toHaveBeenCalledTimes(1);
+  });
+
+  it('lets a race facilitator approve a pending lap without being able to edit its time', async () => {
+    const pendingLap = { ...mockLap, lapNumber: 2, isValid: false, reviewStatus: LapReviewStatus.PENDING_REVIEW };
+    mockGetRunQuery.mockReturnValue({ data: { run: mockRun, laps: [pendingLap] }, isFetching: false, isError: false });
+
+    render(<RunLapsPanel eventId="evt-001" tracks={[mockTrack]} isAdmin={false} canReviewLaps />);
+    selectTrackRacerAndRun();
+    await waitFor(() => {
+      expect(lapButton('approveButton', 2)).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByRole('button', { name: i18n.t('events:detail.runs.lapTable.editButton') }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(lapButton('approveButton', 2));
+
+    await waitFor(() => {
+      expect(mockSetLapValidity).toHaveBeenCalledWith(expect.objectContaining({ lapNumber: 2, isValid: true }));
+    });
+  });
+
+  it('shows no validity actions to non-admins', async () => {
+    const pendingLap = { ...mockLap, isValid: false, reviewStatus: LapReviewStatus.PENDING_REVIEW };
+    mockGetRunQuery.mockReturnValue({ data: { run: mockRun, laps: [pendingLap] }, isFetching: false, isError: false });
+
+    render(<RunLapsPanel eventId="evt-001" tracks={[mockTrack]} isAdmin={false} />);
+    selectTrackRacerAndRun();
+
+    await waitFor(() => {
+      expect(screen.getByText(i18n.t('events:detail.runs.lapTable.needsReview'))).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByRole('button', { name: new RegExp(i18n.t('events:detail.runs.lapTable.approveButton')) }),
+    ).not.toBeInTheDocument();
   });
 
   it('calls updateLap with the correct identifiers and closes the modal on success', async () => {

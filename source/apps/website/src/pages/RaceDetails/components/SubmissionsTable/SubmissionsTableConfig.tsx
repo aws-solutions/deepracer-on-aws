@@ -9,7 +9,7 @@ import CollectionPreferences, {
 import Link from '@cloudscape-design/components/link';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import { TableProps } from '@cloudscape-design/components/table';
-import { JobStatus, Leaderboard, Submission } from '@deepracer-indy/typescript-client';
+import { CheckpointSelection, JobStatus, Leaderboard, Submission } from '@deepracer-indy/typescript-client';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -25,6 +25,7 @@ import { buildVideoFilename, useVideoDownload, type SelectedVideo } from '../vid
 
 enum SubmissionsTableColumn {
   MODEL_NAME = 'Model name',
+  CHECKPOINT = 'Checkpoint',
   STATUS = 'Status',
   TIME = 'Time',
   DATE = 'Date submitted to race',
@@ -37,6 +38,7 @@ export const useSubmissionsTableConfig = (
   submissionPeriodOpen?: boolean,
 ) => {
   const { t } = useTranslation('raceDetails');
+  const { t: tCommon } = useTranslation('common');
   const navigate = useNavigate();
   const [selectedVideo, setSelectedVideo] = useState<SelectedVideo | null>(null);
   const handleVideoDownload = useVideoDownload();
@@ -51,6 +53,7 @@ export const useSubmissionsTableConfig = (
     pageSize: 10,
     visibleContent: [
       SubmissionsTableColumn.MODEL_NAME,
+      SubmissionsTableColumn.CHECKPOINT,
       SubmissionsTableColumn.STATUS,
       SubmissionsTableColumn.TIME,
       SubmissionsTableColumn.DATE,
@@ -109,6 +112,12 @@ export const useSubmissionsTableConfig = (
         sortingField: 'modelName',
       },
       {
+        id: SubmissionsTableColumn.CHECKPOINT,
+        header: t('submissionsTable.header.checkpoint'),
+        // Submissions made before the choice was recorded raced the best checkpoint.
+        cell: (e) => tCommon(`checkpoint.values.${e.checkpoint ?? CheckpointSelection.BEST}`),
+      },
+      {
         id: SubmissionsTableColumn.TIME,
         header: t('submissionsTable.header.time'),
         cell: (e) => millisToMinutesAndSeconds(e.rankingScore),
@@ -161,7 +170,7 @@ export const useSubmissionsTableConfig = (
         },
       },
     ],
-    [navigate, t, setSelectedVideo, leaderboard, handleVideoDownload],
+    [navigate, t, tCommon, setSelectedVideo, leaderboard, handleVideoDownload],
   );
 
   const SubmissionsTablePreferences = () => (
@@ -183,6 +192,10 @@ export const useSubmissionsTableConfig = (
             id: SubmissionsTableColumn.MODEL_NAME,
             label: t('submissionsTable.header.modelName'),
             alwaysVisible: true,
+          },
+          {
+            id: SubmissionsTableColumn.CHECKPOINT,
+            label: t('submissionsTable.header.checkpoint'),
           },
           {
             id: SubmissionsTableColumn.TIME,

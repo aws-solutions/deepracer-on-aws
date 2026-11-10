@@ -19,6 +19,7 @@ vi.mock('../../utils/apiGateway.js', async (importOriginal) => {
 const mockIsUserAdmin = vi.fn().mockResolvedValue(true);
 
 const HYBRID_ROLE = 'DeepRacerIndy-SSMHybridActivationRole';
+const TIMER_HYBRID_ROLE = 'DeepRacerIndy-TimerHybridActivationRole';
 const carInput = { name: 'car-01', deviceType: DeviceType.CAR, fleetId: 'ABCDEFGHIJKLMNO' };
 const timerInput = { name: 'timer-01', deviceType: DeviceType.TIMER };
 
@@ -33,11 +34,13 @@ beforeAll(() => {
 
 afterAll(() => {
   delete process.env.HYBRID_ACTIVATION_IAM_ROLE_NAME;
+  delete process.env.TIMER_HYBRID_ACTIVATION_IAM_ROLE_NAME;
 });
 
 describe('ActivateDevice operation', () => {
   beforeEach(() => {
     process.env.HYBRID_ACTIVATION_IAM_ROLE_NAME = HYBRID_ROLE;
+    process.env.TIMER_HYBRID_ACTIVATION_IAM_ROLE_NAME = TIMER_HYBRID_ROLE;
     process.env.AWS_REGION = 'us-east-1';
     mockIsUserAdmin.mockResolvedValue(true);
     vi.mocked(ssmClient.send).mockResolvedValue({
@@ -97,6 +100,19 @@ describe('ActivateDevice operation', () => {
     expect(delta).toBeGreaterThan(23 * 60 * 60 * 1000);
     expect(delta).toBeLessThanOrEqual(24 * 60 * 60 * 1000 + 1000);
     expect(sentActivationInput().ExpirationDate).toEqual(output.expiresAt);
+  });
+
+  it('activates timers with the timer hybrid activation role', async () => {
+    await ActivateDeviceOperation(timerInput, TEST_OPERATION_CONTEXT);
+
+    expect(sentActivationInput().IamRole).toBe(TIMER_HYBRID_ROLE);
+  });
+
+  it('throws InternalFailureError for a timer when TIMER_HYBRID_ACTIVATION_IAM_ROLE_NAME is missing', async () => {
+    delete process.env.TIMER_HYBRID_ACTIVATION_IAM_ROLE_NAME;
+
+    await expect(ActivateDeviceOperation(timerInput, TEST_OPERATION_CONTEXT)).rejects.toThrow(InternalFailureError);
+    expect(ssmClient.send).not.toHaveBeenCalled();
   });
 
   it('throws InternalFailureError when HYBRID_ACTIVATION_IAM_ROLE_NAME is missing', async () => {

@@ -388,10 +388,11 @@ describe('JobInitializer', () => {
       expect(deleteS3LocationSpy).toHaveBeenCalledWith(
         TEST_EVALUATION_ITEM.assetS3Locations.simulationHeartbeatS3Location,
       );
+      // Evaluations run untagged under the shared evaluation role, so no ABAC client is passed.
       expect(createTrainingJobSpy).toHaveBeenCalledWith({
         jobItem: TEST_EVALUATION_ITEM,
         modelItem: TEST_MODEL_ITEM,
-        client: expect.any(SageMakerClient),
+        client: undefined,
       });
     });
 
@@ -442,8 +443,25 @@ describe('JobInitializer', () => {
       expect(createTrainingJobSpy).toHaveBeenCalledWith({
         jobItem: TEST_SUBMISSION_ITEM,
         modelItem: TEST_MODEL_ITEM,
-        client: expect.any(SageMakerClient),
+        client: undefined,
       });
+    });
+
+    it.each([
+      ['evaluation', TEST_EVALUATION_ITEM, () => mockInitEvaluationContext],
+      ['submission', TEST_SUBMISSION_ITEM, () => mockInitSubmissionContext],
+    ] as const)('should not assume the ABAC job-creation role for a %s', async (_, jobItem, getContext) => {
+      getJobSpy.mockResolvedValueOnce(jobItem);
+      modelLoadSpy.mockResolvedValueOnce(TEST_MODEL_ITEM);
+      profileLoadSpy.mockResolvedValueOnce(TEST_PROFILE_ITEM);
+      createStreamSpy.mockResolvedValueOnce('arn:aws:kinesisvideo:us-east-1:accountid:stream/streamname');
+      writeJobFilesToS3Spy.mockResolvedValueOnce([]);
+      deleteS3LocationSpy.mockResolvedValueOnce();
+      createTrainingJobSpy.mockResolvedValueOnce(jobItem.sageMakerJobArn);
+
+      await jobInitializer.initializeJob(getContext());
+
+      expect(stsMock.commandCalls(AssumeRoleCommand)).toHaveLength(0);
     });
 
     it('should use context jobName over jobItem name for live races', async () => {

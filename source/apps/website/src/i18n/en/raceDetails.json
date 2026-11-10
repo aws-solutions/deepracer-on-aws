@@ -93,6 +93,7 @@
     "refresh": "Refresh submissions",
     "header": {
       "modelName": "Model name",
+      "checkpoint": "Checkpoint",
       "time": "Time",
       "status": "Status",
       "date": "Date submitted to race",

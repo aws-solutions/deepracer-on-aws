@@ -11,7 +11,7 @@ import SelectField from '#components/FormFields/SelectField';
 import * as stories from '#pages/CreateEvaluation/CreateEvaluation.stories';
 import { render, screen } from '#utils/testUtils';
 
-const { Default } = composeStories(stories);
+const { Default, WithCheckpoints } = composeStories(stories);
 
 describe('CreateEvaluation Page', () => {
   it('renders the create evaluation page', () => {
@@ -24,6 +24,8 @@ describe('CreateEvaluation Page', () => {
     expect(screen.getByText(i18n.t('createEvaluation:raceType.tiles.label'))).toBeInTheDocument();
     expect(screen.getByText(i18n.t('createEvaluation:evaluateCriteria.header'))).toBeInTheDocument();
     expect(screen.getByText(i18n.t('createEvaluation:evaluateCriteria.numberOfLaps.header'))).toBeInTheDocument();
+    expect(screen.getByText(i18n.t('common:checkpoint.best.label'))).toBeInTheDocument();
+    expect(screen.getByText(i18n.t('common:checkpoint.last.label'))).toBeInTheDocument();
   });
 
   it('should allow selecting 5 laps from the dropdown', async () => {
@@ -70,5 +72,20 @@ describe('CreateEvaluation Page', () => {
     const callArgs = onChangeMock.mock.calls[0][0];
     expect(typeof callArgs.detail.selectedOption.value).toBe('number');
     expect(callArgs.detail.selectedOption.value).toBe(5);
+  });
+
+  it("describes the model's best and last checkpoints", async () => {
+    await WithCheckpoints.run();
+
+    expect(
+      await screen.findByText(
+        i18n.t('common:checkpoint.iterationWithCompletion', { iteration: 15, completionPercentage: 88 }),
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        i18n.t('common:checkpoint.iterationWithCompletion', { iteration: 12, completionPercentage: 100 }),
+      ),
+    ).toBeInTheDocument();
   });
 });

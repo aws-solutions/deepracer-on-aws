@@ -14,6 +14,13 @@ operation GetModel {
     output := {
         @required
         model: Model
+
+        @documentation(
+            """
+            The model's best and last training checkpoints, for choosing one to evaluate, race, or clone.
+            Present only for a READY model that has checkpoints recorded."""
+        )
+        checkpoints: ModelCheckpoints
     }
 
     errors: [

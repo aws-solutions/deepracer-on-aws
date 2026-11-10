@@ -11,23 +11,120 @@ import {
   TrainingInstanceType,
   TrainingJobStatus,
   type TrainingJobSummary,
+  WarmPoolResourceStatus,
 } from '@aws-sdk/client-sagemaker';
-import { TEST_TRAINING_ITEM, TEST_MODEL_ITEM } from '@deepracer-indy/database';
+import {
+  type JobItem,
+  modelDao,
+  ResourceId,
+  TEST_EVALUATION_ITEM,
+  TEST_MODEL_ITEM,
+  TEST_SUBMISSION_ITEM,
+  TEST_TRAINING_ITEM,
+} from '@deepracer-indy/database';
+import { CheckpointSelection } from '@deepracer-indy/typescript-server-client';
 import { mockClient } from 'aws-sdk-client-mock';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { WARM_POOL_KEEP_ALIVE_SECONDS } from '../../constants/sageMaker.js';
 import { SageMakerHyperparameters } from '../../types/sageMakerHyperparameters.js';
 import { sageMakerHelper } from '../SageMakerHelper.js';
 
 describe('SageMakerHelper', () => {
   const mockSageMakerClient = mockClient(SageMakerClient);
   const testTrainingJobArn = 'testTrainingJobArn';
+  const TEST_SAGEMAKER_ROLE_ARN = 'arn:aws:iam::123456789012:role/SageMakerRole';
+  const TEST_SAGEMAKER_EVALUATION_ROLE_ARN = 'arn:aws:iam::123456789012:role/SageMakerEvaluationRole';
 
   beforeEach(() => {
     mockSageMakerClient.reset();
     // Set required environment variables
     process.env.SAGEMAKER_TRAINING_IMAGE =
       '123456789012.dkr.ecr.us-east-1.amazonaws.com/deepracer-on-aws-sim-app:latest';
+    process.env.SAGEMAKER_ROLE_ARN = TEST_SAGEMAKER_ROLE_ARN;
+    process.env.SAGEMAKER_EVALUATION_ROLE_ARN = TEST_SAGEMAKER_EVALUATION_ROLE_ARN;
+  });
+
+  describe('getSageMakerHyperparameters()', () => {
+    const SOURCE_MODEL = { ...TEST_MODEL_ITEM, modelId: 'sourceModelId' as ResourceId };
+
+    it('passes no pre-trained model settings for a model that is not a clone', async () => {
+      const hyperparameters = await sageMakerHelper.getSageMakerHyperparameters(TEST_TRAINING_ITEM, {
+        ...TEST_MODEL_ITEM,
+        clonedFromModelId: undefined,
+      });
+
+      expect(hyperparameters).not.toHaveProperty('pretrained_s3_prefix');
+      expect(hyperparameters).not.toHaveProperty('pretrained_checkpoint');
+    });
+
+    it.each([
+      [undefined, 'best'],
+      [CheckpointSelection.BEST, 'best'],
+      [CheckpointSelection.LAST, 'last'],
+    ] as const)('passes the clone checkpoint %s to the SimApp as %s', async (clonedFromCheckpoint, expected) => {
+      vi.spyOn(modelDao, 'get').mockResolvedValueOnce(SOURCE_MODEL);
+
+      const hyperparameters = await sageMakerHelper.getSageMakerHyperparameters(TEST_TRAINING_ITEM, {
+        ...TEST_MODEL_ITEM,
+        clonedFromModelId: SOURCE_MODEL.modelId,
+        clonedFromCheckpoint,
+      });
+
+      expect(hyperparameters).toMatchObject({ pretrained_checkpoint: expected });
+    });
+
+    it('passes the model hyperparameters and reward function location for a training job', async () => {
+      const hyperparameters = await sageMakerHelper.getSageMakerHyperparameters(TEST_TRAINING_ITEM, {
+        ...TEST_MODEL_ITEM,
+        clonedFromModelId: undefined,
+      });
+
+      expect(hyperparameters).toMatchObject({
+        batch_size: String(TEST_MODEL_ITEM.metadata.hyperparameters.batch_size),
+        reward_function_s3_source: TEST_MODEL_ITEM.assetS3Locations.rewardFunctionS3Location,
+      });
+    });
+
+    it.each<[string, JobItem]>([
+      ['an evaluation', TEST_EVALUATION_ITEM],
+      ['a community race submission', TEST_SUBMISSION_ITEM],
+      [
+        'a live race submission',
+        {
+          ...TEST_SUBMISSION_ITEM,
+          name: `${TEST_SUBMISSION_ITEM.name}-live-def456` as typeof TEST_SUBMISSION_ITEM.name,
+        },
+      ],
+    ])('passes no model hyperparameters, reward function or clone source for %s', async (_, jobItem) => {
+      const modelDaoGetSpy = vi.spyOn(modelDao, 'get');
+      // Extra keys an imported model's hyperparameters.json could carry must not reach these jobs.
+      const modelItem = {
+        ...TEST_MODEL_ITEM,
+        clonedFromModelId: 'sourceModelId' as ResourceId,
+        metadata: {
+          ...TEST_MODEL_ITEM.metadata,
+          hyperparameters: { ...TEST_MODEL_ITEM.metadata.hyperparameters, injected_key: '1; touch /tmp/x' },
+        },
+      } as typeof TEST_MODEL_ITEM;
+
+      const hyperparameters = await sageMakerHelper.getSageMakerHyperparameters(jobItem, modelItem);
+
+      expect(Object.keys(hyperparameters).sort()).toEqual([
+        'aws_region',
+        'heartbeat_s3_location',
+        'kinesis_stream_name',
+        'model_metadata_s3_key',
+        's3_bucket',
+        's3_prefix',
+        's3_ros_log_bucket',
+        's3_yaml_name',
+        'simulation_launch_file',
+        'track_direction_clockwise',
+        'world_name',
+      ]);
+      expect(modelDaoGetSpy).not.toHaveBeenCalled();
+    });
   });
 
   describe('createTrainingJob()', () => {
@@ -119,26 +216,32 @@ describe('SageMakerHelper', () => {
       delete process.env.DEPLOYMENT_MODE;
     });
 
-    it('should include KeepAlivePeriodInSeconds for live race jobs', async () => {
-      const liveJobItem = {
-        ...TEST_TRAINING_ITEM,
-        name: 'deepracerindy-submission-abc123-live-def456',
-      } as unknown as typeof TEST_TRAINING_ITEM;
-
+    it.each<[string, JobItem]>([
+      ['an evaluation', TEST_EVALUATION_ITEM],
+      ['a community race submission', TEST_SUBMISSION_ITEM],
+      [
+        'a live race submission',
+        // Live race job names add a suffix to the submission's job name (getNextPending).
+        {
+          ...TEST_SUBMISSION_ITEM,
+          name: `${TEST_SUBMISSION_ITEM.name}-live-def456` as typeof TEST_SUBMISSION_ITEM.name,
+        },
+      ],
+    ])('should keep the instance warm after %s', async (_, jobItem) => {
       vi.spyOn(sageMakerHelper, 'getSageMakerHyperparameters').mockResolvedValueOnce({} as SageMakerHyperparameters);
       mockSageMakerClient.on(CreateTrainingJobCommand).resolves({ TrainingJobArn: testTrainingJobArn });
 
       await sageMakerHelper.createTrainingJob({
-        jobItem: liveJobItem,
+        jobItem,
         modelItem: TEST_MODEL_ITEM,
         client: mockSageMakerClient as never,
       });
 
       const calls = mockSageMakerClient.commandCalls(CreateTrainingJobCommand);
-      expect(calls[0].args[0].input.ResourceConfig?.KeepAlivePeriodInSeconds).toBe(3600);
+      expect(calls[0].args[0].input.ResourceConfig?.KeepAlivePeriodInSeconds).toBe(WARM_POOL_KEEP_ALIVE_SECONDS);
     });
 
-    it('should not include KeepAlivePeriodInSeconds for non-live jobs', async () => {
+    it('should not keep the instance warm after a training job', async () => {
       vi.spyOn(sageMakerHelper, 'getSageMakerHyperparameters').mockResolvedValueOnce({} as SageMakerHyperparameters);
       mockSageMakerClient.on(CreateTrainingJobCommand).resolves({ TrainingJobArn: testTrainingJobArn });
 
@@ -152,7 +255,7 @@ describe('SageMakerHelper', () => {
       expect(calls[0].args[0].input.ResourceConfig?.KeepAlivePeriodInSeconds).toBeUndefined();
     });
 
-    it('should always include SessionChainingConfig with EnableSessionTagChaining true', async () => {
+    it('should run a training job under the ABAC role with session tag chaining', async () => {
       vi.spyOn(sageMakerHelper, 'getSageMakerHyperparameters').mockResolvedValueOnce({} as SageMakerHyperparameters);
       mockSageMakerClient.on(CreateTrainingJobCommand).resolves({ TrainingJobArn: testTrainingJobArn });
 
@@ -162,8 +265,44 @@ describe('SageMakerHelper', () => {
         client: mockSageMakerClient as never,
       });
 
-      const calls = mockSageMakerClient.commandCalls(CreateTrainingJobCommand);
-      expect(calls[0].args[0].input.SessionChainingConfig).toEqual({ EnableSessionTagChaining: true });
+      const { input } = mockSageMakerClient.commandCalls(CreateTrainingJobCommand)[0].args[0];
+      expect(input.RoleArn).toBe(TEST_SAGEMAKER_ROLE_ARN);
+      expect(input.SessionChainingConfig).toEqual({ EnableSessionTagChaining: true });
+    });
+
+    it.each<[string, JobItem]>([
+      ['an evaluation', TEST_EVALUATION_ITEM],
+      ['a race submission', TEST_SUBMISSION_ITEM],
+    ])('should run %s untagged under the shared evaluation role', async (_, jobItem) => {
+      vi.spyOn(sageMakerHelper, 'getSageMakerHyperparameters').mockResolvedValueOnce({} as SageMakerHyperparameters);
+      mockSageMakerClient.on(CreateTrainingJobCommand).resolves({ TrainingJobArn: testTrainingJobArn });
+
+      // No ABAC-tagged client: the job is created with the Lambda's own credentials.
+      await expect(sageMakerHelper.createTrainingJob({ jobItem, modelItem: TEST_MODEL_ITEM })).resolves.toBe(
+        testTrainingJobArn,
+      );
+
+      const { input } = mockSageMakerClient.commandCalls(CreateTrainingJobCommand)[0].args[0];
+      expect(input.RoleArn).toBe(TEST_SAGEMAKER_EVALUATION_ROLE_ARN);
+      expect(input.SessionChainingConfig).toBeUndefined();
+    });
+
+    it('should refuse to create a training job without an ABAC-tagged client', async () => {
+      vi.spyOn(sageMakerHelper, 'getSageMakerHyperparameters').mockResolvedValueOnce({} as SageMakerHyperparameters);
+
+      await expect(
+        sageMakerHelper.createTrainingJob({ jobItem: TEST_TRAINING_ITEM, modelItem: TEST_MODEL_ITEM }),
+      ).rejects.toThrow('An ABAC-tagged SageMaker client is required');
+      expect(mockSageMakerClient.commandCalls(CreateTrainingJobCommand)).toHaveLength(0);
+    });
+
+    it('should refuse to create an evaluation when the evaluation role ARN is not set', async () => {
+      delete process.env.SAGEMAKER_EVALUATION_ROLE_ARN;
+
+      await expect(
+        sageMakerHelper.createTrainingJob({ jobItem: TEST_EVALUATION_ITEM, modelItem: TEST_MODEL_ITEM }),
+      ).rejects.toThrow('SageMaker execution role ARN is not set');
+      expect(mockSageMakerClient.commandCalls(CreateTrainingJobCommand)).toHaveLength(0);
     });
   });
 
@@ -275,6 +414,10 @@ describe('SageMakerHelper', () => {
     beforeEach(() => {
       vi.restoreAllMocks();
       mockSageMakerClient.reset();
+      // No warm pool instances unless a test lists some.
+      mockSageMakerClient
+        .on(ListTrainingJobsCommand, { WarmPoolStatusEquals: WarmPoolResourceStatus.AVAILABLE })
+        .resolves({ TrainingJobSummaries: [], NextToken: undefined });
       delete process.env.SAGEMAKER_INSTANCE_TYPE;
     });
 
@@ -288,6 +431,60 @@ describe('SageMakerHelper', () => {
         effectiveInstanceType: DEFAULT_INSTANCE_TYPE,
         requiredInstanceCount: 1,
       });
+    });
+
+    it('should count instances held in a warm pool by finished jobs', async () => {
+      const helper = await importFreshHelper();
+      await mockQuotas({ instanceType: 2, total: 100 });
+      mockActiveJobs([{ name: 'job-a', instanceType: DEFAULT_INSTANCE_TYPE, instanceCount: 1 }]);
+      mockSageMakerClient
+        .on(ListTrainingJobsCommand, { WarmPoolStatusEquals: WarmPoolResourceStatus.AVAILABLE })
+        .resolves({ TrainingJobSummaries: [{ TrainingJobName: 'warm-job' } as TrainingJobSummary] })
+        .on(DescribeTrainingJobCommand, { TrainingJobName: 'warm-job' })
+        .resolves({
+          ResourceConfig: {
+            InstanceType: DEFAULT_INSTANCE_TYPE as TrainingInstanceType,
+            InstanceCount: 1,
+            VolumeSizeInGB: 100,
+          },
+        });
+
+      // 1 active + 1 warm instance fill the quota of 2, so a new job does not fit.
+      await expect(helper.checkTrainingCapacity()).resolves.toMatchObject({
+        status: 'UNAVAILABLE',
+        reason: 'INSTANCE_TYPE_QUOTA',
+      });
+    });
+
+    it('should count a job listed as both active and warm only once', async () => {
+      const helper = await importFreshHelper();
+      await mockQuotas({ instanceType: 2, total: 100 });
+      mockActiveJobs([{ name: 'job-a', instanceType: DEFAULT_INSTANCE_TYPE, instanceCount: 1 }]);
+      mockSageMakerClient
+        .on(ListTrainingJobsCommand, { WarmPoolStatusEquals: WarmPoolResourceStatus.AVAILABLE })
+        .resolves({ TrainingJobSummaries: [{ TrainingJobName: 'job-a' } as TrainingJobSummary] });
+
+      await expect(helper.checkTrainingCapacity()).resolves.toMatchObject({ status: 'AVAILABLE' });
+      expect(mockSageMakerClient.commandCalls(DescribeTrainingJobCommand)).toHaveLength(1);
+    });
+
+    it('should look back far enough to include warm pools of the longest jobs', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-11-03T12:00:00Z'));
+      const helper = await importFreshHelper();
+      await mockQuotas({ instanceType: 4, total: 10 });
+      mockActiveJobs([]);
+
+      await helper.checkTrainingCapacity();
+
+      const warmPoolCall = mockSageMakerClient
+        .commandCalls(ListTrainingJobsCommand)
+        .find((call) => call.args[0].input.WarmPoolStatusEquals === WarmPoolResourceStatus.AVAILABLE);
+      // 24 h 10 min longest job plus the keep-alive period.
+      const expectedLookbackMs = 24 * 60 * 60 * 1000 + 10 * 60 * 1000 + WARM_POOL_KEEP_ALIVE_SECONDS * 1000;
+      expect(warmPoolCall?.args[0].input.CreationTimeAfter).toEqual(new Date(Date.now() - expectedLookbackMs));
+
+      vi.useRealTimers();
     });
 
     it('should request the maximum page size to limit the number of ListTrainingJobs calls', async () => {
@@ -507,7 +704,7 @@ describe('SageMakerHelper', () => {
         status: 'UNAVAILABLE',
         reason: 'INSTANCE_TYPE_QUOTA',
       });
-      expect(mockSageMakerClient.commandCalls(ListTrainingJobsCommand)).toHaveLength(2);
+      expect(mockSageMakerClient.commandCalls(ListTrainingJobsCommand)).toHaveLength(3);
     });
 
     it('should not increment cached usage once the usage-cache entry has expired', async () => {

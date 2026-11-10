@@ -33,6 +33,7 @@ export const ListEvaluationsOperation: Operation<
   const evaluations = await waitForAll(
     evaluationItems.map(async (evaluationItem): Promise<Evaluation> => ({
       config: {
+        checkpoint: evaluationItem.checkpoint,
         evaluationName: evaluationItem.evaluationName,
         maxLaps: evaluationItem.terminationConditions.maxLaps,
         maxTimeInMinutes: evaluationItem.terminationConditions.maxTimeInMinutes,

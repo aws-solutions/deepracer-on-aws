@@ -3,6 +3,7 @@
 
 import { TrainingJobStatus } from '@aws-sdk/client-sagemaker';
 import { DeepRacerIndyAppConfig } from '@deepracer-indy/config/src/types/appConfig';
+import { JobType } from '@deepracer-indy/database';
 
 export const SAGEMAKER_COMPLETED_JOB_STATUSES: string[] = [TrainingJobStatus.COMPLETED, TrainingJobStatus.STOPPED];
 
@@ -31,6 +32,17 @@ export const SAGEMAKER_ACTIVE_JOB_STATUSES: TrainingJobStatus[] = [
  * unboundedly over an account with many active jobs.
  */
 export const DESCRIBE_TRAINING_JOB_CONCURRENCY = 5;
+
+/**
+ * Job types whose instance SageMaker keeps warm for the next matching job, so evaluations and race
+ * submissions start faster when they run back to back. They run under the shared evaluation role, so any
+ * racer's next job can reuse the instance. Training is not kept warm. Warm instances count toward the
+ * training quotas.
+ */
+export const WARM_POOL_JOB_TYPES: JobType[] = [JobType.EVALUATION, JobType.SUBMISSION];
+
+/** Seconds a warm instance waits for the next matching job, the SageMaker maximum. */
+export const WARM_POOL_KEEP_ALIVE_SECONDS = 3600;
 
 /** SageMaker error name returned when a training job is rejected for lack of quota. */
 export const RESOURCE_LIMIT_EXCEEDED_ERROR_NAME = 'ResourceLimitExceeded';

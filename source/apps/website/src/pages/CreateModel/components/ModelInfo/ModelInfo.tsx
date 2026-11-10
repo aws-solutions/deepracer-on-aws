@@ -16,6 +16,7 @@ import { Control, UseFormResetField, UseFormSetValue, useWatch } from 'react-hoo
 import { Trans, useTranslation } from 'react-i18next';
 
 import rlDiagram from '#assets/images/rlDiagram.png';
+import { getCheckpointTileItems } from '#components/CheckpointSelection';
 import InputField from '#components/FormFields/InputField';
 import RadioGroupField from '#components/FormFields/RadioGroupField';
 import TextAreaField from '#components/FormFields/TextareaField';
@@ -26,6 +27,7 @@ import {
   OBJECT_AVOIDANCE_REWARD_FUNCTION,
 } from '#pages/CreateModel/constants';
 import { CreateModelFormValues } from '#pages/CreateModel/types';
+import { useGetModelQuery } from '#services/deepRacer/modelsApi';
 import { getTrackById } from '#utils/trackUtils';
 
 import ObjectAvoidanceConfig from './components/ObjectAvoidanceConfig';
@@ -41,7 +43,14 @@ interface ModelInfoProps {
 
 const ModelInfo = ({ control, resetField, setValue }: ModelInfoProps) => {
   const { t } = useTranslation('createModel');
+  const { t: tCommon } = useTranslation('common');
 
+  const preTrainedModelId = useWatch({ control, name: 'preTrainedModelId' });
+  // A clone starts from one of the source model's checkpoints, which the model list does not carry.
+  const { data: preTrainedModel } = useGetModelQuery(
+    { modelId: preTrainedModelId ?? '' },
+    { skip: !preTrainedModelId },
+  );
   const raceType = useWatch({ control, name: 'trainingConfig.raceType' });
   const trackId = useWatch({ control, name: 'trainingConfig.trackConfig.trackId' });
 
@@ -96,6 +105,18 @@ const ModelInfo = ({ control, resetField, setValue }: ModelInfoProps) => {
           />
         </SpaceBetween>
       </Container>
+      {preTrainedModelId && (
+        <Container header={<Header>{tCommon('checkpoint.label')}</Header>}>
+          <TilesField
+            control={control}
+            columns={2}
+            description={tCommon('checkpoint.description')}
+            label={tCommon('checkpoint.label')}
+            name="preTrainedCheckpoint"
+            items={getCheckpointTileItems(tCommon, preTrainedModel?.checkpoints)}
+          />
+        </Container>
+      )}
       <Container header={<Header>{t('modelInfo.trainingDetailsSection.raceType')}</Header>}>
         <TilesField
           control={control}

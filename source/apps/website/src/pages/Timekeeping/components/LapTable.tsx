@@ -4,9 +4,10 @@
 import Box from '@cloudscape-design/components/box';
 import Button from '@cloudscape-design/components/button';
 import Header from '@cloudscape-design/components/header';
+import SpaceBetween from '@cloudscape-design/components/space-between';
 import StatusIndicator from '@cloudscape-design/components/status-indicator';
 import Table, { TableProps } from '@cloudscape-design/components/table';
-import type { Lap } from '@deepracer-indy/typescript-client';
+import { type Lap, LapReviewStatus } from '@deepracer-indy/typescript-client';
 import { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
@@ -35,7 +36,19 @@ const getLapStatusType = (lap: Lap, isToggling: boolean) => {
     return 'loading';
   }
 
+  if (lap.reviewStatus === LapReviewStatus.PENDING_REVIEW) {
+    return 'warning';
+  }
+
   return lap.isValid ? 'success' : 'error';
+};
+
+const getLapStatusKey = (lap: Lap) => {
+  if (lap.reviewStatus === LapReviewStatus.PENDING_REVIEW) {
+    return 'lapTable.needsReview';
+  }
+
+  return lap.isValid ? 'lapTable.valid' : 'lapTable.invalid';
 };
 
 const getLapColumnDefinitions = (
@@ -74,6 +87,37 @@ const getLapColumnDefinitions = (
         const isToggling = togglingLapNumber === lap.lapNumber;
         const statusType = getLapStatusType(lap, isToggling);
 
+        // A lap pending review gets an explicit choice: a single click on its status would approve
+        // it without a way to reject.
+        if (onToggleValidity && lap.reviewStatus === LapReviewStatus.PENDING_REVIEW) {
+          return (
+            <SpaceBetween direction="horizontal" size="xs" alignItems="center">
+              <StatusIndicator
+                data-testid={`lap-validity-status-${lap.lapNumber}`}
+                data-status-type={statusType}
+                type={statusType}
+              >
+                {t(getLapStatusKey(lap))}
+              </StatusIndicator>
+              <Button
+                variant="inline-link"
+                disabled={isToggling}
+                onClick={() => onToggleValidity(lap, true)}
+                ariaLabel={t('lapTable.approveLap', { lapNumber: lap.lapNumber })}
+              >
+                {t('lapTable.approve')}
+              </Button>
+              <Button
+                variant="inline-link"
+                disabled={isToggling}
+                onClick={() => onToggleValidity(lap, false)}
+                ariaLabel={t('lapTable.rejectLap', { lapNumber: lap.lapNumber })}
+              >
+                {t('lapTable.reject')}
+              </Button>
+            </SpaceBetween>
+          );
+        }
         if (onToggleValidity) {
           return (
             <Button
@@ -87,16 +131,12 @@ const getLapColumnDefinitions = (
                 data-status-type={statusType}
                 type={statusType}
               >
-                {t(lap.isValid ? 'lapTable.valid' : 'lapTable.invalid')}
+                {t(getLapStatusKey(lap))}
               </StatusIndicator>
             </Button>
           );
         }
-        return (
-          <StatusIndicator type={lap.isValid ? 'success' : 'error'}>
-            {t(lap.isValid ? 'lapTable.valid' : 'lapTable.invalid')}
-          </StatusIndicator>
-        );
+        return <StatusIndicator type={getLapStatusType(lap, false)}>{t(getLapStatusKey(lap))}</StatusIndicator>;
       },
     },
     {

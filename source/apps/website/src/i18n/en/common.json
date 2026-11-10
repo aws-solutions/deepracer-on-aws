@@ -87,5 +87,24 @@
     "tokenLimitShowFewer": "Show fewer",
     "removeTokenAriaLabel": "Remove filter, {{propertyKey}} {{operator}} {{value}}",
     "enteredTextLabel": "Use: \"{{text}}\""
+  },
+  "checkpoint": {
+    "label": "Model checkpoint",
+    "description": "Best is the checkpoint with the highest average completion during training. Last is the most recently evaluated checkpoint, which may be faster but less consistent.",
+    "iteration": "Iteration {{iteration}}",
+    "iterationWithCompletion": "Iteration {{iteration}}, {{completionPercentage}}% average completion",
+    "best": {
+      "label": "Best",
+      "description": "The checkpoint with the highest average completion during training"
+    },
+    "last": {
+      "label": "Last",
+      "unavailable": "Not available for this model",
+      "sameAsBest": "(same as Best)"
+    },
+    "values": {
+      "BEST": "Best",
+      "LAST": "Last"
+    }
   }
 }

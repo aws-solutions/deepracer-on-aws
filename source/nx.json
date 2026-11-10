@@ -111,5 +111,6 @@
         "cacheableOperations": ["build", "test", "build-storybook"]
       }
     }
-  }
+  },
+  "analytics": false
 }

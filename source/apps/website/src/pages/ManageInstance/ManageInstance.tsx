@@ -37,7 +37,7 @@ const ManageInstance = () => {
   const [isResendInviteModalOpen, setIsResendInviteModalOpen] = useState<boolean>(false);
   const [selectedUserToDelete, setSelectedUserToDelete] = useState<Profile | null>(null);
   const [selectedUserForModelsDelete, setSelectedUserForModelsDelete] = useState<Profile | null>(null);
-  const [selectedUserForQuotas, setSelectedUserForQuotas] = useState<Profile | null>(null);
+  const [selectedUsersForQuotas, setSelectedUsersForQuotas] = useState<Profile[]>([]);
   const [selectedUserForRoleChange, setSelectedUserForRoleChange] = useState<Profile | null>(null);
   const [selectedUsersForResendInvite, setSelectedUsersForResendInvite] = useState<Profile[]>([]);
   const [clearTableSelection, setClearTableSelection] = useState<(() => void) | null>(null);
@@ -105,8 +105,8 @@ const ManageInstance = () => {
               setSelectedUserForModelsDelete(user);
               setIsDeleteUserModelsModalOpen(true);
             }}
-            onUpdateUserQuotas={(user: Profile, clearSelection: () => void) => {
-              setSelectedUserForQuotas(user);
+            onUpdateUserQuotas={(users: Profile[], clearSelection: () => void) => {
+              setSelectedUsersForQuotas(users);
               setClearTableSelection(() => clearSelection);
               setIsUserQuotasModalOpen(true);
             }}
@@ -141,7 +141,7 @@ const ManageInstance = () => {
       <UserQuotasModal
         isOpen={isUserQuotasModalOpen}
         setIsOpen={setIsUserQuotasModalOpen}
-        selectedUser={selectedUserForQuotas}
+        selectedUsers={selectedUsersForQuotas}
         onClearSelection={clearTableSelection}
       />
       <ChangeUserRoleModal

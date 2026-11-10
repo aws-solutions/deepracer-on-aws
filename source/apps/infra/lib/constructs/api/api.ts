@@ -114,6 +114,7 @@ export class Api extends Construct {
     // Entry points for api lambda handlers in the lambda lib
     const apiHandlerEntryPoints = {
       ClearLiveLeaderboard: 'api/handlers/clearLiveLeaderboard',
+      BatchUpdateProfileQuotas: 'api/handlers/batchUpdateProfileQuotas',
       BulkInviteUser: 'api/handlers/bulkInviteUser',
       CreateEvaluation: 'api/handlers/createEvaluation',
       CreateLeaderboard: 'api/handlers/createLeaderboard',
@@ -257,6 +258,7 @@ export class Api extends Construct {
       ],
     });
     functions.ListAdminProfiles.addToRolePolicy(adminCognitoPolicy);
+    functions.BatchUpdateProfileQuotas.addToRolePolicy(adminCognitoPolicy);
     functions.ListModelsForProfile.addToRolePolicy(adminCognitoPolicy);
     functions.GetAdminAssetUrl.addToRolePolicy(adminCognitoPolicy);
     functions.DeleteProfileModels.addToRolePolicy(adminCognitoPolicy);
@@ -429,24 +431,9 @@ export class Api extends Construct {
       metricValue: '1',
     });
 
+    // All API functions share one log group, so one filter counts every function's failures exactly once.
     new MetricFilter(this, 'AdminAuthFailureMetricFilter', {
       logGroup: functions.ListAdminProfiles.logGroup,
-      filterPattern: FilterPattern.stringValue('$.action', '=', 'ADMIN_AUTH_FAILURE'),
-      metricName: 'AdminAuthFailureCount',
-      metricNamespace: adminMetricNamespace,
-      metricValue: '1',
-    });
-
-    new MetricFilter(this, 'AdminAuthFailureGetAssetMetricFilter', {
-      logGroup: functions.GetAdminAssetUrl.logGroup,
-      filterPattern: FilterPattern.stringValue('$.action', '=', 'ADMIN_AUTH_FAILURE'),
-      metricName: 'AdminAuthFailureCount',
-      metricNamespace: adminMetricNamespace,
-      metricValue: '1',
-    });
-
-    new MetricFilter(this, 'AdminAuthFailureListModelsMetricFilter', {
-      logGroup: functions.ListModelsForProfile.logGroup,
       filterPattern: FilterPattern.stringValue('$.action', '=', 'ADMIN_AUTH_FAILURE'),
       metricName: 'AdminAuthFailureCount',
       metricNamespace: adminMetricNamespace,

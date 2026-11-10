@@ -175,10 +175,12 @@ class JobInitializer implements WorkflowTaskHandler {
       }
     }
 
+    // Training runs the racer's reward function, so it keeps the ABAC-tagged client. Evaluations and
+    // submissions run untagged under the shared evaluation role so warm instances can be reused.
     const trainingJobArn = await sageMakerHelper.createTrainingJob({
       jobItem,
       modelItem,
-      client: await this.createTaggedSageMakerClient(profileId),
+      client: workflowHelper.isTraining(jobItem) ? await this.createTaggedSageMakerClient(profileId) : undefined,
     });
 
     workflowContext.simulationJob = {

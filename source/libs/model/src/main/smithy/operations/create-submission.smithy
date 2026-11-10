@@ -11,6 +11,9 @@ operation CreateSubmission {
 
         @required
         modelId: ResourceIdentifier
+
+        @documentation("The training checkpoint to race. Defaults to BEST.")
+        checkpoint: CheckpointSelection
     }
 
     output := {

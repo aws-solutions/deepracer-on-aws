@@ -1,7 +1,12 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { ConflictError, InternalFailureError } from '@deepracer-indy/typescript-server-client';
+import {
+  ConflictError,
+  InternalFailureError,
+  LapReviewStatus,
+  LapTimingSource,
+} from '@deepracer-indy/typescript-server-client';
 
 import { TEST_LAP_ITEM, TEST_LEADERBOARD_ID, TEST_RUN_ID } from '../../constants/testConstants.js';
 import type { ResourceId } from '../../types/resource.js';
@@ -229,6 +234,60 @@ describe('LapDao', () => {
         resets: 0,
         deviceId: DEVICE_ID,
       });
+    });
+
+    it('should persist the timing source and save a flagged lap as invalid', async () => {
+      const runPatchWhereMock = vi.fn(() => ({ commit: vi.fn(() => 'run-commit') }));
+      const runPatchAddMock = vi.fn(() => ({ where: runPatchWhereMock }));
+      mockRunsEntity.patch.mockReturnValue({ add: runPatchAddMock });
+
+      mockLapsEntity.create.mockReturnValue({ commit: vi.fn(() => 'lap-commit') });
+      mockTransactionGo.mockResolvedValue({ canceled: false });
+      mockTransactionParams.mockReturnValue({
+        TransactItems: [{ Update: {} }, { Put: { mock: 'put-params' } }],
+      });
+      mockLapsEntity.parse.mockReturnValue({ data: TEST_LAP_ITEM });
+
+      await lapDao.createNextLap({
+        ...INPUT,
+        timingSource: LapTimingSource.AUTO,
+        reviewStatus: LapReviewStatus.PENDING_REVIEW,
+      });
+
+      expect(mockLapsEntity.create).toHaveBeenCalledWith({
+        leaderboardId: MOCK_LEADERBOARD_ID,
+        runId: MOCK_RUN_ID,
+        lapNumber: 1,
+        lapTimeMs: 12500,
+        resets: 0,
+        timingSource: LapTimingSource.AUTO,
+        reviewStatus: LapReviewStatus.PENDING_REVIEW,
+        isValid: false,
+      });
+    });
+
+    it('should keep the default validity for a lap that needs no review', async () => {
+      const runPatchWhereMock = vi.fn(() => ({ commit: vi.fn(() => 'run-commit') }));
+      const runPatchAddMock = vi.fn(() => ({ where: runPatchWhereMock }));
+      mockRunsEntity.patch.mockReturnValue({ add: runPatchAddMock });
+
+      mockLapsEntity.create.mockReturnValue({ commit: vi.fn(() => 'lap-commit') });
+      mockTransactionGo.mockResolvedValue({ canceled: false });
+      mockTransactionParams.mockReturnValue({
+        TransactItems: [{ Update: {} }, { Put: { mock: 'put-params' } }],
+      });
+      mockLapsEntity.parse.mockReturnValue({ data: TEST_LAP_ITEM });
+
+      await lapDao.createNextLap({
+        ...INPUT,
+        timingSource: LapTimingSource.AUTO,
+        reviewStatus: LapReviewStatus.NOT_REQUIRED,
+      });
+
+      const createdLap = mockLapsEntity.create.mock.calls[0][0] as Record<string, unknown>;
+      expect(createdLap.timingSource).toBe(LapTimingSource.AUTO);
+      expect(createdLap.reviewStatus).toBe(LapReviewStatus.NOT_REQUIRED);
+      expect(createdLap).not.toHaveProperty('isValid');
     });
 
     it('should not create a token guard item when no clientToken is provided', async () => {

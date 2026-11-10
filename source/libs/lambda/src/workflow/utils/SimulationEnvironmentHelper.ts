@@ -20,6 +20,7 @@ import {
 import { AmazonS3URI, logger } from '@deepracer-indy/utils';
 
 import { workflowHelper } from './WorkflowHelper.js';
+import { checkpointHelper } from '../../utils/CheckpointHelper.js';
 import { trackHelper } from '../../utils/TrackHelper.js';
 import {
   DEEPRACER_CAR_SHELL_ID,
@@ -95,6 +96,7 @@ class SimulationEnvironmentHelper {
     simEnvVars.MODEL_S3_BUCKET = sageMakerArtifactsS3Location.bucket;
     simEnvVars.MODEL_S3_PREFIX = sageMakerArtifactsS3Location.key;
     simEnvVars.NUMBER_OF_TRIALS = terminationConditions.maxLaps;
+    simEnvVars.EVAL_CHECKPOINT = checkpointHelper.toSimAppCheckpoint(jobItem.checkpoint);
   }
 
   private addTrainingSpecificVariables(

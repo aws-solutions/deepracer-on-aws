@@ -9,6 +9,9 @@ operation CreateModel {
         modelDefinition: ModelDefinition
 
         preTrainedModelId: ResourceIdentifier
+
+        @documentation("The pre-trained model's checkpoint to start from. Only valid with preTrainedModelId. Defaults to BEST.")
+        preTrainedCheckpoint: CheckpointSelection
     }
 
     output := {

@@ -13,14 +13,14 @@ import PropertyFilter, { type PropertyFilterProps } from '@cloudscape-design/com
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import StatusIndicator, { type StatusIndicatorProps } from '@cloudscape-design/components/status-indicator';
 import Table, { type TableProps } from '@cloudscape-design/components/table';
-import { Run, RunStatus, RunTransitionAction } from '@deepracer-indy/typescript-client';
+import { LapReviewStatus, Run, RunStatus, RunTransitionAction } from '@deepracer-indy/typescript-client';
 import { TFunction } from 'i18next';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getPropertyFilterI18nStrings } from '#components/PropertyFilterI18nStrings/index.js';
 import { useTimekeepingContext } from '#hooks/useTimekeepingContext.js';
-import { useTimekeepingSessionActions } from '#hooks/useTimekeepingSession.js';
+import { useTimekeepingLaps, useTimekeepingSessionActions } from '#hooks/useTimekeepingSession.js';
 import { useListAdminProfilesQuery } from '#services/deepRacer/adminApi.js';
 import { useGetEventQuery } from '#services/deepRacer/eventsApi.js';
 import { useCreateRunMutation, useListRunsQuery, useTransitionRunStatusMutation } from '#services/deepRacer/runsApi.js';
@@ -155,6 +155,12 @@ export const RunsTable = () => {
     items.find((run) => run.runStatus === RunStatus.READY) ??
     items[0];
   const activeRunStatusIndicator = activeRun ? ACTIVE_RUN_STATUS_INDICATOR[activeRun.runStatus] : undefined;
+  // Laps pending review are saved invalid, so submitting now would score them as invalid.
+  const { laps = [] } = useTimekeepingLaps();
+  const pendingReviewCount =
+    activeRun?.runStatus === RunStatus.FINISHED
+      ? laps.filter((lap) => lap.reviewStatus === LapReviewStatus.PENDING_REVIEW).length
+      : 0;
 
   useEffect(() => {
     if (isLoading || !activeRun) return;
@@ -337,6 +343,11 @@ export const RunsTable = () => {
       {runTransitionError && (
         <Alert dismissible type="error" onDismiss={() => setRunTransitionError(undefined)}>
           {runTransitionError}
+        </Alert>
+      )}
+      {pendingReviewCount > 0 && (
+        <Alert type="warning" data-testid="pending-review-warning">
+          {t('runs.pendingReviewWarning', { count: pendingReviewCount })}
         </Alert>
       )}
       <Table<RunTableItem>

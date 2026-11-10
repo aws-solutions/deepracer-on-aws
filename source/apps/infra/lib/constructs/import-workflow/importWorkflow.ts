@@ -3,7 +3,7 @@
 
 import path from 'node:path';
 
-import { Duration, RemovalPolicy, Stack } from 'aws-cdk-lib';
+import { Aws, Duration, RemovalPolicy } from 'aws-cdk-lib';
 import { Alarm, AlarmRule, CompositeAlarm, Metric, TreatMissingData } from 'aws-cdk-lib/aws-cloudwatch';
 import { TableV2 } from 'aws-cdk-lib/aws-dynamodb';
 import { IVpc, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
@@ -267,7 +267,7 @@ export class ImportWorkflow extends Construct {
       stateMachineName: `${namespace}-DeepRacerImportModelWorkflow`,
       logs: {
         destination: new LogGroup(this, 'ImportExecutionLogs', {
-          logGroupName: `/aws/vendedlogs/states/${Stack.of(this).stackName}-DeepRacerIndyImportModelWorkflow`,
+          logGroupName: `/aws/vendedlogs/states/${Aws.STACK_NAME}-DeepRacerIndyImportModelWorkflow`,
           removalPolicy: DefaultLogRemovalPolicy,
           encryptionKey,
         }),

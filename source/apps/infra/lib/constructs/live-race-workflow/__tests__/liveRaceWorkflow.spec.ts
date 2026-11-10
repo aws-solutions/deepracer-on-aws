@@ -75,6 +75,16 @@ describe('LiveRaceWorkflow', () => {
     });
   });
 
+  it('names the execution log group after the deployed stack', () => {
+    expect(() =>
+      template.hasResourceProperties('AWS::Logs::LogGroup', {
+        LogGroupName: {
+          'Fn::Join': ['', ['/aws/vendedlogs/states/', { Ref: 'AWS::StackName' }, '-LiveRaceWorkflow']],
+        },
+      }),
+    ).not.toThrow();
+  });
+
   it('creates orchestration Lambda functions', () => {
     expect(template).toBeDefined();
     for (const name of ['GetNextPendingFn', 'CheckAutolaunchFn', 'UpdateQueueStatusFn', 'ClearExecutionLockFn']) {

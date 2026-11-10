@@ -23,6 +23,7 @@ import {
 } from '@deepracer-indy/typescript-server-client';
 import { logger, metricsLogger, waitForAll } from '@deepracer-indy/utils';
 
+import { checkpointHelper } from '../../utils/CheckpointHelper.js';
 import { sqsClient } from '../../utils/clients/sqsClient.js';
 import { usageQuotaHelper } from '../../utils/UsageQuotaHelper.js';
 import type { WorkflowContext } from '../../workflow/types/workflowContext.js';
@@ -68,6 +69,8 @@ export const CreateEvaluationOperation: Operation<
     throw new BadRequestError({ message: 'Physical models cannot be evaluated in the simulator.' });
   }
 
+  await checkpointHelper.validateCheckpointSelection(modelItem, evaluationConfig.checkpoint);
+
   const profileQuotaUsage = await usageQuotaHelper.loadProfileComputeUsage(profileId);
   validateRacerComputeLimits(profileQuotaUsage, evaluationConfig.maxTimeInMinutes);
 
@@ -75,6 +78,7 @@ export const CreateEvaluationOperation: Operation<
     evaluationDao.create({
       profileId,
       modelId: modelItem.modelId,
+      checkpoint: evaluationConfig.checkpoint,
       evaluationName: evaluationConfig.evaluationName,
       objectAvoidanceConfig:
         evaluationConfig.raceType === RaceType.OBJECT_AVOIDANCE ? evaluationConfig.objectAvoidanceConfig : undefined,

@@ -17,6 +17,7 @@ import {
   CreateSubmissionServerInput,
   CreateSubmissionServerOutput,
   BadRequestError,
+  type CheckpointSelection,
   ModelStatus,
   ModelSource,
   JobStatus,
@@ -24,6 +25,7 @@ import {
 } from '@deepracer-indy/typescript-server-client';
 import { logger, metricsLogger, waitForAll } from '@deepracer-indy/utils';
 
+import { checkpointHelper } from '../../utils/CheckpointHelper.js';
 import { sqsClient } from '../../utils/clients/sqsClient.js';
 import type { WorkflowContext } from '../../workflow/types/workflowContext.js';
 import { DEFAULT_GROUP_MESSAGE_ID } from '../constants/sqs.js';
@@ -40,6 +42,7 @@ export const CreateSubmissionOperation: Operation<
   const { profileId } = context;
   const leaderboardId = input.leaderboardId as ResourceId;
   const modelId = input.modelId as ResourceId;
+  const { checkpoint } = input;
 
   const [modelItem, leaderboardItem] = await waitForAll([
     modelDao.load({ modelId, profileId }),
@@ -56,11 +59,13 @@ export const CreateSubmissionOperation: Operation<
     throw new BadRequestError({ message: 'Physical models cannot participate in virtual races.' });
   }
 
+  await checkpointHelper.validateCheckpointSelection(modelItem, checkpoint);
+
   if (leaderboardItem.isLive) {
-    return handleLiveRaceSubmission(leaderboardItem, modelItem, profileId, leaderboardId, modelId);
+    return handleLiveRaceSubmission(leaderboardItem, modelItem, profileId, leaderboardId, modelId, checkpoint);
   }
 
-  return handleCommunityRaceSubmission(leaderboardItem, modelItem, profileId, leaderboardId, modelId);
+  return handleCommunityRaceSubmission(leaderboardItem, modelItem, profileId, leaderboardId, modelId, checkpoint);
 };
 
 async function handleLiveRaceSubmission(
@@ -69,6 +74,7 @@ async function handleLiveRaceSubmission(
   profileId: ResourceId,
   leaderboardId: ResourceId,
   modelId: ResourceId,
+  checkpoint: CheckpointSelection | undefined,
 ): Promise<CreateSubmissionServerOutput> {
   // Validate submission period: before liveEventTime always accepted,
   // after liveEventTime rejected unless submissionPeriodOpen = true
@@ -103,6 +109,7 @@ async function handleLiveRaceSubmission(
   const liveQueueItem = await liveQueueItemDao.addToQueue({
     profileId,
     modelId: modelItem.modelId,
+    checkpoint,
     modelName: modelItem.name,
     participantName: profileItem.alias,
     status: JobStatus.QUEUED,
@@ -131,6 +138,7 @@ async function handleCommunityRaceSubmission(
   profileId: ResourceId,
   leaderboardId: ResourceId,
   modelId: ResourceId,
+  checkpoint: CheckpointSelection | undefined,
 ): Promise<CreateSubmissionServerOutput> {
   // Validate leaderboard is OPEN and max submissions has not been reached
   const currentTime = new Date();
@@ -152,6 +160,7 @@ async function handleCommunityRaceSubmission(
     submissionDao.create({
       profileId,
       modelId: modelItem.modelId,
+      checkpoint,
       modelName: modelItem.name,
       status: JobStatus.QUEUED,
       objectAvoidanceConfig: leaderboardItem.objectAvoidanceConfig,

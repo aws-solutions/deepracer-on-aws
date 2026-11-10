@@ -15,6 +15,8 @@ export const toLapResponse = (item: LapItem): Lap => ({
   createdAt: new Date(item.createdAt),
   updatedAt: new Date(item.updatedAt),
   ...(item.resets !== undefined && { resets: item.resets }),
+  ...(item.timingSource !== undefined && { timingSource: item.timingSource }),
+  ...(item.reviewStatus !== undefined && { reviewStatus: item.reviewStatus }),
   ...(item.originalLapTimeMs !== undefined && { originalLapTimeMs: item.originalLapTimeMs }),
   ...(item.editedBy && { editedBy: item.editedBy }),
   ...(item.editedAt && { editedAt: new Date(item.editedAt) }),

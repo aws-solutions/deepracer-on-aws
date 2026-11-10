@@ -711,7 +711,7 @@ describe('ProfilesTable', () => {
     expect(mockOnDeleteUserModels).not.toHaveBeenCalled();
   });
 
-  it('calls onUpdateUserQuotas when update quotas action is clicked with single selection', async () => {
+  it('calls onUpdateUserQuotas with the full array when a single user is selected', async () => {
     const user = userEvent.setup();
     render(
       <ProfilesTable
@@ -736,7 +736,7 @@ describe('ProfilesTable', () => {
     await user.click(updateQuotasOption);
 
     expect(mockOnUpdateUserQuotas).toHaveBeenCalledTimes(1);
-    expect(mockOnUpdateUserQuotas).toHaveBeenCalledWith(mockProfiles[0], expect.any(Function));
+    expect(mockOnUpdateUserQuotas).toHaveBeenCalledWith([mockProfiles[0]], expect.any(Function));
   });
 
   it('provides clearSelection callback to onUpdateUserQuotas', async () => {
@@ -765,13 +765,13 @@ describe('ProfilesTable', () => {
     const updateQuotasOption = screen.getByText('Update usage quotas');
     await user.click(updateQuotasOption);
 
-    expect(mockOnUpdateUserQuotas).toHaveBeenCalledWith(mockProfiles[0], expect.any(Function));
+    expect(mockOnUpdateUserQuotas).toHaveBeenCalledWith([mockProfiles[0]], expect.any(Function));
 
     const clearSelectionCallback = mockOnUpdateUserQuotas.mock.calls[0][1];
     expect(typeof clearSelectionCallback).toBe('function');
   });
 
-  it('does not call onUpdateUserQuotas when multiple items are selected', async () => {
+  it('calls onUpdateUserQuotas with the full array when multiple items are selected', async () => {
     const user = userEvent.setup();
     render(
       <ProfilesTable
@@ -796,7 +796,71 @@ describe('ProfilesTable', () => {
     const updateQuotasOption = screen.getByText('Update usage quotas');
     await user.click(updateQuotasOption);
 
-    expect(mockOnUpdateUserQuotas).not.toHaveBeenCalled();
+    expect(mockOnUpdateUserQuotas).toHaveBeenCalledTimes(1);
+    expect(mockOnUpdateUserQuotas).toHaveBeenCalledWith([mockProfiles[0], mockProfiles[1]], expect.any(Function));
+  });
+
+  it('"Update usage quotas" action item is not disabled with 2+ users selected', async () => {
+    const user = userEvent.setup();
+    render(
+      <ProfilesTable
+        profiles={mockProfiles}
+        onInviteUser={mockOnInviteUser}
+        onDeleteUser={mockOnDeleteUser}
+        onDeleteUserModels={mockOnDeleteUserModels}
+        onUpdateUserQuotas={mockOnUpdateUserQuotas}
+        onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
+      />,
+    );
+
+    const checkboxes = screen.getAllByRole('checkbox');
+    await user.click(checkboxes[1]);
+    await user.click(checkboxes[2]);
+
+    const actionsButton = screen.getByText('Actions');
+    await user.click(actionsButton);
+
+    const updateQuotasOption = screen.getByRole('menuitem', { name: 'Update usage quotas' });
+    expect(updateQuotasOption).not.toHaveAttribute('aria-disabled', 'true');
+  });
+
+  const openActionsWithAllSelected = async (count: number) => {
+    const user = userEvent.setup();
+    const profiles = Array.from({ length: count }, (_, i) => ({
+      ...mockProfiles[1],
+      profileId: `profile${i}`,
+      alias: `User ${i}`,
+      emailAddress: `user${i}@example.com`,
+    }));
+    render(
+      <ProfilesTable
+        profiles={profiles}
+        onInviteUser={mockOnInviteUser}
+        onDeleteUser={mockOnDeleteUser}
+        onDeleteUserModels={mockOnDeleteUserModels}
+        onUpdateUserQuotas={mockOnUpdateUserQuotas}
+        onChangeUserRole={mockOnChangeUserRole}
+        onInviteMultipleUsers={mockOnInviteMultipleUsers}
+        onResendInvite={mockOnResendInvite}
+      />,
+    );
+    await user.click(screen.getAllByRole('checkbox')[0]);
+    await user.click(screen.getByText('Actions'));
+    return { user, option: screen.getByRole('menuitem', { name: 'Update usage quotas' }) };
+  };
+
+  it('"Update usage quotas" action item is enabled with 200 users selected', async () => {
+    const { option } = await openActionsWithAllSelected(200);
+    expect(option).not.toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('"Update usage quotas" action item is disabled with a reason when more than 200 users are selected', async () => {
+    const { user, option } = await openActionsWithAllSelected(201);
+    expect(option).toHaveAttribute('aria-disabled', 'true');
+    await user.hover(option);
+    expect(await screen.findByText('Select up to 200 users to update usage quotas.')).toBeInTheDocument();
   });
 
   it('does not call onUpdateUserQuotas when no items are selected', async () => {
@@ -854,7 +918,7 @@ describe('ProfilesTable', () => {
     await user.click(updateQuotasOption);
 
     // Get the clearSelection callback from the mock call
-    expect(mockOnUpdateUserQuotas).toHaveBeenCalledWith(mockProfiles[0], expect.any(Function));
+    expect(mockOnUpdateUserQuotas).toHaveBeenCalledWith([mockProfiles[0]], expect.any(Function));
     const clearSelectionCallback = mockOnUpdateUserQuotas.mock.calls[0][1];
 
     // Call the clearSelection callback

@@ -11,6 +11,7 @@ import {
   StopTrainingJobCommand,
   TrainingJobStatus,
   TrainingInstanceType,
+  WarmPoolResourceStatus,
   paginateListTrainingJobs,
   type SageMakerClient,
 } from '@aws-sdk/client-sagemaker';
@@ -20,6 +21,7 @@ import { InternalFailureError, TrackDirection } from '@deepracer-indy/typescript
 import { logMethod, AmazonS3URI, logger, waitForAll } from '@deepracer-indy/utils';
 
 import { serviceQuotasHelper } from './ServiceQuotasHelper';
+import { checkpointHelper } from '../../utils/CheckpointHelper.js';
 import { sageMakerClient } from '../../utils/clients/sageMakerClient.js';
 import {
   DESCRIBE_TRAINING_JOB_CONCURRENCY,
@@ -27,6 +29,8 @@ import {
   SAGEMAKER_SERVICE_CODE,
   TOTAL_TRAINING_INSTANCE_QUOTA_CODE,
   TrainingInstanceQuotaCode,
+  WARM_POOL_JOB_TYPES,
+  WARM_POOL_KEEP_ALIVE_SECONDS,
 } from '../constants/sageMaker.js';
 import { SimulationLaunchFile } from '../constants/simulation.js';
 import { CapacityStatus, CapacityUnavailableReason, type CapacityCheckResult } from '../types/capacityCheckResult.js';
@@ -57,6 +61,13 @@ const usageCache = new Map<string, { value: TrainingInstanceUsage; expiresAt: nu
 /** ABAC-tagged SageMaker client. Only constructable via createTaggedSageMakerClient. */
 export type AbacTaggedSageMakerClient = SageMakerClient & { readonly __abacTagged: unique symbol };
 
+/**
+ * True for job types kept warm (evaluations and race submissions). These jobs run under the shared,
+ * untagged evaluation role and get only the inputs the SimApp's evaluation path reads, so this one
+ * check decides both the job's role and its hyperparameters.
+ */
+const isWarmPoolJob = (jobName: JobName) => WARM_POOL_JOB_TYPES.includes(jobNameHelper.getJobType(jobName));
+
 class SageMakerHelper {
   @logMethod
   async createTrainingJob({
@@ -66,20 +77,34 @@ class SageMakerHelper {
   }: {
     jobItem: JobItem;
     modelItem: ModelItem;
-    client: AbacTaggedSageMakerClient;
+    /** Required for job types that are not kept warm, which run under the ABAC-scoped execution role. */
+    client?: AbacTaggedSageMakerClient;
   }) {
     // TODO: metrics handling
     // eslint-disable-next-line no-useless-catch
     try {
       const { name: jobName, terminationConditions } = jobItem;
+      // Warm-pool job types run untagged under the shared evaluation role, so any racer's next job
+      // can reuse the instance. Every other job type runs under the ABAC-scoped role.
+      const keptWarm = isWarmPoolJob(jobName);
+      const roleArn = keptWarm ? process.env.SAGEMAKER_EVALUATION_ROLE_ARN : process.env.SAGEMAKER_ROLE_ARN;
 
       if (!process.env.SAGEMAKER_TRAINING_IMAGE) {
         throw new Error('SAGEMAKER_TRAINING_IMAGE environment variable is not set');
       }
+      if (!roleArn) {
+        throw new Error(`SageMaker execution role ARN is not set for job ${jobName}`);
+      }
+      // The untagged path uses this Lambda's own credentials, which can only create evaluation and
+      // submission jobs and pass only the evaluation role.
+      const jobCreationClient = keptWarm ? sageMakerClient : client;
+      if (!jobCreationClient) {
+        throw new Error(`An ABAC-tagged SageMaker client is required for job ${jobName}`);
+      }
 
       const createTrainingJobInput: CreateTrainingJobCommandInput = {
         TrainingJobName: jobName,
-        RoleArn: process.env.SAGEMAKER_ROLE_ARN,
+        RoleArn: roleArn,
         AlgorithmSpecification: {
           TrainingInputMode: TrainingInputMode.FILE,
           TrainingImage: process.env.SAGEMAKER_TRAINING_IMAGE,
@@ -92,7 +117,7 @@ class SageMakerHelper {
           InstanceType: (process.env.SAGEMAKER_INSTANCE_TYPE ||
             deepRacerIndyAppConfig.sageMaker.instanceType) as TrainingInstanceType,
           VolumeSizeInGB: deepRacerIndyAppConfig.sageMaker.instanceVolumeSizeInGB,
-          ...(jobItem.name.includes('-live-') && { KeepAlivePeriodInSeconds: 3600 }),
+          ...(keptWarm && { KeepAlivePeriodInSeconds: WARM_POOL_KEEP_ALIVE_SECONDS }),
         },
         StoppingCondition: {
           MaxRuntimeInSeconds: terminationConditions.maxTimeInMinutes * 60,
@@ -102,10 +127,10 @@ class SageMakerHelper {
           EnableRemoteDebug: process.env.DEPLOYMENT_MODE?.toLowerCase() === 'dev',
         },
         // ABAC: scopes bucket access to the caller's profile prefix via session tag.
-        SessionChainingConfig: { EnableSessionTagChaining: true },
+        ...(!keptWarm && { SessionChainingConfig: { EnableSessionTagChaining: true } }),
       };
 
-      const { TrainingJobArn } = await client.send(new CreateTrainingJobCommand(createTrainingJobInput));
+      const { TrainingJobArn } = await jobCreationClient.send(new CreateTrainingJobCommand(createTrainingJobInput));
 
       return TrainingJobArn as string;
     } catch (error) {
@@ -207,14 +232,24 @@ class SageMakerHelper {
 
   async getSageMakerHyperparameters(jobItem: JobItem, modelItem: ModelItem) {
     const { assetS3Locations: jobAssetS3Locations, name: jobName, trackConfig } = jobItem;
-    const { assetS3Locations: modelAssetS3Locations, clonedFromModelId, modelId, profileId } = modelItem;
+    const {
+      assetS3Locations: modelAssetS3Locations,
+      clonedFromCheckpoint,
+      clonedFromModelId,
+      modelId,
+      profileId,
+    } = modelItem;
+
+    // Warm-pool jobs run under the shared role, so racer-supplied hyperparameters, the reward function
+    // and the clone source are left out. The SimApp's evaluation path does not read them.
+    const keptWarm = isWarmPoolJob(jobName);
 
     const preTrainedModelHyperparameters: Pick<
       SageMakerHyperparameters,
-      'pretrained_s3_bucket' | 'pretrained_s3_prefix'
+      'pretrained_s3_bucket' | 'pretrained_s3_prefix' | 'pretrained_checkpoint'
     > = {};
 
-    if (clonedFromModelId) {
+    if (clonedFromModelId && !keptWarm) {
       const preTrainedModel = await modelDao.get({ profileId, modelId: clonedFromModelId });
 
       // Handle preTrainedModel having been deleted
@@ -230,17 +265,20 @@ class SageMakerHelper {
 
       preTrainedModelHyperparameters.pretrained_s3_bucket = preTrainedModelSageMakerArtifactsS3Location.bucket;
       preTrainedModelHyperparameters.pretrained_s3_prefix = preTrainedModelSageMakerArtifactsS3Location.key;
+      preTrainedModelHyperparameters.pretrained_checkpoint = checkpointHelper.toSimAppCheckpoint(clonedFromCheckpoint);
     }
 
     const sageMakerArtifactsS3Location = new AmazonS3URI(modelAssetS3Locations.sageMakerArtifactsS3Location);
 
-    const modelHyperparameters = Object.entries(modelItem.metadata.hyperparameters).reduce(
-      (acc, [key, value]) => {
-        acc[key] = String(value);
-        return acc;
-      },
-      {} as Record<string, string>,
-    );
+    const modelHyperparameters = keptWarm
+      ? {}
+      : Object.entries(modelItem.metadata.hyperparameters).reduce(
+          (acc, [key, value]) => {
+            acc[key] = String(value);
+            return acc;
+          },
+          {} as Record<string, string>,
+        );
 
     const sageMakerHyperparameters = {
       ...modelHyperparameters,
@@ -249,7 +287,7 @@ class SageMakerHelper {
       heartbeat_s3_location: jobAssetS3Locations.simulationHeartbeatS3Location,
       kinesis_stream_name: jobName,
       model_metadata_s3_key: modelAssetS3Locations.modelMetadataS3Location,
-      reward_function_s3_source: modelAssetS3Locations.rewardFunctionS3Location,
+      ...(!keptWarm && { reward_function_s3_source: modelAssetS3Locations.rewardFunctionS3Location }),
       s3_bucket: sageMakerArtifactsS3Location.bucket,
       s3_prefix: sageMakerArtifactsS3Location.key,
       s3_ros_log_bucket: process.env.MODEL_DATA_BUCKET_NAME as string,
@@ -306,7 +344,7 @@ class SageMakerHelper {
   }
 
   /**
-   * Sums the instances currently held by active training jobs in this account.
+   * Sums the instances currently held by active training jobs and warm pools in this account.
    *
    * Usage is measured in *instance units* rather than job count, because a training job may request
    * more than one instance and both quotas are expressed in instances. Every active training job is
@@ -320,29 +358,39 @@ class SageMakerHelper {
     }
 
     const TWENTY_FOUR_HOURS_10_MINS_IN_MILLIS = 24 * 60 * 60 * 1000 + 10 * 60 * 1000; // Longest job duration + 10 min buffer
-    const creationTimeAfter = new Date(Date.now() - TWENTY_FOUR_HOURS_10_MINS_IN_MILLIS);
+    // A finished job's warm instance is held for up to the keep-alive period after the job ends.
+    const creationTimeAfter = new Date(
+      Date.now() - TWENTY_FOUR_HOURS_10_MINS_IN_MILLIS - WARM_POOL_KEEP_ALIVE_SECONDS * 1000,
+    );
 
-    const activeJobNames: string[] = [];
+    // Warm pool instances count toward the training quotas but sit on finished jobs, so they are
+    // listed separately from the active job statuses.
+    const listFilters = [
+      ...SAGEMAKER_ACTIVE_JOB_STATUSES.map((status) => ({ StatusEquals: status })),
+      { WarmPoolStatusEquals: WarmPoolResourceStatus.AVAILABLE },
+    ];
 
-    for (const status of SAGEMAKER_ACTIVE_JOB_STATUSES) {
+    const activeJobNames = new Set<string>();
+
+    for (const filter of listFilters) {
       for await (const page of paginateListTrainingJobs(
         { client: sageMakerClient },
         {
           CreationTimeAfter: creationTimeAfter,
-          StatusEquals: status,
+          ...filter,
           // Max page size (default 10) to reduce paginated calls and stay under the rate limit.
           MaxResults: 100,
         },
       )) {
         for (const summary of page.TrainingJobSummaries ?? []) {
           if (summary.TrainingJobName) {
-            activeJobNames.push(summary.TrainingJobName);
+            activeJobNames.add(summary.TrainingJobName);
           }
         }
       }
     }
 
-    const { resourceConfigs, failedJobNames } = await this.describeInstanceUsage(activeJobNames);
+    const { resourceConfigs, failedJobNames } = await this.describeInstanceUsage([...activeJobNames]);
 
     if (failedJobNames.length > 0) {
       // A describe failure is indistinguishable here between "job legitimately disappeared between
@@ -351,7 +399,7 @@ class SageMakerHelper {
       // an under-counted usage and a false AVAILABLE, contradicting the fail-closed contract — so
       // any describe failure propagates as an error instead.
       throw new Error(
-        `Unable to describe ${failedJobNames.length} of ${activeJobNames.length} active training job(s) while computing instance usage: ${failedJobNames.join(', ')}`,
+        `Unable to describe ${failedJobNames.length} of ${activeJobNames.size} active or warm training job(s) while computing instance usage: ${failedJobNames.join(', ')}`,
       );
     }
 
@@ -364,7 +412,7 @@ class SageMakerHelper {
     );
 
     logger.info('Active SageMaker training instance usage', {
-      activeJobCount: activeJobNames.length,
+      activeJobCount: activeJobNames.size,
       effectiveInstanceType,
       ...usage,
     });

@@ -6,7 +6,8 @@ import { configureStore } from '@reduxjs/toolkit';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { DeepRacerApiQueryTagType } from '#services/deepRacer/constants';
-import { lapMutationInvalidatesTags, lapsApi } from '#services/deepRacer/lapsApi';
+import { lapMutationInvalidatesTags, lapsApi, lapValidityInvalidatesTags } from '#services/deepRacer/lapsApi';
+import notificationsSlice from '#store/notifications/notificationsSlice';
 import { mockDeepRacerClient } from '#utils/testUtils';
 
 const mockLap: Lap = {
@@ -112,6 +113,62 @@ describe('lapsApi', () => {
   describe('lapMutationInvalidatesTags', () => {
     it('returns a tag scoped to the parent run so GetRun refetches with updated laps', () => {
       expect(lapMutationInvalidatesTags('run-001')).toEqual([{ type: DeepRacerApiQueryTagType.LAPS, id: 'run-001' }]);
+    });
+  });
+
+  describe('lapValidityInvalidatesTags', () => {
+    it('refetches the run (its score may change) as well as its laps', () => {
+      expect(lapValidityInvalidatesTags('run-001')).toEqual([
+        { type: DeepRacerApiQueryTagType.RUNS, id: 'run-001' },
+        { type: DeepRacerApiQueryTagType.LAPS, id: 'run-001' },
+      ]);
+    });
+  });
+
+  describe('error notification opt-out', () => {
+    // Callers show their own lap errors; a toast as well would duplicate them, and for crossing
+    // laps would fire on every retry and on expected replay conflicts.
+    const storeWithNotifications = configureStore({
+      reducer: {
+        [lapsApi.reducerPath]: lapsApi.reducer,
+        notifications: notificationsSlice.reducer,
+      },
+      middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(lapsApi.middleware),
+    });
+
+    beforeEach(() => {
+      storeWithNotifications.dispatch(lapsApi.util.resetApiState());
+    });
+
+    it('does not dispatch an error notification when createLap fails', async () => {
+      mockDeepRacerClient.on(CreateLapCommand).rejectsOnce(new Error('Lap number conflict. Please retry.'));
+
+      await storeWithNotifications.dispatch(
+        lapsApi.endpoints.createLap.initiate({
+          eventId: 'evt-001',
+          leaderboardId: 'lb-001',
+          runId: 'run-001',
+          lapTimeMs: 1,
+        }),
+      );
+
+      expect(storeWithNotifications.getState().notifications.items).toHaveLength(0);
+    });
+
+    it('does not dispatch an error notification when setLapValidity fails', async () => {
+      mockDeepRacerClient.on(SetLapValidityCommand).rejectsOnce(new Error('Not authorized'));
+
+      await storeWithNotifications.dispatch(
+        lapsApi.endpoints.setLapValidity.initiate({
+          eventId: 'evt-001',
+          leaderboardId: 'lb-001',
+          runId: 'run-001',
+          lapNumber: 1,
+          isValid: false,
+        }),
+      );
+
+      expect(storeWithNotifications.getState().notifications.items).toHaveLength(0);
     });
   });
 });

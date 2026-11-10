@@ -223,7 +223,9 @@ export class StaticWebsite extends Construct {
       memoryLimit: 2048, // increased due to timeouts occurring at 512
       // Keep dev/toolchain artifacts out of the public origin: Vite copies public/* (incl. the MSW
       // worker) into dist/, and the build also emits package.json/source maps. Excluding them from
-      // the asset means they are never uploaded and are pruned from the bucket on deploy.
+      // the asset means they are never uploaded and are pruned from the bucket on deploy. Patterns
+      // match at any depth, which is why the RPi timer's manifest is published as
+      // timer/timer-package.json (see public/timer_activation.sh).
       sources: [Source.asset(websiteDistPath, { exclude: ['mockServiceWorker.js', 'package.json', '**/*.map'] })],
       // The live-race broadcast handler writes public/leaderboards/*.json into this same
       // bucket at runtime (for the unauthenticated leaderboard page's initial S3 hydration).

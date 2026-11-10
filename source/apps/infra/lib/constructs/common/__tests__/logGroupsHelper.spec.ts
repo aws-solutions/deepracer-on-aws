@@ -57,10 +57,10 @@ vi.mock('../logGroupsHelper.js', async () => {
 
 describe('LogGroupsHelper', () => {
   let stack: Stack;
-  // Use an explicit stack name so we can assert against it in LogGroupName values.
-  // The helper now uses Stack.of(scope).stackName instead of namespace to prevent
-  // collisions between deployments that share a namespace.
   const TEST_STACK_NAME = 'TestStack';
+  const stackNamedLogGroup = (category: string) => ({
+    'Fn::Join': ['', ['/aws/lambda/', { Ref: 'AWS::StackName' }, `-${category}`]],
+  });
 
   beforeEach(() => {
     stack = new Stack(undefined, TEST_STACK_NAME);
@@ -81,7 +81,7 @@ describe('LogGroupsHelper', () => {
 
       const template = Template.fromStack(stack);
       template.hasResourceProperties('AWS::Logs::LogGroup', {
-        LogGroupName: `/aws/lambda/${TEST_STACK_NAME}-${LogGroupCategory.DEFAULT}`,
+        LogGroupName: stackNamedLogGroup(LogGroupCategory.DEFAULT),
       });
     });
 
@@ -95,7 +95,7 @@ describe('LogGroupsHelper', () => {
 
       const template = Template.fromStack(stack);
       template.hasResourceProperties('AWS::Logs::LogGroup', {
-        LogGroupName: `/aws/lambda/${TEST_STACK_NAME}-${LogGroupCategory.API}`,
+        LogGroupName: stackNamedLogGroup(LogGroupCategory.API),
       });
     });
 
@@ -167,10 +167,10 @@ describe('LogGroupsHelper', () => {
       const template = Template.fromStack(stack);
       template.resourceCountIs('AWS::Logs::LogGroup', 2);
       template.hasResourceProperties('AWS::Logs::LogGroup', {
-        LogGroupName: `/aws/lambda/${TEST_STACK_NAME}-${LogGroupCategory.API}`,
+        LogGroupName: stackNamedLogGroup(LogGroupCategory.API),
       });
       template.hasResourceProperties('AWS::Logs::LogGroup', {
-        LogGroupName: `/aws/lambda/${TEST_STACK_NAME}-${LogGroupCategory.WORKFLOW}`,
+        LogGroupName: stackNamedLogGroup(LogGroupCategory.WORKFLOW),
       });
     });
 
@@ -183,7 +183,7 @@ describe('LogGroupsHelper', () => {
 
       const template = Template.fromStack(stack);
       template.hasResourceProperties('AWS::Logs::LogGroup', {
-        LogGroupName: `/aws/lambda/${TEST_STACK_NAME}-${LogGroupCategory.METRICS}`,
+        LogGroupName: stackNamedLogGroup(LogGroupCategory.METRICS),
       });
     });
 
@@ -234,12 +234,12 @@ describe('LogGroupsHelper', () => {
       const template = Template.fromStack(stack);
 
       template.hasResourceProperties('AWS::Logs::LogGroup', {
-        LogGroupName: `/aws/lambda/${TEST_STACK_NAME}-${LogGroupCategory.API}`,
+        LogGroupName: stackNamedLogGroup(LogGroupCategory.API),
         RetentionInDays: RetentionDays.TEN_YEARS,
       });
 
       template.hasResourceProperties('AWS::Logs::LogGroup', {
-        LogGroupName: `/aws/lambda/${TEST_STACK_NAME}-${LogGroupCategory.USER_IDENTITY}`,
+        LogGroupName: stackNamedLogGroup(LogGroupCategory.USER_IDENTITY),
         RetentionInDays: RetentionDays.TEN_YEARS,
       });
     });
@@ -267,17 +267,17 @@ describe('LogGroupsHelper', () => {
       const template = Template.fromStack(stack);
 
       template.hasResourceProperties('AWS::Logs::LogGroup', {
-        LogGroupName: `/aws/lambda/${TEST_STACK_NAME}-${LogGroupCategory.WORKFLOW}`,
+        LogGroupName: stackNamedLogGroup(LogGroupCategory.WORKFLOW),
         RetentionInDays: RetentionDays.TWO_YEARS,
       });
 
       template.hasResourceProperties('AWS::Logs::LogGroup', {
-        LogGroupName: `/aws/lambda/${TEST_STACK_NAME}-${LogGroupCategory.METRICS}`,
+        LogGroupName: stackNamedLogGroup(LogGroupCategory.METRICS),
         RetentionInDays: RetentionDays.TWO_YEARS,
       });
 
       template.hasResourceProperties('AWS::Logs::LogGroup', {
-        LogGroupName: `/aws/lambda/${TEST_STACK_NAME}-${LogGroupCategory.DEFAULT}`,
+        LogGroupName: stackNamedLogGroup(LogGroupCategory.DEFAULT),
         RetentionInDays: RetentionDays.TWO_YEARS,
       });
     });
@@ -294,7 +294,7 @@ describe('LogGroupsHelper', () => {
       const template = Template.fromStack(stack);
 
       template.hasResourceProperties('AWS::Logs::LogGroup', {
-        LogGroupName: `/aws/lambda/${TEST_STACK_NAME}-${LogGroupCategory.API}`,
+        LogGroupName: stackNamedLogGroup(LogGroupCategory.API),
         RetentionInDays: RetentionDays.ONE_MONTH,
       });
     });
@@ -430,7 +430,7 @@ describe('LogGroupsHelper', () => {
       // Verify each category creates the correct log group
       categories.forEach((category) => {
         template.hasResourceProperties('AWS::Logs::LogGroup', {
-          LogGroupName: `/aws/lambda/${TEST_STACK_NAME}-${category}`,
+          LogGroupName: stackNamedLogGroup(category),
         });
       });
     });
@@ -446,7 +446,7 @@ describe('LogGroupsHelper', () => {
 
       const template = Template.fromStack(stack);
       template.hasResourceProperties('AWS::Logs::LogGroup', {
-        LogGroupName: `/aws/lambda/${TEST_STACK_NAME}-${LogGroupCategory.DEFAULT}`,
+        LogGroupName: stackNamedLogGroup(LogGroupCategory.DEFAULT),
       });
     });
   });

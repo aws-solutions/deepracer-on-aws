@@ -10,7 +10,7 @@ import {
   TEST_LEADERBOARD_ID,
   TEST_RUN_ITEM,
 } from '@deepracer-indy/database';
-import { NotAuthorizedError, RunStatus, UserGroups } from '@deepracer-indy/typescript-server-client';
+import { LapReviewStatus, NotAuthorizedError, RunStatus, UserGroups } from '@deepracer-indy/typescript-server-client';
 import { vi } from 'vitest';
 
 import { cognitoClient } from '../../../utils/clients/cognitoClient.js';
@@ -110,6 +110,30 @@ describe('SetLapValidity operation', () => {
     );
     expect(output.lap.isValid).toBe(false);
     expect(output.rankingScore).toBeUndefined();
+  });
+
+  it('should mark a lap that was pending review as REVIEWED', async () => {
+    vi.spyOn(cognitoClient, 'send').mockImplementation(() =>
+      Promise.resolve({ Groups: [{ GroupName: UserGroups.RACE_FACILITATORS }] }),
+    );
+    mockRunDao.load.mockResolvedValue({ ...TEST_RUN_ITEM, runStatus: RunStatus.FINISHED });
+    mockLapDao.load.mockResolvedValue({
+      ...TEST_LAP_ITEM,
+      isValid: false,
+      reviewStatus: LapReviewStatus.PENDING_REVIEW,
+    });
+    mockLapDao.partialUpdate.mockResolvedValue({
+      ...TEST_LAP_ITEM,
+      isValid: true,
+      reviewStatus: LapReviewStatus.REVIEWED,
+    });
+
+    await SetLapValidityOperation({ ...INPUT, isValid: true }, TEST_OPERATION_CONTEXT);
+
+    expect(mockLapDao.partialUpdate).toHaveBeenCalledWith(
+      { leaderboardId: TEST_LEADERBOARD_ID, runId: TEST_RUN_ITEM.runId, lapNumber: 1 },
+      { isValid: true, reviewStatus: LapReviewStatus.REVIEWED },
+    );
   });
 
   it('should trigger the score recalculation cascade and include rankingScore when the run is SUBMITTED', async () => {

@@ -6,6 +6,7 @@ import { Rule } from 'aws-cdk-lib/aws-events';
 import { ManagedPolicy, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 
+import { iotTimerTopicPrefix } from '../../constants/iotTopics.js';
 import { addCfnGuardSuppression } from '../common/cfnGuardHelper.js';
 
 /**
@@ -26,6 +27,10 @@ export interface DeviceManagementInfraProps {
 export class DeviceManagementInfra extends Construct {
   /** Role 1: assumed by the SSM agent on physical devices after hybrid activation. */
   readonly ssmHybridActivationRole: Role;
+  /**
+   * Role 1b: SSM managed-instance core permissions plus publish-only access to the timer topic tree.
+   */
+  readonly timerHybridActivationRole: Role;
   /** Role 2: Activation Lambda — device onboarding/deregistration. */
   readonly activationLambdaRole: Role;
   /** Role 3: Restart Command Lambda. */
@@ -59,17 +64,23 @@ export class DeviceManagementInfra extends Construct {
         resources: [ssmManagedInstance],
         conditions: {
           ...DEEPRACER_MANAGED_TAG_CONDITION,
-          // CarType: self-reported car sub-type. PreviousInstanceId: the managed instance this
-          // device replaced when re-activated with an SSM override (see deviceSync).
-          // The resource is every onboarded instance, not only the caller's own, so any device
-          // can set these keys on any onboarded instance. deviceSync therefore never acts on
-          // PreviousInstanceId alone: the linked row must match the activation-set Type, Name
-          // and fleetId tags (which devices cannot set) and the old instance must be offline.
           'ForAllValues:StringEquals': { 'aws:TagKeys': ['CarType', 'PreviousInstanceId'] },
         },
       }),
     );
     addCfnGuardSuppression(this.ssmHybridActivationRole, ['IAM_NO_INLINE_POLICY_CHECK']);
+
+    this.timerHybridActivationRole = new Role(this, 'TimerHybridActivationRole', {
+      assumedBy: new ServicePrincipal('ssm.amazonaws.com'),
+      managedPolicies: [ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore')],
+    });
+    this.timerHybridActivationRole.addToPolicy(
+      new PolicyStatement({
+        actions: ['iot:Publish'],
+        resources: [`arn:${partition}:iot:${region}:${account}:topic/${iotTimerTopicPrefix(namespace)}/*`],
+      }),
+    );
+    addCfnGuardSuppression(this.timerHybridActivationRole, ['IAM_NO_INLINE_POLICY_CHECK']);
 
     // --- Role 2: DeviceManagement-ActivationLambdaRole ---
     this.activationLambdaRole = new Role(this, 'ActivationLambdaRole', {
@@ -98,6 +109,7 @@ export class DeviceManagementInfra extends Construct {
     addCfnGuardSuppression(this.activationLambdaRole, ['IAM_NO_INLINE_POLICY_CHECK']);
 
     this.ssmHybridActivationRole.grantPassRole(this.activationLambdaRole);
+    this.timerHybridActivationRole.grantPassRole(this.activationLambdaRole);
 
     // --- Role 3: DeviceManagement-RestartCommandLambdaRole ---
     this.restartCommandLambdaRole = new Role(this, 'RestartCommandLambdaRole', {

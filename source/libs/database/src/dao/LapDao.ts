@@ -1,7 +1,13 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import { ConflictError, InternalFailureError, RunStatus } from '@deepracer-indy/typescript-server-client';
+import {
+  ConflictError,
+  InternalFailureError,
+  LapReviewStatus,
+  type LapTimingSource,
+  RunStatus,
+} from '@deepracer-indy/typescript-server-client';
 import { logger, logMethod } from '@deepracer-indy/utils';
 import { Service } from 'electrodb';
 
@@ -76,6 +82,8 @@ export class LapDao extends BaseDao<LapsEntity> {
     resets,
     deviceId,
     clientToken,
+    timingSource,
+    reviewStatus,
   }: {
     leaderboardId: ResourceId;
     runId: ResourceId;
@@ -84,6 +92,9 @@ export class LapDao extends BaseDao<LapsEntity> {
     resets: number;
     deviceId?: ResourceId;
     clientToken?: string;
+    timingSource?: LapTimingSource;
+    /** PENDING_REVIEW also saves the lap as invalid until the facilitator reviews it. */
+    reviewStatus?: LapReviewStatus;
   }) {
     const lapNumber = expectedLapCount + 1;
 
@@ -107,6 +118,9 @@ export class LapDao extends BaseDao<LapsEntity> {
           lapTimeMs,
           resets,
           ...(deviceId !== undefined && { deviceId }),
+          ...(timingSource !== undefined && { timingSource }),
+          ...(reviewStatus !== undefined && { reviewStatus }),
+          ...(reviewStatus === LapReviewStatus.PENDING_REVIEW && { isValid: false }),
         })
         .commit(),
       // Idempotency guard (only when the caller supplied a token). ElectroDB `create` adds an

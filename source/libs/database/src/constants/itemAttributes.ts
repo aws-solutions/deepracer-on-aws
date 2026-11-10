@@ -2,7 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { AvatarOptionType, DEFAULT_AVATAR, DEFAULT_MIN_EVAL_TRIALS } from '@deepracer-indy/config';
-import { JobStatus, RaceType, TrackDirection, TrackId } from '@deepracer-indy/typescript-server-client';
+import {
+  CheckpointSelection,
+  JobStatus,
+  RaceType,
+  TrackDirection,
+  TrackId,
+} from '@deepracer-indy/typescript-server-client';
 import { CustomAttributeType, type Attribute, type Schema } from 'electrodb';
 
 import type { ResourceId } from '../types/resource.js';
@@ -163,6 +169,10 @@ export enum DynamoDBItemAttribute {
   RACED_BY_PROXY = 'racedByProxy',
   LAP_COUNT = 'lapCount',
 
+  // Evaluation and submission attributes
+  /** The training checkpoint an evaluation or submission uses. */
+  CHECKPOINT = 'checkpoint',
+
   // Lap attributes
   LAP_NUMBER = 'lapNumber',
   LAP_TIME_MS = 'lapTimeMs',
@@ -173,6 +183,8 @@ export enum DynamoDBItemAttribute {
   EDITED_BY = 'editedBy',
   EDITED_AT = 'editedAt',
   EDIT_REASON = 'editReason',
+  TIMING_SOURCE = 'timingSource',
+  REVIEW_STATUS = 'reviewStatus',
   /** Client-supplied idempotency token for CreateLap (guards against duplicate laps on retry). */
   CLIENT_TOKEN = 'clientToken',
 
@@ -181,6 +193,7 @@ export enum DynamoDBItemAttribute {
   AGENT_ALGORITHM = 'agentAlgorithm',
   CAR_CUSTOMIZATION = 'carCustomization',
   CLONED_FROM_MODEL_ID = 'clonedFromModelId',
+  CLONED_FROM_CHECKPOINT = 'clonedFromCheckpoint',
   FILE_SIZE_IN_BYTES = 'fileSizeInBytes',
   HYPERPARAMETERS = 'hyperparameters',
   METADATA = 'metadata',
@@ -335,6 +348,16 @@ export const OBJECT_AVOIDANCE_CONFIG_ATTRIBUTE = {
       },
     },
   },
+} satisfies Attribute;
+
+/**
+ * The training checkpoint an evaluation or submission uses. Items created before it was recorded have
+ * no value and used BEST.
+ */
+export const CHECKPOINT_ATTRIBUTE = {
+  type: Object.values(CheckpointSelection),
+  required: false,
+  readOnly: true,
 } satisfies Attribute;
 
 export const RESETTING_BEHAVIOR_CONFIG_ATTRIBUTE = {

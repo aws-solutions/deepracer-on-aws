@@ -20,6 +20,7 @@ import {
   CarColor,
   CarCustomization,
   CarShell,
+  CheckpointSelection,
   InternalFailureError,
   JobStatus,
   ModelDefinition,
@@ -31,6 +32,7 @@ import {
 import { metricsLogger } from '@deepracer-indy/utils';
 import { mockClient } from 'aws-sdk-client-mock';
 
+import { checkpointHelper } from '../../../utils/CheckpointHelper.js';
 import { sqsClient } from '../../../utils/clients/sqsClient.js';
 import { CapacityMessage } from '../../../workflow/constants/capacityMessages.js';
 import { CapacityStatus, CapacityUnavailableReason } from '../../../workflow/types/capacityCheckResult.js';
@@ -188,6 +190,51 @@ describe('CreateModel', () => {
         modelCount: 1,
       },
     );
+  });
+
+  it("should validate and record the pre-trained model's chosen checkpoint", async () => {
+    const mockPreTrainedModelId = TEST_MODEL_ITEMS[1].modelId;
+    vi.spyOn(accountResourceUsageDao, 'update').mockResolvedValue(TEST_ACCOUNT_RESOURCE_USAGE_NORMAL);
+    vi.spyOn(profileDao, 'update').mockResolvedValue(TEST_PROFILE_ITEM_WITH_LIMITS);
+    vi.spyOn(modelDao, 'create').mockResolvedValue(TEST_MODEL_ITEM);
+    vi.spyOn(trainingDao, 'create').mockResolvedValue(TEST_TRAINING_ITEM);
+    vi.spyOn(validator, 'validateCloneModel').mockResolvedValueOnce();
+    vi.spyOn(rewardFunctionValidator, 'validateRewardFunction').mockResolvedValueOnce({ errors: [] });
+    vi.spyOn(accountResourceUsageDao, 'getOrCreate').mockResolvedValueOnce(TEST_ACCOUNT_RESOURCE_USAGE_NORMAL);
+    vi.spyOn(profileDao, 'load').mockResolvedValueOnce(TEST_PROFILE_ITEM_WITH_LIMITS);
+    const validateSpy = vi.spyOn(checkpointHelper, 'validateCheckpointSelection').mockResolvedValue();
+
+    await CreateModelOperation(
+      {
+        modelDefinition: testModelDefinition,
+        preTrainedModelId: mockPreTrainedModelId,
+        preTrainedCheckpoint: CheckpointSelection.LAST,
+      },
+      TEST_OPERATION_CONTEXT,
+    );
+
+    expect(validateSpy).toHaveBeenCalledWith(
+      { modelId: mockPreTrainedModelId, profileId: TEST_OPERATION_CONTEXT.profileId },
+      CheckpointSelection.LAST,
+    );
+    expect(modelDao.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clonedFromModelId: mockPreTrainedModelId,
+        clonedFromCheckpoint: CheckpointSelection.LAST,
+      }),
+    );
+  });
+
+  it('should reject a pre-trained checkpoint without a pre-trained model', async () => {
+    vi.spyOn(modelDao, 'create');
+
+    await expect(
+      CreateModelOperation(
+        { modelDefinition: testModelDefinition, preTrainedCheckpoint: CheckpointSelection.LAST },
+        TEST_OPERATION_CONTEXT,
+      ),
+    ).rejects.toThrow(BadRequestError);
+    expect(modelDao.create).not.toHaveBeenCalled();
   });
 
   it('should leave the model waiting and send no workflow message when capacity is unavailable', async () => {

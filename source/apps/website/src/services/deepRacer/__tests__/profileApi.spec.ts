@@ -3,6 +3,8 @@
 
 import {
   AvatarConfig,
+  BatchUpdateProfileQuotasCommand,
+  BatchUpdateProfileQuotasCommandInput,
   CreateProfileCommand,
   CreateProfileCommandInput,
   CreateProfileCommandOutput,
@@ -12,6 +14,7 @@ import {
   DeleteProfileModelsCommand,
   DeleteProfileModelsCommandInput,
   DeleteProfileModelsCommandOutput,
+  ListProfilesCommand,
   Profile,
   UpdateGroupMembershipCommand,
   UpdateGroupMembershipCommandInput,
@@ -21,9 +24,11 @@ import {
   UpdateProfileCommandOutput,
   UserGroups,
 } from '@deepracer-indy/typescript-client';
-import { describe, it, expect } from 'vitest';
+import { configureStore } from '@reduxjs/toolkit';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
 
 import * as profileApiModule from '#services/deepRacer/profileApi';
+import { mockDeepRacerClient } from '#utils/testUtils';
 
 describe('profileApi', () => {
   describe('createProfileCommand', () => {
@@ -180,6 +185,83 @@ describe('profileApi', () => {
     it('should export useCreateProfileMutation hook', () => {
       expect(profileApiModule.profileApi.useCreateProfileMutation).toBeDefined();
       expect(typeof profileApiModule.profileApi.useCreateProfileMutation).toBe('function');
+    });
+  });
+
+  describe('batchUpdateProfileQuotasCommand', () => {
+    it('should create a BatchUpdateProfileQuotasCommand with input and no generic error notification', () => {
+      const input: BatchUpdateProfileQuotasCommandInput = {
+        profileIds: ['profileAAAAAAAA', 'profileBBBBBBBB'],
+        maxTotalComputeMinutes: 1200,
+        maxModelCount: -1,
+      };
+
+      const result = profileApiModule.batchUpdateProfileQuotas.batchUpdateProfileQuotasCommand(input);
+
+      expect(result.command).toBeInstanceOf(BatchUpdateProfileQuotasCommand);
+      expect(result.command.input).toEqual(input);
+      expect(result.displayNotificationOnError).toBe(false);
+    });
+  });
+
+  describe('batchUpdateProfileQuotas endpoint', () => {
+    const { profileApi } = profileApiModule;
+    const input: BatchUpdateProfileQuotasCommandInput = {
+      profileIds: ['profileAAAAAAAA', 'profileBBBBBBBB'],
+      maxTotalComputeMinutes: 1200,
+      maxModelCount: -1,
+    };
+    const dispatchedActionTypes = (state: string[] = [], action: { type: string }) => [...state, action.type];
+    const store = configureStore({
+      reducer: { [profileApi.reducerPath]: profileApi.reducer, dispatchedActionTypes },
+      middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(profileApi.middleware),
+    });
+
+    beforeEach(() => {
+      mockDeepRacerClient.reset();
+      store.dispatch(profileApi.util.resetApiState());
+    });
+
+    it('should send the command with the input and return the updated IDs and per-profile errors', async () => {
+      const errors = [{ profileId: 'profileBBBBBBBB', code: 'NotFoundError', message: 'Profile not found.' }];
+      mockDeepRacerClient
+        .on(BatchUpdateProfileQuotasCommand)
+        .resolvesOnce({ updatedProfileIds: ['profileAAAAAAAA'], errors });
+
+      const result = await store.dispatch(profileApi.endpoints.batchUpdateProfileQuotas.initiate(input)).unwrap();
+
+      expect(result.updatedProfileIds).toEqual(['profileAAAAAAAA']);
+      expect(result.errors).toEqual(errors);
+      const calls = mockDeepRacerClient.commandCalls(BatchUpdateProfileQuotasCommand);
+      expect(calls).toHaveLength(1);
+      expect(calls[0].args[0].input).toEqual(input);
+    });
+
+    it('should refetch the profile list after a successful update', async () => {
+      mockDeepRacerClient.on(ListProfilesCommand).resolves({ profiles: [] });
+      mockDeepRacerClient
+        .on(BatchUpdateProfileQuotasCommand)
+        .resolves({ updatedProfileIds: input.profileIds, errors: [] });
+      const subscription = store.dispatch(profileApi.endpoints.listProfiles.initiate());
+      await subscription;
+      expect(mockDeepRacerClient.commandCalls(ListProfilesCommand)).toHaveLength(1);
+
+      await store.dispatch(profileApi.endpoints.batchUpdateProfileQuotas.initiate(input)).unwrap();
+
+      await vi.waitFor(() => {
+        expect(mockDeepRacerClient.commandCalls(ListProfilesCommand)).toHaveLength(2);
+      });
+      subscription.unsubscribe();
+    });
+
+    it('should reject without raising the generic API error notification, leaving the message to the modal', async () => {
+      mockDeepRacerClient.on(BatchUpdateProfileQuotasCommand).rejectsOnce(new Error('Not authorized'));
+
+      await expect(
+        store.dispatch(profileApi.endpoints.batchUpdateProfileQuotas.initiate(input)).unwrap(),
+      ).rejects.toBeDefined();
+
+      expect(store.getState().dispatchedActionTypes).not.toContain('notifications/displayErrorNotification');
     });
   });
 

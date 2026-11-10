@@ -12,9 +12,6 @@ import {
   ListRunsCommandInput,
   paginateListRuns,
   Run,
-  SetLapValidityCommand,
-  SetLapValidityCommandInput,
-  SetLapValidityCommandOutput,
   TransitionRunStatusCommand,
   TransitionRunStatusCommandInput,
   TransitionRunStatusCommandOutput,
@@ -91,21 +88,14 @@ export const runsApi = deepRacerApi.injectEndpoints({
       }),
       invalidatesTags: (_result, _meta, { runId }) => getRunProvidesTags(runId),
     }),
-    setLapValidity: build.mutation<SetLapValidityCommandOutput, SetLapValidityCommandInput>({
-      query: (input) => ({
-        command: new SetLapValidityCommand(input),
-        displayNotificationOnError: false,
-      }),
-      invalidatesTags: (_result, _meta, { runId }) => getRunProvidesTags(runId),
-    }),
   }),
 });
 
 export const {
   useListRunsQuery,
   useGetRunQuery,
+  useLazyGetRunQuery,
   useCreateRunMutation,
   useTransitionRunStatusMutation,
   useUpdateLapMutation,
-  useSetLapValidityMutation,
 } = runsApi;

@@ -28,6 +28,9 @@ structure Submission with [BaseSubmission] {
 
     @required
     status: JobStatus
+
+    @documentation("The training checkpoint the submission raced. Absent for submissions made before this was recorded, which used BEST.")
+    checkpoint: CheckpointSelection
 }
 
 @mixin

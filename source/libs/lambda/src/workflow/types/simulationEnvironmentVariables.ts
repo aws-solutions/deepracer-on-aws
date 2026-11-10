@@ -1,6 +1,8 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+import type { SimAppCheckpoint } from '../../utils/CheckpointHelper.js';
+
 export interface SimulationEnvironmentVariables {
   /** awsRegion */
   AWS_REGION: string;
@@ -64,6 +66,8 @@ export interface SimulationEnvironmentVariables {
 
   /** numOfTrials */
   NUMBER_OF_TRIALS: number;
+  /** The model checkpoint an evaluation or submission uses: `best` (the SimApp's default) or `last`. */
+  EVAL_CHECKPOINT?: SimAppCheckpoint;
 
   /** minEvalTrials */
   MIN_EVAL_TRIALS?: number;

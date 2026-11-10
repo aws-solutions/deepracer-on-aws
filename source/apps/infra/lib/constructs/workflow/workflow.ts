@@ -4,7 +4,7 @@
 import path from 'node:path';
 
 import { TrainingJobStatus } from '@aws-sdk/client-sagemaker';
-import { Duration, Stack } from 'aws-cdk-lib';
+import { Aws, Duration, Stack } from 'aws-cdk-lib';
 import { TableV2 } from 'aws-cdk-lib/aws-dynamodb';
 import {
   ArnPrincipal,
@@ -129,27 +129,34 @@ export class Workflow extends Construct {
       }),
     });
 
+    // Untagged execution role for evaluations and race submissions, so any racer's next job can reuse a
+    // warm instance. These jobs run no racer code. Training keeps the ABAC-scoped sageMakerRole.
+    const sageMakerEvaluationRole = new Role(this, 'SageMakerEvaluationRole', {
+      assumedBy: new ServicePrincipal('sagemaker.amazonaws.com'),
+    });
+
     sageMakerRole.attachInlinePolicy(sageMakerAccessPolicy);
+    sageMakerEvaluationRole.attachInlinePolicy(sageMakerAccessPolicy);
 
     if (isDevMode(scope)) {
-      sageMakerRole.attachInlinePolicy(
-        new Policy(this, 'SshSsmAgent', {
-          document: new PolicyDocument({
-            statements: [
-              new PolicyStatement({
-                sid: 'AllowSSM',
-                actions: [
-                  'ssmmessages:CreateControlChannel',
-                  'ssmmessages:CreateDataChannel',
-                  'ssmmessages:OpenControlChannel',
-                  'ssmmessages:OpenDataChannel',
-                ],
-                resources: ['*'],
-              }),
-            ],
-          }),
+      const sshSsmAgentPolicy = new Policy(this, 'SshSsmAgent', {
+        document: new PolicyDocument({
+          statements: [
+            new PolicyStatement({
+              sid: 'AllowSSM',
+              actions: [
+                'ssmmessages:CreateControlChannel',
+                'ssmmessages:CreateDataChannel',
+                'ssmmessages:OpenControlChannel',
+                'ssmmessages:OpenDataChannel',
+              ],
+              resources: ['*'],
+            }),
+          ],
         }),
-      );
+      });
+      sageMakerRole.attachInlinePolicy(sshSsmAgentPolicy);
+      sageMakerEvaluationRole.attachInlinePolicy(sshSsmAgentPolicy);
     }
 
     // ABAC-scoped S3 access: the execution role can only access the profile prefix that matches
@@ -181,6 +188,49 @@ export class Workflow extends Construct {
       }),
     );
 
+    // Reads only what the SimApp loads: the model folder and the job YAML. Other racers' checkpoints
+    // stay readable, an accepted trade-off.
+    const modelsArn = `${modelStorageBucket.bucketArn}/*/models/*`;
+    sageMakerEvaluationRole.addToPolicy(
+      new PolicyStatement({
+        actions: ['s3:GetObject'],
+        resources: [
+          `${modelsArn}/sagemaker-artifacts/model/*`,
+          `${modelsArn}/sagemaker-artifacts/training_params.yaml`,
+        ],
+      }),
+    );
+    // Writes are limited to job outputs and the SimApp's checkpoint pointer files, with no deletes, so a
+    // job cannot change any model's checkpoint files, metadata or reward function. It can still rewrite
+    // any racer's .coach_checkpoint and .ready pointers (the SimApp rewrites .coach_checkpoint before
+    // every evaluation), which choose which checkpoint loads. That remaining cross-racer write is an
+    // accepted trade-off and is recoverable through bucket versioning.
+    sageMakerEvaluationRole.addToPolicy(
+      new PolicyStatement({
+        actions: ['s3:PutObject', 's3:AbortMultipartUpload'],
+        resources: [
+          `${modelsArn}/sagemaker-artifacts/model/.coach_checkpoint`,
+          `${modelsArn}/sagemaker-artifacts/model/.ready`,
+          ...['evaluation', 'submission'].flatMap((jobType) => [
+            `${modelsArn}/sagemaker-artifacts/${jobType}_job_status.json`,
+            `${modelsArn}/sagemaker-artifacts/deepracerindy-${jobType}-*`,
+            `${modelsArn}/metrics/${jobType}/*`,
+            `${modelsArn}/sim-trace/${jobType}/*`,
+            `${modelsArn}/videos/${jobType}/*`,
+          ]),
+        ],
+      }),
+    );
+    sageMakerEvaluationRole.addToPolicy(
+      new PolicyStatement({
+        actions: ['s3:ListBucket'],
+        resources: [modelStorageBucket.bucketArn],
+        conditions: {
+          StringLike: { 's3:prefix': ['*/models/*/sagemaker-artifacts/model*'] },
+        },
+      }),
+    );
+
     const jobInitializerFunction = new NodeLambdaFunction(this, 'JobInitializerFunction', {
       entry: path.join(__dirname, '../../../../../libs/lambda/src/workflow/handlers/jobInitializer.ts'),
       functionName: 'DeepRacerIndyWorkflow-JobInitializerFn',
@@ -189,6 +239,7 @@ export class Workflow extends Construct {
       environment: {
         MODEL_DATA_BUCKET_NAME: modelStorageBucket.bucketName,
         SAGEMAKER_ROLE_ARN: sageMakerRole.roleArn,
+        SAGEMAKER_EVALUATION_ROLE_ARN: sageMakerEvaluationRole.roleArn,
         SAGEMAKER_TRAINING_IMAGE: simAppRepositoryUri,
         POWERTOOLS_METRICS_NAMESPACE: 'DeepRacerIndyWorkflow',
         SAGEMAKER_INSTANCE_TYPE: scope.node.tryGetContext('SAGEMAKER_INSTANCE_TYPE') ?? '',
@@ -204,10 +255,30 @@ export class Workflow extends Construct {
         resources: [`arn:aws:kinesisvideo:${region}:${account}:stream/deepracerindy-*`],
       }),
     );
-    // CreateTrainingJob and iam:PassRole are NOT granted to the jobInitializer's own role.
     // Training job creation is only permitted through the ABAC job-creation role (below), which
-    // requires a profile-id session tag — making untagged job creation an IAM impossibility.
-    //
+    // requires a profile-id session tag. The jobInitializer's own role can create only evaluation and
+    // submission jobs, and can pass only the untagged evaluation role, so an untagged training job
+    // is still an IAM impossibility.
+    jobInitializerFunction.addToRolePolicy(
+      new PolicyStatement({
+        actions: ['sagemaker:CreateTrainingJob'],
+        resources: [
+          `arn:aws:sagemaker:${region}:${account}:training-job/deepracerindy-evaluation-*`,
+          `arn:aws:sagemaker:${region}:${account}:training-job/deepracerindy-submission-*`,
+        ],
+      }),
+    );
+    jobInitializerFunction.addToRolePolicy(
+      new PolicyStatement({
+        actions: ['iam:PassRole'],
+        resources: [sageMakerEvaluationRole.roleArn],
+        conditions: {
+          StringEquals: {
+            'iam:PassedToService': 'sagemaker.amazonaws.com',
+          },
+        },
+      }),
+    );
     // The capacity recheck performed immediately before CreateTrainingJob reads both training quotas
     // and sums instance usage across every active training job in the account.
     //
@@ -437,7 +508,7 @@ export class Workflow extends Construct {
       stateMachineName: `${namespace}-DeepRacerIndyWorkflow`,
       logs: {
         destination: new LogGroup(this, 'ExecutionLogs', {
-          logGroupName: `/aws/vendedlogs/states/${Stack.of(this).stackName}-DeepRacerIndyWorkflow`,
+          logGroupName: `/aws/vendedlogs/states/${Aws.STACK_NAME}-DeepRacerIndyWorkflow`,
           removalPolicy: DefaultLogRemovalPolicy,
           retention: DefaultLogRetentionDays,
           encryptionKey,

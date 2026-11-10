@@ -13,7 +13,9 @@ import * as Yup from 'yup';
 
 import InputField from '#components/FormFields/InputField';
 import { VALID_PASSWORD_PATTERN } from '#constants/validation';
+import { useAppDispatch } from '#hooks/useAppDispatch.js';
 import i18n from '#i18n/index.js';
+import { displayErrorNotification, displaySuccessNotification } from '#store/notifications/notificationsSlice.js';
 
 interface PasswordDialogProps {
   isOpen: boolean;
@@ -23,17 +25,43 @@ interface PasswordDialogProps {
 interface ChangePasswordFormValues {
   OldPassword: string;
   NewPassword: string;
+  ConfirmPassword: string;
 }
 
-const initialValues: ChangePasswordFormValues = { OldPassword: '', NewPassword: '' };
+const initialValues: ChangePasswordFormValues = { OldPassword: '', NewPassword: '', ConfirmPassword: '' };
+
+/**
+ * Maps an `aws-amplify/auth` `updatePassword` error to a distinct
+ * `account:changePasswordModal.*` i18n key, falling back to a generic message
+ * for any other or unknown error.
+ */
+type ChangePasswordErrorKey =
+  | 'changePasswordModal.errorNotAuthorized'
+  | 'changePasswordModal.errorInvalidPassword'
+  | 'changePasswordModal.errorLimitExceeded'
+  | 'changePasswordModal.errorGeneric';
+
+const ERROR_MESSAGE_KEY_BY_NAME = new Map<string, ChangePasswordErrorKey>([
+  ['NotAuthorizedException', 'changePasswordModal.errorNotAuthorized'],
+  ['InvalidPasswordException', 'changePasswordModal.errorInvalidPassword'],
+  ['LimitExceededException', 'changePasswordModal.errorLimitExceeded'],
+]);
+
+const getErrorMessageKey = (error: unknown): ChangePasswordErrorKey => {
+  const name = error instanceof Error ? error.name : undefined;
+  return (name ? ERROR_MESSAGE_KEY_BY_NAME.get(name) : undefined) ?? 'changePasswordModal.errorGeneric';
+};
 
 const validationSchema = Yup.object().shape({
   OldPassword: Yup.string()
     .required(i18n.t('account:required'))
-    .matches(VALID_PASSWORD_PATTERN, i18n.t('account:passwordFormat')),
+    .matches(VALID_PASSWORD_PATTERN, i18n.t('account:changePasswordModal.passwordFormat')),
   NewPassword: Yup.string()
     .required(i18n.t('account:required'))
-    .matches(VALID_PASSWORD_PATTERN, i18n.t('account:passwordFormat')),
+    .matches(VALID_PASSWORD_PATTERN, i18n.t('account:changePasswordModal.passwordFormat')),
+  ConfirmPassword: Yup.string()
+    .required(i18n.t('account:required'))
+    .oneOf([Yup.ref('NewPassword')], i18n.t('account:changePasswordModal.passwordMismatch')),
 });
 
 /**
@@ -43,11 +71,11 @@ const validationSchema = Yup.object().shape({
  */
 const ChangePasswordModal = ({ isOpen, setIsOpen }: PasswordDialogProps) => {
   const { t } = useTranslation('account');
+  const dispatch = useAppDispatch();
   const {
     control,
     handleSubmit: handleFormSubmit,
     reset,
-    trigger: validateForm,
   } = useForm<ChangePasswordFormValues>({
     values: initialValues,
     resolver: yupResolver(validationSchema),
@@ -59,19 +87,27 @@ const ChangePasswordModal = ({ isOpen, setIsOpen }: PasswordDialogProps) => {
     setIsOpen(false);
   };
 
-  const handleSubmit = async (formValues: ChangePasswordFormValues) => {
-    const isFormValid = await validateForm();
-    if (isFormValid) {
-      const { OldPassword, NewPassword } = formValues;
-      try {
-        await updatePassword({
-          oldPassword: OldPassword,
-          newPassword: NewPassword,
-        });
-        setIsOpen(false);
-      } catch (e) {
-        handleClose();
-      }
+  // `react-hook-form`'s `handleSubmit` only invokes this handler once the form
+  // passes the Yup schema, so no additional validity guard is needed here.
+  const handleSubmit = async ({ OldPassword, NewPassword }: ChangePasswordFormValues) => {
+    try {
+      await updatePassword({
+        oldPassword: OldPassword,
+        newPassword: NewPassword,
+      });
+      dispatch(
+        displaySuccessNotification({
+          content: t('changePasswordModal.successMessage'),
+        }),
+      );
+      handleClose();
+    } catch (e) {
+      // Keep the modal open so the user can correct the problem and retry.
+      dispatch(
+        displayErrorNotification({
+          content: t(getErrorMessageKey(e)),
+        }),
+      );
     }
   };
 
@@ -110,6 +146,13 @@ const ChangePasswordModal = ({ isOpen, setIsOpen }: PasswordDialogProps) => {
               constraintText={t('changePasswordModal.passwordFormat')}
               placeholder={t('changePasswordModal.newPassPlaceholder')}
               name="NewPassword"
+              type="password"
+            />
+            <InputField
+              label={t('changePasswordModal.confirmPassword')}
+              control={control}
+              placeholder={t('changePasswordModal.confirmPassPlaceholder')}
+              name="ConfirmPassword"
               type="password"
             />
           </SpaceBetween>

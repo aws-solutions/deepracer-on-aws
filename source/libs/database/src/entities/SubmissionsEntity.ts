@@ -6,6 +6,7 @@ import { CustomAttributeType, Entity, EntityItem } from 'electrodb';
 
 import { GlobalSecondaryIndex } from '../constants/indexes.js';
 import {
+  CHECKPOINT_ATTRIBUTE,
   METADATA_ATTRIBUTES,
   DynamoDBItemAttribute,
   RESETTING_BEHAVIOR_CONFIG_ATTRIBUTE,
@@ -45,6 +46,7 @@ export const SubmissionsEntity = new Entity(
           jobNameHelper.getJobName(JobType.SUBMISSION, submissionId),
       },
       [DynamoDBItemAttribute.RESETTING_BEHAVIOR_CONFIG]: RESETTING_BEHAVIOR_CONFIG_ATTRIBUTE,
+      [DynamoDBItemAttribute.CHECKPOINT]: CHECKPOINT_ATTRIBUTE,
       [DynamoDBItemAttribute.RACED_BY_PROXY]: {
         type: 'boolean',
         required: false,

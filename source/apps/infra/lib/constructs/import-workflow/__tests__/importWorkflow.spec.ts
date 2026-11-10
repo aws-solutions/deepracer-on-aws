@@ -94,6 +94,16 @@ describe('Import Workflow', () => {
     template = Template.fromStack(stack);
   });
 
+  it('names the execution log group after the deployed stack', () => {
+    expect(() =>
+      template.hasResourceProperties('AWS::Logs::LogGroup', {
+        LogGroupName: {
+          'Fn::Join': ['', ['/aws/vendedlogs/states/', { Ref: 'AWS::StackName' }, '-DeepRacerIndyImportModelWorkflow']],
+        },
+      }),
+    ).not.toThrow();
+  });
+
   it('creates import workflow Lambda functions', () => {
     expect(() =>
       template.hasResourceProperties('AWS::Lambda::Function', {

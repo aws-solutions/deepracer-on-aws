@@ -14,6 +14,8 @@ export interface ActivateDeviceFormValues {
   wifiPassword: string;
   consolePassword: string;
   communityConsole: boolean;
+  /** Timer only: sensors pull DOUT low on a crossing (most IR break-beam receivers). */
+  activeLowSensors: boolean;
 }
 
 export const ACTIVATE_DEVICE_DEFAULTS: ActivateDeviceFormValues = {
@@ -24,6 +26,7 @@ export const ACTIVATE_DEVICE_DEFAULTS: ActivateDeviceFormValues = {
   wifiPassword: '',
   consolePassword: '',
   communityConsole: false,
+  activeLowSensors: false,
 };
 
 export const activateDeviceValidationSchema = Yup.object({
@@ -37,4 +40,5 @@ export const activateDeviceValidationSchema = Yup.object({
   wifiPassword: Yup.string().optional(),
   consolePassword: Yup.string().optional(),
   communityConsole: Yup.boolean().optional(),
+  activeLowSensors: Yup.boolean().optional(),
 });
