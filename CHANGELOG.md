@@ -15,13 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Upgraded the simulation application image to Ubuntu 26.04, ROS 2 Lyrical, Gazebo Jetty, and Python 3.14, which reduces dropped camera frames during training and evaluation. In side-by-side tests with identical settings, models trained on the new image had 15% faster average lap times and 20% fewer off-track events.
-- SageMaker keeps instances warm for up to one hour after evaluations and race submissions, so the next evaluation or race job in the deployment, from any user, starts faster.
-
+- Upgraded the simulation application image to Ubuntu 26.04, ROS 2 Lyrical, Gazebo Jetty, Python 3.14, and NumPy 2.5, which reduces dropped camera frames during training and evaluation. The simulation application image is 19% smaller to download. In side-by-side tests with identical settings, models trained on the new image had 15% faster average lap times and 20% fewer off-track events.
+- SageMaker keeps instances warm for up to one hour after evaluations and race submissions, so the next evaluation or submission starts 50% faster.
+  
 ### Fixed
 
 - The Change password dialog now confirms a successful change, stays open with an error message when the change fails, and shows the correct password requirements.
-- A second deployment in the same AWS Region using the CloudFormation template or Launch Wizard no longer fails because of conflicting log group names. On upgrade, nine log groups are renamed to start with the stack name, and the previous log groups are retained.
+- Fixed log group name conflicts when deploying multiple stacks in the same AWS Region.
 
 ### Security
 
