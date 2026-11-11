@@ -15,6 +15,26 @@ export const configureAuth = () => {
         userPoolClientId: environmentConfig.userPoolClientId,
         identityPoolId: environmentConfig.identityPoolId,
         allowGuestAccess: true,
+        // Hosted UI / signInWithRedirect is only wired up when a SAML IdP was configured on the
+        // user pool (see the infra's isSamlIdpEnabled condition). The Hosted UI domain prefix
+        // (`${namespace}-dr-auth`) and region are both already exposed on EnvironmentConfig, so
+        // the full Cognito domain can be derived here rather than needing a new config field.
+        // redirectSignIn/redirectSignOut must match the CallbackURLs/LogoutURLs the infra side
+        // registers on the user pool client (updateOAuthCallbackUrls), which are the website's
+        // own origin — i.e. exactly window.location.origin at runtime.
+        ...(environmentConfig.idpEnabled && environmentConfig.namespace
+          ? {
+              loginWith: {
+                oauth: {
+                  domain: `${environmentConfig.namespace}-dr-auth.auth.${environmentConfig.region}.amazoncognito.com`,
+                  scopes: ['openid', 'email', 'profile'],
+                  redirectSignIn: [window.location.origin],
+                  redirectSignOut: [window.location.origin],
+                  responseType: 'code' as const,
+                },
+              },
+            }
+          : {}),
       },
     },
   });

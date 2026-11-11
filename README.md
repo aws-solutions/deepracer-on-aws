@@ -370,6 +370,13 @@ export SES_VERIFIED_EMAIL='noreply@example.com'
 export  PUBLIC_ECR_REGISTRY=${AWS_ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com
 ```
 
+5. (Optional) To let users sign in with your organization's SAML 2.0 identity provider, provide its metadata URL. See [Enterprise SSO](./source/docs/sso/README.md) for the full setup, including the values to register on your IdP.
+
+```
+export SAML_METADATA_URL='https://example.com/idp-metadata.xml'
+export SAML_EMAIL_CLAIM='http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'   # optional
+```
+
 #### Configuration
 
 The solution uses CDK context values for container image configuration. These are defined in `source/apps/infra/cdk.json` and can be overridden during deployment:
