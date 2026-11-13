@@ -79,6 +79,10 @@ const onLevel = (pin, level) => {
 
 const pins = [config.gpio.sensor1, config.gpio.sensor2];
 let releaseGpio = () => undefined;
+// node-libgpiod's native Line holds only a raw pointer into its Chip, and a garbage-collected Chip
+// closes the gpiochip, which releases every line it owned (the next read fails with EPERM). Keep the
+// header chip referenced for the life of the process.
+let headerChip;
 
 const startLibgpiod = (libgpiod) => {
   // Each chip is opened once, to read its label, and the header chip's handle is reused. node-libgpiod
@@ -89,6 +93,7 @@ const startLibgpiod = (libgpiod) => {
   const { name: chipName, label } = selectHeaderGpioChip(chips, config.gpio.chip);
   console.log(`Using ${chipName} (${label}) for the 40-pin header`);
   const chip = handles.get(chipName);
+  headerChip = chip;
   const lines = [];
   try {
     for (const pin of pins) {
@@ -110,7 +115,19 @@ const startLibgpiod = (libgpiod) => {
   }
   // node-libgpiod exposes no edge events, so poll and let the detector find the edges.
   const interval = setInterval(() => {
-    for (const { pin, line } of lines) onLevel(pin, line.getValue());
+    for (const { pin, line } of lines) {
+      let level;
+      try {
+        level = line.getValue();
+      } catch (error) {
+        // A read error won't fix itself 200 times a second: exit so systemd restarts the timer,
+        // after publishing the crossings already queued.
+        console.error(`GPIO${pin} read failed on ${chipName}:`, error.message);
+        shutdown('GPIO read failure', 1);
+        return;
+      }
+      onLevel(pin, level);
+    }
   }, GPIO_POLL_INTERVAL_MS);
   releaseGpio = () => {
     clearInterval(interval);
@@ -163,15 +180,20 @@ const heartbeat = () => publish(buildHeartbeatMessage({ instanceId, bootId, time
 heartbeat();
 const heartbeatInterval = setInterval(heartbeat, HEARTBEAT_INTERVAL_MS);
 
-const shutdown = (signal) => {
-  console.log(`${signal} received, shutting down`);
+let shuttingDown = false;
+// Stops reading the sensors, then publishes whatever is still queued (including laps being retried)
+// before exiting.
+const shutdown = (reason, exitCode = 0) => {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`${reason}, shutting down`);
   clearInterval(heartbeatInterval);
   try {
     releaseGpio();
   } catch {
     /* ignore cleanup errors */
   }
-  drain().then(() => process.exit(0));
+  drain().then(() => process.exit(exitCode));
 };
-process.on('SIGINT', () => shutdown('SIGINT'));
-process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT received'));
+process.on('SIGTERM', () => shutdown('SIGTERM received'));
