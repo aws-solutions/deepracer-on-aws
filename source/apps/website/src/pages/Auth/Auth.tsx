@@ -9,6 +9,7 @@ import { useLocation } from 'react-router-dom';
 import deepRacerLogo from '#assets/deepracer_logo.svg';
 import { AuthState } from '#constants/auth.js';
 
+import CompleteProfileForm from './components/CompleteProfileForm';
 import ForgotPasswordRequestForm from './components/ForgotPasswordRequestForm';
 import ForgotPasswordResetForm from './components/ForgotPasswordResetForm';
 import NewPasswordForm from './components/NewPasswordForm';
@@ -35,6 +36,8 @@ const Auth = ({ initialAuthState = AuthState.SIGNIN }) => {
         return <ForgotPasswordResetForm />;
       case AuthState.NEW_PASSWORD_REQUIRED:
         return <NewPasswordForm />;
+      case AuthState.COMPLETE_PROFILE:
+        return <CompleteProfileForm />;
       case AuthState.VERIFY_EMAIL:
       default:
         return <VerifyEmailForm />;

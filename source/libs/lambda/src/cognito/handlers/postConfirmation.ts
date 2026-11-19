@@ -1,29 +1,19 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-import {
-  AdminAddUserToGroupCommand,
-  AdminUpdateUserAttributesCommand,
-  CognitoIdentityProviderClient,
-} from '@aws-sdk/client-cognito-identity-provider';
+import { AdminUpdateUserAttributesCommand } from '@aws-sdk/client-cognito-identity-provider';
 import type { PostConfirmationTriggerHandler } from 'aws-lambda';
 
-import { UserGroups } from './common/constants';
+import { ensureDefaultRacerGroupMembership } from './common/groupMembership.js';
+import { cognitoClient } from '../../utils/clients/cognitoClient.js';
 import { instrumentHandler } from '../../utils/instrumentation/instrumentHandler.js';
 
 export const PostConfirmation: PostConfirmationTriggerHandler = async (event) => {
-  const cognitoClient = new CognitoIdentityProviderClient({
-    region: process.env.AWS_REGION,
-  });
-
   try {
-    await cognitoClient.send(
-      new AdminAddUserToGroupCommand({
-        UserPoolId: event.userPoolId,
-        Username: event.userName,
-        GroupName: UserGroups.RACERS, // Default group for new users
-      }),
-    );
+    // Shared with PostAuthentication (which also needs this for federated sign-ins, which never
+    // reach PostConfirmation) so the two triggers can't drift into inconsistent behavior — see
+    // ensureDefaultRacerGroupMembership for the membership-check rationale.
+    await ensureDefaultRacerGroupMembership(event.userPoolId, event.userName);
   } catch (error) {
     console.log(error);
     throw new Error('Failed to add user to group');

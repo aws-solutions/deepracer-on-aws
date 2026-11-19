@@ -9,37 +9,42 @@
 import { describe, it, expect } from 'vitest';
 
 describe('Input validation integration tests', () => {
-  describe('ResourceIdentifier validation (Smithy pattern: ^[A-Za-z0-9]{15}$)', () => {
+  describe('ResourceIdentifier validation (Smithy pattern: ^(?:[A-Za-z0-9-]{15}|[A-Za-z0-9]+_[\\w-]{1,200})$)', () => {
     const VALID_RESOURCE_ID = 'abc123XYZ789012';
+    // Federated (SAML/OIDC) sign-ins get a Cognito-assigned "<ProviderName>_<subject>" username
+    // instead of a native generateResourceId() id — see RESOURCE_ID_REGEX_STR in
+    // libs/database/src/constants/regex.ts, which this pattern mirrors.
+    const VALID_FEDERATED_ID = 'sso_pdmqeteshcjzzmrcjkpgypzjyjs2odmzrxltrlh2ntq';
     const INVALID_SHORT_ID = 'abc123';
     const INVALID_LONG_ID = 'abc123XYZ7890123456';
     const INVALID_SPECIAL_CHARS = 'abc123XYZ789-!@';
 
-    it('validates resource ID must be exactly 15 alphanumeric characters', () => {
-      const pattern = /^[A-Za-z0-9]{15}$/;
+    it('validates resource ID is either exactly 15 alphanumeric characters or a federated id', () => {
+      const pattern = /^(?:[A-Za-z0-9-]{15}|[A-Za-z0-9]+_[\w-]{1,200})$/;
 
       expect(pattern.test(VALID_RESOURCE_ID)).toBe(true);
+      expect(pattern.test(VALID_FEDERATED_ID)).toBe(true);
       expect(pattern.test(INVALID_SHORT_ID)).toBe(false);
       expect(pattern.test(INVALID_LONG_ID)).toBe(false);
       expect(pattern.test(INVALID_SPECIAL_CHARS)).toBe(false);
     });
 
     it('rejects SQL injection attempts in ID fields', () => {
-      const pattern = /^[A-Za-z0-9]{15}$/;
+      const pattern = /^(?:[A-Za-z0-9-]{15}|[A-Za-z0-9]+_[\w-]{1,200})$/;
       const sqlInjection = "abc'; DROP TABLE";
 
       expect(pattern.test(sqlInjection)).toBe(false);
     });
 
     it('rejects path traversal attempts in ID fields', () => {
-      const pattern = /^[A-Za-z0-9]{15}$/;
+      const pattern = /^(?:[A-Za-z0-9-]{15}|[A-Za-z0-9]+_[\w-]{1,200})$/;
       const pathTraversal = '../../../etc';
 
       expect(pattern.test(pathTraversal)).toBe(false);
     });
 
     it('rejects command injection attempts', () => {
-      const pattern = /^[A-Za-z0-9]{15}$/;
+      const pattern = /^(?:[A-Za-z0-9-]{15}|[A-Za-z0-9]+_[\w-]{1,200})$/;
       const commandInjection = 'abc`whoami`xyz';
 
       expect(pattern.test(commandInjection)).toBe(false);
