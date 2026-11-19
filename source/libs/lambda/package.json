@@ -6,6 +6,9 @@
   "private": true,
   "sideEffects": false,
   "type": "module",
+  "scripts": {
+    "clean": "rm -rf node_modules"
+  },
   "dependencies": {
     "@aws-sdk/client-api-gateway": "3.654.0",
     "@aws-sdk/client-appconfig": "^3.817.0",

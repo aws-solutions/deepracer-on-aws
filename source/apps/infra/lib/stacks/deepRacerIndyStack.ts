@@ -482,11 +482,16 @@ export class DeepRacerIndyStack extends Stack {
       expression: Fn.conditionNot(Fn.conditionEquals(customDomainParam.valueAsString, '')),
     });
 
-    const allowedOrigin = Fn.conditionIf(
-      hasCustomDomain.logicalId,
-      customDomainParam.valueAsString,
-      `https://${website.cloudFrontDomainName}`,
-    );
+    // Enable wildcard CORS for local development: ENABLE_LOCAL_DEV_CORS=true
+    const enableLocalDevCors = process.env.ENABLE_LOCAL_DEV_CORS === 'true';
+
+    const allowedOrigin = enableLocalDevCors
+      ? '*'
+      : Fn.conditionIf(
+          hasCustomDomain.logicalId,
+          customDomainParam.valueAsString,
+          `https://${website.cloudFrontDomainName}`,
+        );
     new ApiCorsUpdate(this, 'UpdateApiCors', {
       apiId: api.restApiId,
       allowedOrigin: Token.asString(allowedOrigin),
